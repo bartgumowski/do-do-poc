@@ -355,6 +355,8 @@ body.auth-locked .onboarding-screen {
 .auth-phone {
   width: min(100%, 430px);
   min-height: min(820px, calc(100dvh - 28px));
+  max-height: calc(100dvh - 28px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 22px;
