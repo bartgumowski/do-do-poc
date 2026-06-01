@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Do-Do Legal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --ink: #1e1d22;
+        --muted: #73756f;
+        --line: #e8e8e1;
+        --paper: #f4faf6;
+        --accent: #65d6c6;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      .legal-page {
+        width: min(100%, 860px);
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+
+      .legal-hero,
+      .legal-card {
+        border-radius: 28px;
+        background: #ffffff;
+        box-shadow: 0 24px 70px rgba(31, 41, 35, 0.08);
+      }
+
+      .legal-hero {
+        padding: 26px;
+        margin-bottom: 14px;
+      }
+
+      .legal-card {
+        padding: 22px;
+        margin: 12px 0;
+      }
+
+      .legal-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .legal-nav a,
+      .back-link {
+        border-radius: 999px;
+        padding: 9px 12px;
+        background: #f4f5f0;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        text-decoration: none;
+      }
+
+      .back-link {
+        display: inline-flex;
+        margin-bottom: 14px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        line-height: 1.05;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        font-size: clamp(34px, 8vw, 62px);
+      }
+
+      h2 {
+        font-size: 28px;
+        margin-bottom: 12px;
+      }
+
+      h3 {
+        font-size: 17px;
+        margin: 18px 0 8px;
+      }
+
+      p,
+      li {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      ul {
+        padding-left: 18px;
+      }
+
+      .notice {
+        border-left: 4px solid var(--accent);
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: #f5fbf8;
+        color: var(--ink);
+        font-weight: 800;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      code {
+        border-radius: 8px;
+        padding: 2px 6px;
+        background: #f4f5f0;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="legal-page">
+      <a class="back-link" href="index.html">Back to Do-Do</a>
+
+      <section class="legal-hero">
+        <span class="muted">Effective date: 27 May 2026</span>
+        <h1>Do-Do legal terms</h1>
+        <p>
+          These starter clauses are written for a family coordination app operating in the EU/EEA and the United States.
+          They must be reviewed by qualified counsel before commercial launch.
+        </p>
+        <p class="notice">
+          Do-Do is a coordination tool. It is not a law firm, court, mediator, emergency service, medical provider, bank, or tax adviser.
+        </p>
+        <nav class="legal-nav" aria-label="Legal sections">
+          <a href="#terms">Terms</a>
+          <a href="#privacy">Privacy</a>
+          <a href="#children">Children</a>
+          <a href="#security">Security</a>
+          <a href="#cookies">Cookies</a>
+          <a href="#contact">Contact</a>
+        </nav>
+      </section>
+
+      <section class="legal-card" id="terms">
+        <h2>Terms of Use</h2>
+        <p>
+          These Terms govern access to Do-Do, including the mobile web app, installed PWA, notifications,
+          calendar features, messages, reminders, expenses, shopping lists, settings, and related services.
+        </p>
+
+        <h3>Accounts and authority</h3>
+        <ul>
+          <li>You must provide accurate account and family information and keep access credentials secure.</li>
+          <li>You confirm that you have authority to add children, pets, co-parents, caregivers, or family members to a shared board.</li>
+          <li>You are responsible for the content you add, including messages, expenses, schedules, reminders, and family details.</li>
+        </ul>
+
+        <h3>Family records</h3>
+        <ul>
+          <li>Cards, messages, reminders, and activity trails may be retained as coordination records.</li>
+          <li>Do-Do may show timestamps, status changes, read states, reminder settings, and message history to authorized family-board members.</li>
+          <li>Unless a paid legal export feature is separately agreed, Do-Do does not guarantee that records are court-admissible in any jurisdiction.</li>
+        </ul>
+
+        <h3>Acceptable use</h3>
+        <ul>
+          <li>Do not use Do-Do to harass, threaten, impersonate, stalk, abuse, or unlawfully monitor another person.</li>
+          <li>Do not upload or enter unlawful, exploitative, discriminatory, or highly sensitive information unless necessary for legitimate family coordination.</li>
+          <li>Do not bypass security, scrape the service, overload systems, or attempt to access another family board without permission.</li>
+        </ul>
+
+        <h3>Health, finance, and emergencies</h3>
+        <ul>
+          <li>Medical, allergy, medication, expense, and schedule details attached to Dos are user-entered coordination notes, not professional advice.</li>
+          <li>For emergencies, contact local emergency services directly. Do-Do notifications may be delayed, muted, or unavailable.</li>
+          <li>Expense and budget modules are not banking, accounting, tax, or legal settlement services unless expressly stated in a separate agreement.</li>
+        </ul>
+
+        <h3>Disclaimers and liability</h3>
+        <ul>
+          <li>The service is provided "as is" and "as available" during prototype and MVP stages.</li>
+          <li>We do not promise uninterrupted availability, legal outcomes, successful co-parent communication, or error-free automations.</li>
+          <li>To the maximum extent permitted by law, liability is limited to the amount paid for the service in the previous 12 months, or USD 100 if no amount was paid.</li>
+        </ul>
+
+        <h3>Changes and termination</h3>
+        <ul>
+          <li>We may change features, pricing, or these Terms with reasonable notice where required by law.</li>
+          <li>You may stop using Do-Do and request export or deletion as described in the Privacy Notice.</li>
+          <li>We may suspend access for security risk, unlawful use, non-payment, or material breach of these Terms.</li>
+        </ul>
+      </section>
+
+      <section class="legal-card" id="privacy">
+        <h2>Privacy Notice</h2>
+        <p>
+          This notice describes personal data practices for Do-Do. Replace placeholders with the real legal entity,
+          processor list, data hosting region, and privacy contact before production.
+        </p>
+
+        <h3>Data we may collect</h3>
+        <ul>
+          <li>Account data: name, email, phone, authentication provider, device, and account settings.</li>
+          <li>Family-board data: co-parent names, child names, pet names, schedules, reminders, tasks, expenses, messages, shopping lists, and budget entries.</li>
+          <li>Usage data: logins, app interactions, notification permissions, read receipts, card status changes, and feature analytics.</li>
+          <li>Device data: browser, operating system, approximate region, push subscription, and service-worker status.</li>
+        </ul>
+
+        <h3>How we use data</h3>
+        <ul>
+          <li>Provide the family board, messages, reminders, calendar cards, expenses, settings, and onboarding.</li>
+          <li>Send push notifications, reminders, account messages, invitations, and security notices.</li>
+          <li>Maintain audit trails, prevent abuse, protect accounts, debug issues, and improve reliability.</li>
+          <li>Comply with legal obligations and respond to lawful requests.</li>
+        </ul>
+
+        <h3>EU/EEA legal bases</h3>
+        <ul>
+          <li>Contract: to provide the app and account features you request.</li>
+          <li>Consent: for optional notifications, analytics where required, and certain child-data processing where required.</li>
+          <li>Legitimate interests: security, fraud prevention, product improvement, and service reliability.</li>
+          <li>Legal obligation: tax, accounting, lawful requests, and compliance duties.</li>
+        </ul>
+
+        <h3>EU/EEA and UK rights</h3>
+        <ul>
+          <li>You may request access, correction, deletion, restriction, portability, or objection to processing.</li>
+          <li>You may withdraw consent where processing relies on consent.</li>
+          <li>You may complain to your local data protection authority.</li>
+          <li>Some requests may be limited where records must be kept for security, legal claims, or another user's rights.</li>
+        </ul>
+
+        <h3>United States privacy rights</h3>
+        <ul>
+          <li>California and other eligible U.S. residents may request access, correction, deletion, portability, and information about categories of data collected, used, disclosed, or shared.</li>
+          <li>Do-Do does not sell personal information. If targeted advertising or data sharing is added later, a clear opt-out control must be provided.</li>
+          <li>We do not discriminate against users for exercising privacy rights.</li>
+        </ul>
+
+        <h3>Sharing and processors</h3>
+        <ul>
+          <li>Data may be shared with service providers that host, authenticate, store, analyze, secure, or send app notifications.</li>
+          <li>Data may be shared with invited family-board members according to permissions and with authorities when legally required.</li>
+          <li>Processor names, regions, and transfer safeguards must be listed before production launch.</li>
+        </ul>
+
+        <h3>Retention</h3>
+        <ul>
+          <li>Account and board data is kept while the account or family board is active.</li>
+          <li>Deleted accounts should be removed or anonymized within 30 days unless a longer period is required for legal, safety, billing, or dispute reasons.</li>
+          <li>Backups may persist for a limited recovery period before automatic deletion.</li>
+        </ul>
+      </section>
+
+      <section class="legal-card" id="children">
+        <h2>Children and Family Data</h2>
+        <p>
+          Do-Do is designed for parents and guardians to coordinate family logistics. Child profiles are controlled by adults.
+        </p>
+        <ul>
+          <li>Adults must have parental responsibility or another lawful basis before adding a child profile.</li>
+          <li>Children under 13 in the United States should not create independent accounts unless a COPPA-compliant parental consent flow is active.</li>
+          <li>Parents may request access, correction, export, or deletion of child data, subject to safety, record-retention, and other users' rights.</li>
+          <li>Do-Do should collect only the child information reasonably needed for coordination.</li>
+          <li>Future child-facing features must use age-appropriate design, limited collection, and parental controls.</li>
+        </ul>
+      </section>
+
+      <section class="legal-card" id="security">
+        <h2>Security and Incident Notice</h2>
+        <ul>
+          <li>Use encryption in transit, access controls, least-privilege admin access, logging, and regular dependency updates.</li>
+          <li>Protect push subscriptions, auth tokens, child data, and message records as sensitive family coordination data.</li>
+          <li>Notify affected users and regulators where required after a confirmed data breach.</li>
+          <li>Users should report suspected unauthorized access immediately.</li>
+        </ul>
+      </section>
+
+      <section class="legal-card" id="cookies">
+        <h2>Cookies, Local Storage, and Notifications</h2>
+        <ul>
+          <li>Do-Do may use local storage, service workers, and cache storage to keep the app fast and installable.</li>
+          <li>Push notifications require browser or operating-system permission and can be disabled in device settings.</li>
+          <li>Analytics should be limited to product events and configured to avoid unnecessary family-content capture.</li>
+          <li>Non-essential analytics or marketing cookies may require consent in some regions.</li>
+        </ul>
+      </section>
+
+      <section class="legal-card" id="contact">
+        <h2>Contact and placeholders</h2>
+        <p>
+          Controller/operator: <code>[Legal company name]</code><br />
+          Address: <code>[Registered address]</code><br />
+          Privacy contact: <code>privacy@example.com</code><br />
+          Security contact: <code>security@example.com</code><br />
+          EU representative/DPO, if required: <code>[Name and contact]</code>
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

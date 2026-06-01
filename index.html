@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Do-Do" />
+    <title>Do-Do</title>
+    <script>
+      (() => {
+        try {
+          const preference = localStorage.getItem("do-do-theme-v1") || "system";
+          const useDark = preference === "dark"
+            || (preference === "system" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
+          document.documentElement.dataset.theme = useDark ? "dark" : "light";
+          document.documentElement.dataset.themePreference = preference;
+        } catch {
+          document.documentElement.dataset.theme = "light";
+          document.documentElement.dataset.themePreference = "system";
+        }
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/dodo-icon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="assets/dodo-icon.png" />
+    <link rel="stylesheet" href="styles.css?v=20260531-dark-auth-onboarding" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body class="auth-locked">
+    <section class="auth-screen" id="authScreen" aria-label="Sign in">
+      <div class="auth-phone">
+        <div class="auth-topline">
+          <div class="top-steps" aria-label="Steps">
+            <span>Steps</span>
+            <i class="complete"></i>
+            <i></i>
+            <i></i>
+          </div>
+        </div>
+        <div class="auth-brand-row">
+          <div class="auth-avatar"><img src="assets/dodo-icon.png" alt="Do-Do" /></div>
+          <div>
+            <span>Welcome</span>
+            <strong>Do-Do</strong>
+          </div>
+        </div>
+        <div class="auth-hero">
+          <h1>Coordinate family life in one shared place.</h1>
+          <p>Sign in, connect the family board, and land straight on today’s cards.</p>
+        </div>
+        <div class="auth-steps" aria-label="Login journey">
+          <span class="active">Sign in</span>
+          <span>Confirm</span>
+          <span>Board</span>
+        </div>
+        <div class="auth-provider-list" id="authProviderList">
+          <button class="auth-provider-button" type="button" data-auth-provider="Google">
+            <span class="auth-provider-mark google-mark">G</span>
+            <span>Continue with Google</span>
+          </button>
+          <button class="auth-provider-button apple" type="button" data-auth-provider="Apple">
+            <span class="auth-provider-mark apple-mark">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16.6 13.1c0-2.1 1.7-3.1 1.8-3.2-1-1.5-2.5-1.7-3-1.7-1.3-.1-2.5.8-3.1.8-.7 0-1.7-.8-2.8-.8-1.4 0-2.8.8-3.5 2.1-1.5 2.6-.4 6.4 1.1 8.5.7 1 1.5 2.2 2.7 2.1 1.1 0 1.5-.7 2.8-.7s1.7.7 2.8.7c1.2 0 1.9-1 2.6-2.1.8-1.2 1.1-2.3 1.1-2.4 0 0-2.4-.9-2.5-3.3ZM14.5 6.9c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.6.6-1 1.6-.9 2.6 1 .1 1.9-.5 2.5-1.2Z" />
+              </svg>
+            </span>
+            <span>Continue with Apple</span>
+          </button>
+          <form class="auth-confirm" id="authPasswordForm">
+            <span class="auth-confirm-label">Or continue with email</span>
+            <label>
+              Email
+              <input id="authEmailInput" type="email" autocomplete="email" placeholder="you@example.com" required />
+            </label>
+            <label>
+              Password
+              <input id="authPasswordInput" type="password" autocomplete="current-password" placeholder="Password" minlength="6" required />
+            </label>
+            <button class="auth-continue-button" type="submit">Sign in</button>
+            <button class="auth-switch-button" type="button" id="authSignUpButton">Create account</button>
+            <span class="auth-confirm-label" id="authError" role="status"></span>
+          </form>
+        </div>
+        <div class="auth-confirm hidden" id="authConfirm">
+          <span class="auth-confirm-label" id="authProviderLabel">Google account ready</span>
+          <strong>Ava’s family board</strong>
+          <p>No password. We’ll use this account to keep your family board in sync.</p>
+          <button class="auth-continue-button" type="button" id="authContinueButton">Continue to board</button>
+          <button class="auth-switch-button" type="button" id="authSwitchButton">Use another sign in option</button>
+        </div>
+        <nav class="legal-links" aria-label="Legal links">
+          <a href="legal.html#terms">Terms</a>
+          <a href="legal.html#privacy">Privacy</a>
+          <a href="legal.html#children">Children</a>
+        </nav>
+      </div>
+    </section>
+    <section class="onboarding-screen" id="onboardingScreen" aria-label="Family onboarding">
+      <form class="onboarding-phone" id="onboardingForm">
+        <div class="onboarding-header">
+          <img src="assets/dodo-icon.png" alt="" />
+          <div>
+            <span>Onboarding</span>
+            <strong>Build your family board</strong>
+          </div>
+        </div>
+        <div class="onboarding-sections">
+          <section class="onboarding-card">
+            <h2>Parents</h2>
+            <label>Your name<input id="onboardingParentA" placeholder="Parent A" value="Parent A" /></label>
+            <label>Co-parent name<input id="onboardingParentB" placeholder="Parent B" value="Parent B" /></label>
+            <label>Invite email<input id="onboardingInvite" type="email" placeholder="coparent@example.com" /></label>
+          </section>
+          <section class="onboarding-card">
+            <h2>Children</h2>
+            <label>Child name<input id="onboardingChildName" placeholder="Ava" value="Ava" /></label>
+            <button class="onboarding-inline-button" type="button" id="onboardingAddChild">Add another child later</button>
+          </section>
+          <section class="onboarding-card">
+            <h2>Pets</h2>
+            <label>Pet name<input id="onboardingPetName" placeholder="Milo" value="Milo" /></label>
+            <button class="onboarding-inline-button" type="button" id="onboardingSkipPet">Skip pets</button>
+          </section>
+          <section class="onboarding-card">
+            <h2>Calendar</h2>
+            <label class="onboarding-toggle">
+              <span><strong>Family calendar sync</strong><em>Sync dated Dos to your selected shared calendar.</em></span>
+              <span class="connect-control"><b>Connect</b><input id="onboardingFamilyCalendar" type="checkbox" /></span>
+            </label>
+            <label>Shared calendar provider
+              <em>The family calendar remains private to this family workspace.</em>
+              <select id="onboardingFamilyCalendarProvider">
+                <option value="google">Google Calendar</option>
+                <option value="outlook">Outlook Calendar</option>
+              </select>
+            </label>
+            <label class="onboarding-toggle">
+              <span><strong>Private work calendar availability</strong><em>Optional. Share blocked times only. Event details stay private.</em></span>
+              <span class="connect-control"><b>Connect</b><input id="onboardingWorkCalendar" type="checkbox" /></span>
+            </label>
+            <label>Work calendar provider
+              <select id="onboardingWorkCalendarProvider">
+                <option value="google">Google Calendar</option>
+                <option value="outlook">Outlook Calendar</option>
+              </select>
+            </label>
+            <label class="onboarding-toggle">
+              <span><strong>Automate all reminders</strong><em>Cards with a date get a reminder automatically.</em></span>
+              <input id="onboardingAutomateReminders" type="checkbox" />
+            </label>
+            <label>Global reminder time
+              <em>Used for new Dos and automatic calendar reminders.</em>
+              <select id="onboardingReminderPreset">
+                <option value="15">15 minutes before</option>
+                <option value="60" selected>1 hour before</option>
+                <option value="1440">1 day before</option>
+                <option value="10080">1 week before</option>
+              </select>
+            </label>
+          </section>
+        </div>
+        <button class="auth-continue-button" type="submit">Finish setup</button>
+        <nav class="legal-links" aria-label="Legal links">
+          <a href="legal.html#terms">Terms</a>
+          <a href="legal.html#privacy">Privacy</a>
+          <a href="legal.html#children">Children</a>
+        </nav>
+      </form>
+    </section>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Workspace navigation">
+        <div class="module-block">
+          <nav class="module-list" aria-label="Modules">
+            <button class="module-link active" data-module="board">Board</button>
+            <button class="module-link" data-module="calendar">Calendar</button>
+            <button class="module-link" data-module="messages">Messages</button>
+            <button class="module-link" data-module="shopping">Shopping list</button>
+            <button class="module-link" data-module="expenses">Expenses</button>
+            <button class="module-link" data-module="settings">Settings</button>
+          </nav>
+        </div>
+
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-title">
+            <p class="eyebrow"></p>
+            <h1></h1>
+          </div>
+        </header>
+
+        <div id="cardsModule">
+          <div class="toolbar">
+            <button class="app-logo-placeholder" type="button" data-module="board" aria-label="Open board">
+              <img src="assets/dodo-icon.png" alt="" />
+            </button>
+            <label class="search-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" />
+              </svg>
+              <input id="searchInput" type="search" placeholder="Search Dos, comments, people" />
+            </label>
+            <button class="mini-stat settings-mini-stat" type="button" data-module="settings" aria-label="Open settings">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z" />
+                <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 0 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.3 7A2 2 0 0 1 7.1 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 0 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z" />
+              </svg>
+            </button>
+            <button class="toolbar-new-card" id="newCardButton" type="button" aria-label="Create new Do">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              <span>New Do</span>
+            </button>
+            <div class="top-mini-stats" aria-label="Quick totals">
+              <button class="mini-stat" id="needsShortcut" type="button" aria-label="Show Dos needing response">
+                <span>Needs response</span>
+                <strong id="topNeeds">0</strong>
+              </button>
+              <button class="mini-stat" id="waitingShortcut" type="button" aria-label="Show waiting Dos">
+                <span>Waiting</span>
+                <strong id="topWaiting">0</strong>
+              </button>
+              <button class="mini-stat" id="todoShortcut" type="button" aria-label="Show to do Dos">
+                <span>To do</span>
+                <strong id="topTodo">0</strong>
+              </button>
+              <button class="mini-stat" id="expensesShortcut" type="button" aria-label="Open expenses">
+                <span>Expenses</span>
+                <strong id="topCosts">CHF 0</strong>
+              </button>
+              <button class="mini-stat" type="button">
+                <span>Messages</span>
+                <strong id="topMessages">0</strong>
+              </button>
+              <button class="mini-stat" type="button" data-module="settings" aria-label="Open reminder settings">
+                <span>Reminders</span>
+                <strong id="topReminders">0</strong>
+              </button>
+            </div>
+          </div>
+
+          <div class="inline-capture-host" id="inlineCaptureHost"></div>
+
+          <section class="daily-summary" id="dailySummary" aria-label="Daily summary">
+            <div class="daily-summary-main">
+              <div class="daily-summary-meta">
+                <span>Next</span>
+                <em id="dailySummaryMeta">Checking board</em>
+              </div>
+              <strong id="dailySummaryText">Preparing next card...</strong>
+            </div>
+            <button class="summary-add-button" type="button" id="summaryAddButton" aria-label="Create new Do">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </section>
+
+          <section class="attention-strip" id="attentionStrip" aria-label="Dos needing response"></section>
+
+          <section class="workspace">
+            <div class="board-view" id="boardView" aria-label="Coordination board"></div>
+            <div class="list-view hidden" id="listView" aria-label="Coordination list"></div>
+          </section>
+        </div>
+
+        <section class="feature-module hidden" id="featureModule" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <nav class="phone-tabbar" aria-label="Primary mobile navigation">
+      <button class="phone-tab active" type="button" data-mobile-module="board">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 5h16M4 12h16M4 19h16" />
+        </svg>
+        Board
+      </button>
+      <button class="phone-tab" type="button" data-mobile-module="calendar">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 2v4M16 2v4M4 9h16M5 5h14v16H5z" />
+        </svg>
+        Calendar
+      </button>
+      <button class="phone-tab" type="button" data-mobile-module="messages">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" />
+        </svg>
+        Messages
+      </button>
+      <button class="phone-tab" type="button" data-mobile-module="shopping">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 7h15l-2 8H8L6 7ZM6 7 5 3H2M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM18 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
+        </svg>
+        Shopping
+      </button>
+      <button class="phone-tab" type="button" data-mobile-module="expenses">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h16v10H4zM7 10h.01M17 14h.01M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+        </svg>
+        Expenses
+      </button>
+      <button class="phone-fab" id="mobileNewCardButton" type="button" aria-label="Create new Do. Hold to dictate.">
+        <svg class="fab-plus-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        <svg class="fab-mic-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
+        </svg>
+      </button>
+    </nav>
+
+    <dialog class="card-dialog" id="cardDialog">
+      <form method="dialog" class="dialog-content" id="cardForm">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow visually-hidden" id="dialogMode">New Do</p>
+            <h2 id="dialogTitle">New Do</h2>
+          </div>
+          <div class="dialog-header-actions">
+            <button class="icon-button" type="button" id="editCardMenuButton" aria-label="Edit card" title="Edit card">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5h.01M12 12h.01M12 19h.01" />
+              </svg>
+            </button>
+            <button class="icon-button" type="button" id="closeDialogButton" aria-label="Close dialog" title="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <input type="hidden" id="cardId" />
+        <div class="dialog-card-meta hidden" id="dialogCardMeta">
+          <div class="card-people" id="dialogCardPeople"></div>
+        </div>
+        <div class="dialog-lower-grid">
+          <div class="dialog-info-column">
+            <section class="llm-card-chat hidden" id="llmCardChat" aria-label="Do-Do assistant">
+              <label class="new-card-message-field">
+                <span>What happened or what needs to be done?</span>
+                <div class="new-card-input-wrap">
+                  <textarea id="llmCardPromptInput" rows="8" maxlength="420" placeholder="Write normally. Do-Do will extract the date, people, status, reminder, and expense tags."></textarea>
+                  <button class="voice-button llm-mic-button" type="button" id="llmVoiceButton" aria-label="Dictate new Do" title="Dictate new Do">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z" />
+                      <path d="M19 10a7 7 0 0 1-14 0M12 17v4M8 21h8" />
+                    </svg>
+                  </button>
+                </div>
+              </label>
+              <div class="interpretation-message hidden" id="llmInterpretation"></div>
+              <div class="llm-chat-actions">
+                <button class="secondary-button" type="button" id="llmInterpretButton">Preview Do</button>
+              </div>
+            </section>
+
+            <section class="voice-card">
+              <button class="voice-button" type="button" id="voiceButton" aria-label="Record Do details">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z" />
+                  <path d="M19 10a7 7 0 0 1-14 0M12 17v4M8 21h8" />
+                </svg>
+              </button>
+              <div>
+                <strong id="voiceStatus">Record what has to be done</strong>
+                <span>Speak naturally. Example: “Please pay Leo’s school trip CHF 45 tomorrow, assign Parent B.”</span>
+              </div>
+            </section>
+
+            <label class="voice-transcript">
+              Voice transcript
+              <textarea id="voiceTranscriptInput" rows="3" placeholder="Transcript appears here, or type/paste the request and autofill."></textarea>
+            </label>
+
+            <button class="secondary-button autofill-button" type="button" id="autofillButton">Autofill fields</button>
+
+            <section class="card-info-section">
+              <label class="short-info-field clean-field">
+                <span class="visually-hidden">Short info</span>
+                <textarea id="detailsInput" rows="5" maxlength="420" placeholder="Parent-teacher meeting for Ava tomorrow at 14:00. Both parents should respond."></textarea>
+              </label>
+              <div class="quick-actions dialog-quick-actions hidden" id="dialogQuickActions">
+                <button class="quick-complete" type="button" id="dialogCompleteButton">Done</button>
+                <button class="quick-response" type="button" id="dialogDoButton">I'll do it</button>
+                <button class="quick-response" type="button" id="dialogPleaseButton">Please do it</button>
+                <button class="quick-response" type="button" id="dialogCannotButton">Can't</button>
+              </div>
+              <div class="derived-tags" id="derivedTags" aria-label="Derived card tags"></div>
+              <div class="derived-field-bank" aria-hidden="true">
+                <input id="titleInput" maxlength="72" tabindex="-1" />
+                <select id="topicInput" tabindex="-1">
+                  <option>Schedule</option>
+                  <option>School</option>
+                  <option>Medical</option>
+                  <option>Expenses</option>
+                  <option>General</option>
+                </select>
+                <select id="typeInput" tabindex="-1">
+                  <option>Task</option>
+                  <option>Event</option>
+                  <option>Expense</option>
+                  <option>Info</option>
+                  <option>Request</option>
+                </select>
+                <select id="statusInput" tabindex="-1">
+                  <option>To Do</option>
+                  <option>Waiting</option>
+                  <option>Important</option>
+                  <option>Disputed</option>
+                  <option>Done</option>
+                  <option>Info Only</option>
+                </select>
+                <select id="assigneeInput" tabindex="-1">
+                  <option>Parent A</option>
+                  <option>Parent B</option>
+                  <option>Both parents</option>
+                  <option>Child</option>
+                </select>
+                <select id="childInput" tabindex="-1">
+                  <option>Ava</option>
+                  <option>Leo</option>
+                  <option>Ava + Leo</option>
+                </select>
+                <input id="dueInput" type="datetime-local" tabindex="-1" />
+                <input id="amountInput" tabindex="-1" />
+              </div>
+            </section>
+          </div>
+
+          <div class="dialog-thread-column">
+            <section class="comment-panel card-info-section" id="commentPanel">
+              <div class="section-heading">Thread</div>
+              <div class="comment-list" id="commentList"></div>
+              <label class="clean-field">
+                <span class="visually-hidden">Add message</span>
+                <div class="message-input-wrap">
+                  <textarea id="commentInput" rows="2" placeholder="Write a short message"></textarea>
+                  <button class="message-mic-button" type="button" id="commentMicButton" aria-label="Dictate short message" title="Dictate short message">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
+                    </svg>
+                  </button>
+                </div>
+              </label>
+              <button class="secondary-button section-action" type="button" id="sendCardMessageButton">Send</button>
+            </section>
+
+            <section class="card-info-section" id="cardReminderPanel">
+              <div class="section-heading">Reminder</div>
+              <label class="clean-field">
+                <span class="visually-hidden">Remind me</span>
+                <select id="cardReminderPresetInput">
+                  <option value="at-due">At due time</option>
+                  <option value="15">15 minutes before</option>
+                  <option value="60">1 hour before</option>
+                  <option value="1440">1 day before</option>
+                  <option value="custom">Custom time</option>
+                </select>
+              </label>
+              <label>
+                Time
+                <input id="cardReminderTimeInput" type="datetime-local" />
+              </label>
+              <div class="section-actions">
+                <button class="ghost-button" type="button" id="clearCardReminderButton">Clear</button>
+                <button class="secondary-button" type="button" id="saveCardReminderButton">Save</button>
+              </div>
+            </section>
+
+            <section class="card-info-section activity-panel hidden" id="activityPanel">
+              <div class="section-heading">Activity</div>
+              <div class="activity-list" id="activityList"></div>
+            </section>
+          </div>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="ghost-button" type="button" id="deleteButton">Delete</button>
+          <div>
+            <button class="secondary-button" type="button" id="ackButton">Delete</button>
+            <button class="primary-button" type="submit" id="cardSaveButton">Save</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="card-dialog reminder-dialog message-dialog" id="messageDialog">
+      <form method="dialog" class="dialog-content reminder-content" id="messageForm">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Do message</p>
+            <h2 id="messageTitle">Send message</h2>
+          </div>
+          <div class="dialog-header-actions">
+            <button class="icon-button" type="button" id="closeMessageButton" aria-label="Close message" title="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <input type="hidden" id="messageCardId" />
+        <div class="message-card-context" id="messageCardContext"></div>
+        <label>
+          Message
+          <div class="message-input-wrap">
+            <textarea id="cardMessageInput" rows="4" required placeholder="Write the first message about this card"></textarea>
+            <button class="message-mic-button" type="button" id="cardMessageMicButton" aria-label="Dictate message" title="Dictate message">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
+              </svg>
+            </button>
+          </div>
+        </label>
+
+        <div class="dialog-actions">
+          <button class="ghost-button" type="button" id="cancelMessageButton">Cancel</button>
+          <button class="primary-button" type="submit">Send message</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="card-dialog reminder-dialog" id="reminderDialog">
+      <form method="dialog" class="dialog-content reminder-content" id="reminderForm">
+        <div class="dialog-header">
+          <div>
+            <h2 id="reminderTitle">Reminder</h2>
+          </div>
+          <div class="dialog-header-actions">
+            <button class="icon-button" type="button" id="closeReminderButton" aria-label="Close reminder" title="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <input type="hidden" id="reminderCardId" />
+        <label class="clean-field">
+          <span class="visually-hidden">Remind me</span>
+          <select id="reminderPresetInput">
+            <option value="at-due">At due time</option>
+            <option value="15">15 minutes before</option>
+            <option value="60">1 hour before</option>
+            <option value="1440">1 day before</option>
+            <option value="custom">Custom time</option>
+          </select>
+        </label>
+        <label>
+          Time
+          <input id="reminderTimeInput" type="datetime-local" required />
+        </label>
+
+        <div class="dialog-actions">
+          <button class="ghost-button" type="button" id="clearReminderButton">Clear</button>
+          <button class="primary-button" type="submit">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js?v=20260531-supabase-auth"></script>
+    <script src="features.js?v=20260531-shopping-buyer"></script>
+  </body>
+</html>
