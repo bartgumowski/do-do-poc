@@ -507,7 +507,9 @@ async function signInWithGoogle() {
       provider: "google",
       options: {
         redirectTo: window.location.origin + "/",
-        scopes: "openid profile email https://www.googleapis.com/auth/calendar.readonly",
+        // calendar.readonly: read work calendar for busy blocks (Level 1)
+        // calendar: full access to create/manage the Do-Do Family calendar (Level 2)
+        scopes: "openid profile email https://www.googleapis.com/auth/calendar",
         queryParams: { access_type: "offline", prompt: "consent" },
       },
     });
@@ -1865,8 +1867,20 @@ function saveCard(event) {
   elements.cardDialog.close();
   showToast(existing ? "Do updated" : buildCreateToast(card));
   render();
-  // Sync to Supabase in background
-  if (window.saveCardToSupabase) window.saveCardToSupabase(card).catch(() => {});
+  // Sync to Supabase, then push to Google Calendar if card has a date
+  const syncCard = async () => {
+    let savedCard = { ...card };
+    if (card.due && window.pushCardToFamilyCalendar) {
+      const gcal = await window.pushCardToFamilyCalendar(card).catch(() => null);
+      if (gcal) {
+        savedCard = { ...card, googleCalendar: gcal };
+        state.cards = state.cards.map((c) => (c.id === card.id ? savedCard : c));
+        persist();
+      }
+    }
+    if (window.saveCardToSupabase) await window.saveCardToSupabase(savedCard).catch(() => {});
+  };
+  syncCard();
 }
 
 function deleteCurrentCard() {

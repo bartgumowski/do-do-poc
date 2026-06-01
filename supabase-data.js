@@ -365,61 +365,291 @@ async function loadChildrenFromSupabase(familyId) {
 }
 
 // ─── Google Calendar ──────────────────────────────────────────────────────────
+//
+// Level 1 - Work calendar (read-only, privacy-safe):
+//   Reads the parent's primary Google calendar using the freeBusy API.
+//   Only fetches busy time slots - no event titles or details are exposed.
+//   Shown in the family calendar as grey "Busy" blocks so the co-parent
+//   knows when that window is unavailable.
+//
+// Level 2 - Family calendar (2-way sync):
+//   Finds or creates a "Do-Do Family" calendar in the user's Google account.
+//   Cards with a due date are pushed as events to this calendar.
+//   Events added directly in Google Calendar are read back into the app.
+//   Each parent maintains their own copy - they both see all cards via
+//   Supabase real-time, and each syncs their personal Google calendar.
 
-let googleCalendarEvents = [];
+const FAMILY_CALENDAR_NAME = "Do-Do Family";
+const CAL_STORAGE_KEY = "do-do-gcal-id-v1";
+
 let googleAccessToken = null;
+let familyCalendarId = null;
+let workBusySlots = [];      // Level 1: busy blocks from work calendar
+let familyCalEvents = [];    // Level 2: events from Do-Do Family calendar
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
 
 async function initGoogleCalendar(session) {
-  // provider_token is the Google access token - only available right after OAuth
+  // provider_token is the Google OAuth access token.
+  // It is ONLY present in the session immediately after OAuth sign-in.
+  // On subsequent page loads it may be null - users need to sign in again
+  // for calendar sync to work (or we refresh via provider_refresh_token).
   const token = session?.provider_token;
-  if (!token) return;
+  if (!token) {
+    // Try to restore family calendar events from last session
+    const cached = localStorage.getItem("do-do-gcal-events-v1");
+    if (cached) {
+      try {
+        familyCalEvents = JSON.parse(cached);
+        _emitCalendarUpdate();
+      } catch {}
+    }
+    return;
+  }
+
   googleAccessToken = token;
-  await fetchGoogleCalendarEvents(token);
+  familyCalendarId = localStorage.getItem(CAL_STORAGE_KEY) || null;
+
+  // Run both levels in parallel
+  await Promise.allSettled([
+    _fetchWorkBusy(token),
+    _initFamilyCalendar(token),
+  ]);
 }
 
-async function fetchGoogleCalendarEvents(token) {
-  if (!token) return;
+// ─── Level 1: Work calendar busy blocks ───────────────────────────────────────
+
+async function _fetchWorkBusy(token) {
   try {
     const now = new Date();
-    const thirtyDaysOut = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+    const fourWeeksOut = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
+
+    const res = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        timeMin: now.toISOString(),
+        timeMax: fourWeeksOut.toISOString(),
+        items: [{ id: "primary" }],
+      }),
+    });
+
+    if (!res.ok) return;
+    const data = await res.json();
+    const busy = data.calendars?.primary?.busy || [];
+
+    workBusySlots = busy.map((slot) => ({
+      id: `busy-${slot.start}`,
+      title: "Busy",
+      start: slot.start,
+      end: slot.end,
+      allDay: false,
+      source: "work",
+      private: true, // no details shown
+    }));
+
+    _emitCalendarUpdate();
+  } catch (err) {
+    console.warn("Work calendar busy fetch failed:", err.message);
+  }
+}
+
+// ─── Level 2: Family calendar (find or create) ────────────────────────────────
+
+async function _initFamilyCalendar(token) {
+  try {
+    // Find "Do-Do Family" in user's calendar list
+    const listRes = await fetch(
+      "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!listRes.ok) return;
+
+    const listData = await listRes.json();
+    const existing = (listData.items || []).find(
+      (cal) => cal.summary === FAMILY_CALENDAR_NAME
+    );
+
+    if (existing) {
+      familyCalendarId = existing.id;
+    } else {
+      // Create it
+      const createRes = await fetch(
+        "https://www.googleapis.com/calendar/v3/calendars",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            summary: FAMILY_CALENDAR_NAME,
+            description: "Shared family coordination calendar - managed by Do-Do app",
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          }),
+        }
+      );
+      if (!createRes.ok) return;
+      const created = await createRes.json();
+      familyCalendarId = created.id;
+    }
+
+    localStorage.setItem(CAL_STORAGE_KEY, familyCalendarId);
+    await _fetchFamilyCalendarEvents(token, familyCalendarId);
+  } catch (err) {
+    console.warn("Family calendar init failed:", err.message);
+  }
+}
+
+// ─── Level 2: Read events from family calendar ────────────────────────────────
+
+async function _fetchFamilyCalendarEvents(token, calId) {
+  if (!token || !calId) return;
+  try {
+    const now = new Date();
+    const sixtyDaysOut = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+    const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`);
     url.searchParams.set("timeMin", now.toISOString());
-    url.searchParams.set("timeMax", thirtyDaysOut.toISOString());
-    url.searchParams.set("maxResults", "50");
+    url.searchParams.set("timeMax", sixtyDaysOut.toISOString());
+    url.searchParams.set("maxResults", "100");
     url.searchParams.set("singleEvents", "true");
     url.searchParams.set("orderBy", "startTime");
 
     const res = await fetch(url.toString(), {
       headers: { Authorization: `Bearer ${token}` },
     });
-
-    if (!res.ok) {
-      console.warn("Google Calendar fetch failed:", res.status);
-      return;
-    }
+    if (!res.ok) return;
 
     const data = await res.json();
-    googleCalendarEvents = (data.items || []).map((item) => ({
-      id: item.id,
-      title: item.summary || "Busy",
-      start: item.start?.dateTime || item.start?.date,
-      end: item.end?.dateTime || item.end?.date,
-      allDay: Boolean(item.start?.date && !item.start?.dateTime),
-      source: "google",
-      htmlLink: item.htmlLink,
-    }));
+    familyCalEvents = (data.items || [])
+      .filter((item) => item.status !== "cancelled")
+      .map((item) => ({
+        id: item.id,
+        title: item.summary || "Family event",
+        start: item.start?.dateTime || item.start?.date,
+        end: item.end?.dateTime || item.end?.date,
+        allDay: Boolean(item.start?.date && !item.start?.dateTime),
+        source: "family",
+        htmlLink: item.htmlLink,
+        description: item.description || "",
+        // If this event was created from a card, the card ID is in extendedProperties
+        cardId: item.extendedProperties?.private?.doDoCardId || null,
+      }));
 
-    // Notify the app that Google Calendar events are ready
-    window.dispatchEvent(new CustomEvent("googleCalendarLoaded", {
-      detail: { events: googleCalendarEvents }
-    }));
+    // Cache for next load
+    localStorage.setItem("do-do-gcal-events-v1", JSON.stringify(familyCalEvents));
+    _emitCalendarUpdate();
   } catch (err) {
-    console.warn("Google Calendar error:", err.message);
+    console.warn("Family calendar events fetch failed:", err.message);
   }
 }
 
+// ─── Level 2: Push a card as a Google Calendar event ──────────────────────────
+
+async function pushCardToFamilyCalendar(card) {
+  if (!googleAccessToken || !familyCalendarId || !card.due) return null;
+
+  try {
+    const start = new Date(card.due);
+    const end = new Date(start.getTime() + 60 * 60 * 1000); // 1 hour default
+
+    const eventBody = {
+      summary: card.title,
+      description: [
+        card.details,
+        card.child ? `Child: ${card.child}` : "",
+        card.amount ? `Amount: ${card.amount}` : "",
+        `\n— Created in Do-Do app`,
+      ].filter(Boolean).join("\n"),
+      start: { dateTime: start.toISOString() },
+      end: { dateTime: end.toISOString() },
+      extendedProperties: {
+        private: { doDoCardId: card.id },
+      },
+    };
+
+    const existingEventId = card.googleCalendar?.eventId;
+
+    let res;
+    if (existingEventId) {
+      // Update existing event
+      res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(familyCalendarId)}/events/${existingEventId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${googleAccessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(eventBody),
+        }
+      );
+    } else {
+      // Create new event
+      res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(familyCalendarId)}/events`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${googleAccessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(eventBody),
+        }
+      );
+    }
+
+    if (!res.ok) return null;
+    const created = await res.json();
+
+    // Return the event ID so it can be stored on the card
+    return {
+      eventId: created.id,
+      calendarId: familyCalendarId,
+      htmlLink: created.htmlLink,
+      synced: true,
+      syncedAt: new Date().toISOString(),
+    };
+  } catch (err) {
+    console.warn("Push to family calendar failed:", err.message);
+    return null;
+  }
+}
+
+// ─── Level 2: Delete a calendar event when card is deleted ────────────────────
+
+async function deleteCardFromFamilyCalendar(card) {
+  const eventId = card?.googleCalendar?.eventId;
+  if (!googleAccessToken || !familyCalendarId || !eventId) return;
+
+  try {
+    await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(familyCalendarId)}/events/${eventId}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${googleAccessToken}` },
+      }
+    );
+  } catch (err) {
+    console.warn("Delete from family calendar failed:", err.message);
+  }
+}
+
+// ─── Merge events for the calendar view ───────────────────────────────────────
+
 function getGoogleCalendarEvents() {
-  return googleCalendarEvents;
+  // Level 1: work busy slots (grey, no details)
+  // Level 2: family calendar events (full details)
+  return [...workBusySlots, ...familyCalEvents];
+}
+
+function _emitCalendarUpdate() {
+  window.dispatchEvent(new CustomEvent("googleCalendarLoaded", {
+    detail: { workBusy: workBusySlots, familyEvents: familyCalEvents },
+  }));
 }
 
 // ─── Expose globals ───────────────────────────────────────────────────────────
@@ -432,5 +662,7 @@ window.saveChildrenToSupabase = saveChildrenToSupabase;
 window.loadChildrenFromSupabase = loadChildrenFromSupabase;
 window.initGoogleCalendar = initGoogleCalendar;
 window.getGoogleCalendarEvents = getGoogleCalendarEvents;
+window.pushCardToFamilyCalendar = pushCardToFamilyCalendar;
+window.deleteCardFromFamilyCalendar = deleteCardFromFamilyCalendar;
 window.getCurrentPairId = () => currentPairId;
 window.getCurrentUserId = () => currentUserId;

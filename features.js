@@ -1209,18 +1209,21 @@ function buildCalendarEvents(baseDate) {
       };
     });
 
-  // Merge real Google Calendar events
+  // Merge Google Calendar events (both levels)
   const gcalEvents = (window.getGoogleCalendarEvents?.() || []).map((item) => {
     const date = new Date(item.start);
+    const isWorkBusy = item.source === "work";
     return {
       cardId: item.id,
       date: toCalendarKey(date),
       time: item.allDay ? "All day" : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
-      title: item.title,
-      detail: "Google Calendar",
-      kind: "event",
-      badge: "Calendar",
-      googleLink: item.htmlLink,
+      // Level 1 (work): show "Busy" only - no private details
+      title: isWorkBusy ? "Busy" : item.title,
+      detail: isWorkBusy ? "Work calendar · details private" : (item.description || "Do-Do Family calendar"),
+      kind: isWorkBusy ? "busy" : "event",
+      badge: isWorkBusy ? "Busy" : "GCal",
+      googleLink: item.htmlLink || null,
+      privateBlock: isWorkBusy,
     };
   });
   familyEvents.push(...gcalEvents);
