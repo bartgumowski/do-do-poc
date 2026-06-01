@@ -507,6 +507,8 @@ async function signInWithGoogle() {
       provider: "google",
       options: {
         redirectTo: window.location.origin + "/",
+        scopes: "openid profile email https://www.googleapis.com/auth/calendar.readonly",
+        queryParams: { access_type: "offline", prompt: "consent" },
       },
     });
     if (error) showAuthError(error.message);
@@ -571,6 +573,14 @@ function showApp(session) {
   clearAuthError();
   document.body.classList.remove("auth-locked");
   initializeOnboarding();
+  // Load real data from Supabase in the background
+  if (window.initSupabaseData) {
+    window.initSupabaseData(currentAuthSession).catch(() => {});
+  }
+  // Load Google Calendar events if provider token is available
+  if (window.initGoogleCalendar) {
+    window.initGoogleCalendar(currentAuthSession).catch(() => {});
+  }
 }
 
 function showAuthScreen() {
@@ -665,6 +675,14 @@ function completeOnboarding(event) {
   applyOnboardingState(setup);
   persist();
   document.body.classList.remove("onboarding-locked");
+  // Save family, profile, children, and pair to Supabase
+  if (window.saveOnboardingToSupabase && window.getCurrentUserId?.()) {
+    window.saveOnboardingToSupabase(setup, window.getCurrentUserId()).then((result) => {
+      if (result?.inviteLink) {
+        showToast("Invite link ready - share with your co-parent");
+      }
+    }).catch(() => {});
+  }
   showToast("Family board setup complete");
 }
 
@@ -1847,6 +1865,8 @@ function saveCard(event) {
   elements.cardDialog.close();
   showToast(existing ? "Do updated" : buildCreateToast(card));
   render();
+  // Sync to Supabase in background
+  if (window.saveCardToSupabase) window.saveCardToSupabase(card).catch(() => {});
 }
 
 function deleteCurrentCard() {
@@ -1857,6 +1877,8 @@ function deleteCurrentCard() {
   elements.cardDialog.close();
   showToast("Do deleted");
   render();
+  // Soft-delete in Supabase
+  if (window.deleteCardFromSupabase) window.deleteCardFromSupabase(id).catch(() => {});
 }
 
 function acknowledgeCurrentCard() {
@@ -1875,6 +1897,8 @@ function acknowledgeCurrentCard() {
   elements.cardDialog.close();
   showToast("Acknowledged with timestamp");
   render();
+  const ackCard = state.cards.find((c) => c.id === elements.cardId.value);
+  if (ackCard && window.saveCardToSupabase) window.saveCardToSupabase(ackCard).catch(() => {});
 }
 
 function quickCompleteCard(id) {
@@ -1894,6 +1918,8 @@ function quickCompleteCard(id) {
   persist();
   showToast(label);
   render();
+  const updated = state.cards.find((c) => c.id === id);
+  if (updated && window.saveCardToSupabase) window.saveCardToSupabase(updated).catch(() => {});
 }
 
 function quickCompleteCardFromDialog() {

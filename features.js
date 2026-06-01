@@ -1208,6 +1208,22 @@ function buildCalendarEvents(baseDate) {
         badge: card.type === "Expense" ? "Expense" : card.type,
       };
     });
+
+  // Merge real Google Calendar events
+  const gcalEvents = (window.getGoogleCalendarEvents?.() || []).map((item) => {
+    const date = new Date(item.start);
+    return {
+      cardId: item.id,
+      date: toCalendarKey(date),
+      time: item.allDay ? "All day" : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      title: item.title,
+      detail: "Google Calendar",
+      kind: "event",
+      badge: "Calendar",
+      googleLink: item.htmlLink,
+    };
+  });
+  familyEvents.push(...gcalEvents);
   return [...familyEvents, ...buildPrivateWorkBlocks(baseDate)];
 }
 
@@ -1515,3 +1531,11 @@ function showFeatureToast(message) {
   toast.classList.add("show");
   window.setTimeout(() => toast.classList.remove("show"), 2200);
 }
+
+// Refresh calendar when Google Calendar events load
+window.addEventListener("googleCalendarLoaded", () => {
+  syncCalendarEventsFromCards();
+  if (typeof renderFeature === "function" && typeof featureData !== "undefined") {
+    renderFeature("calendar", featureData.calendar);
+  }
+});
