@@ -32,6 +32,63 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body class="auth-locked">
+    <section class="auth-screen" id="inviteScreen" aria-label="Accept invite" hidden>
+      <div class="auth-phone">
+        <div class="auth-topline">
+          <div class="top-steps" aria-label="Steps">
+            <span>Steps</span>
+            <i class="complete"></i>
+            <i></i>
+            <i></i>
+          </div>
+        </div>
+        <div class="auth-brand-row">
+          <div class="auth-avatar"><img src="assets/dodo-icon.png" alt="Do-Do" /></div>
+          <div>
+            <span>Invite</span>
+            <strong>Do-Do</strong>
+          </div>
+        </div>
+        <div class="auth-hero" id="inviteHero">
+          <h1>You've been invited to a family board.</h1>
+          <p>Sign in to accept and start coordinating together.</p>
+        </div>
+        <div class="auth-steps" aria-label="Invite journey">
+          <span class="active">Accept</span>
+          <span>Sign in</span>
+          <span>Board</span>
+        </div>
+        <div class="auth-provider-list" id="inviteProviderList">
+          <button class="auth-provider-button" type="button" data-invite-provider="Google">
+            <span class="auth-provider-mark google-mark">G</span>
+            <span>Continue with Google</span>
+          </button>
+          <button class="auth-provider-button apple" type="button" data-invite-provider="Apple">
+            <span class="auth-provider-mark apple-mark">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16.6 13.1c0-2.1 1.7-3.1 1.8-3.2-1-1.5-2.5-1.7-3-1.7-1.3-.1-2.5.8-3.1.8-.7 0-1.7-.8-2.8-.8-1.4 0-2.8.8-3.5 2.1-1.5 2.6-.4 6.4 1.1 8.5.7 1 1.5 2.2 2.7 2.1 1.1 0 1.5-.7 2.8-.7s1.7.7 2.8.7c1.2 0 1.9-1 2.6-2.1.8-1.2 1.1-2.3 1.1-2.4 0 0-2.4-.9-2.5-3.3ZM14.5 6.9c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.6.6-1 1.6-.9 2.6 1 .1 1.9-.5 2.5-1.2Z" />
+              </svg>
+            </span>
+            <span>Continue with Apple</span>
+          </button>
+          <form class="auth-confirm" id="inviteEmailForm">
+            <span class="auth-confirm-label">Or continue with email</span>
+            <label>
+              Email
+              <input id="inviteEmailInput" type="email" autocomplete="email" placeholder="you@example.com" required />
+            </label>
+            <label>
+              Password
+              <input id="invitePasswordInput" type="password" autocomplete="current-password" placeholder="Password" required />
+            </label>
+            <div class="auth-actions">
+              <button type="submit" class="auth-submit">Accept invite</button>
+            </div>
+          </form>
+        </div>
+        <p class="auth-error" id="inviteError" hidden></p>
+      </div>
+    </section>
     <section class="auth-screen" id="authScreen" aria-label="Sign in">
       <div class="auth-phone">
         <div class="auth-topline">

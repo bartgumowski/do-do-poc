@@ -3,5 +3,8 @@
   "trailingSlash": false,
   "framework": null,
   "buildCommand": "",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/invite/:token", "destination": "/index.html" }
+  ]
 }

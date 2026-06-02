@@ -192,6 +192,14 @@ const elements = {
   authPasswordInput: document.querySelector("#authPasswordInput"),
   authSignUpButton: document.querySelector("#authSignUpButton"),
   authError: document.querySelector("#authError"),
+  inviteScreen: document.querySelector("#inviteScreen"),
+  inviteHero: document.querySelector("#inviteHero"),
+  inviteProviderList: document.querySelector("#inviteProviderList"),
+  inviteProviderButtons: document.querySelectorAll("[data-invite-provider]"),
+  inviteEmailForm: document.querySelector("#inviteEmailForm"),
+  inviteEmailInput: document.querySelector("#inviteEmailInput"),
+  invitePasswordInput: document.querySelector("#invitePasswordInput"),
+  inviteError: document.querySelector("#inviteError"),
   onboardingForm: document.querySelector("#onboardingForm"),
   onboardingParentA: document.querySelector("#onboardingParentA"),
   onboardingParentB: document.querySelector("#onboardingParentB"),
@@ -326,6 +334,13 @@ function bindEvents() {
   document.querySelectorAll("[data-auth-sign-out]").forEach((button) => {
     button.addEventListener("click", signOut);
   });
+  elements.inviteProviderButtons.forEach((button) => {
+    button.addEventListener("click", () => chooseInviteProvider(button.dataset.inviteProvider));
+  });
+  elements.inviteEmailForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    acceptInviteWithPassword(elements.inviteEmailInput?.value.trim(), elements.invitePasswordInput?.value);
+  });
   elements.onboardingForm?.addEventListener("submit", completeOnboarding);
   elements.onboardingAddChild?.addEventListener("click", () => showToast("Another child can be added from Settings"));
   elements.onboardingSkipPet?.addEventListener("click", () => {
@@ -442,10 +457,22 @@ function bindEvents() {
   elements.clearReminderButton.addEventListener("click", clearReminder);
 }
 
+// Invite token stored for use after auth completes
+let pendingInviteToken = null;
+
 async function handleAuthCallback() {
   if (!supabaseClient) {
     showAuthScreen();
     showAuthError("Authentication could not load. Check your connection and refresh.");
+    return;
+  }
+
+  // Detect /invite/:token in the URL path
+  const inviteMatch = window.location.pathname.match(/^\/invite\/([^/?#]+)/);
+  if (inviteMatch) {
+    pendingInviteToken = inviteMatch[1];
+    window.history.replaceState({}, "", "/");
+    await showInviteScreen(pendingInviteToken);
     return;
   }
 
@@ -481,12 +508,104 @@ async function handleAuthCallback() {
 
   supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
     if (nextSession) {
-      showApp(nextSession);
+      if (pendingInviteToken) {
+        finishInviteAcceptance(nextSession);
+      } else {
+        showApp(nextSession);
+      }
     } else {
       showAuthScreen();
     }
   });
 }
+
+async function showInviteScreen(token) {
+  // Look up invite to personalise the screen
+  if (window.lookupInviteToken) {
+    const info = await window.lookupInviteToken(token);
+    if (!info) {
+      showAuthScreen();
+      showAuthError("This invite link is invalid or has expired.");
+      return;
+    }
+    if (info.expired) {
+      showAuthScreen();
+      showAuthError("This invite has already been accepted.");
+      return;
+    }
+    if (elements.inviteHero) {
+      elements.inviteHero.querySelector("h1").textContent = `${info.parentAName} invited you to their family board.`;
+    }
+  }
+
+  document.body.classList.add("auth-locked");
+  if (elements.inviteScreen) elements.inviteScreen.hidden = false;
+  if (elements.authScreen) elements.authScreen.hidden = true;
+
+  // Wire up auth-state listener to complete acceptance after sign-in
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    if (session && pendingInviteToken) {
+      finishInviteAcceptance(session);
+    }
+  });
+}
+
+async function finishInviteAcceptance(session) {
+  const token = pendingInviteToken;
+  pendingInviteToken = null;
+  if (!token || !window.acceptInviteToken) {
+    showApp(session);
+    return;
+  }
+  const displayName = session.user?.user_metadata?.full_name || session.user?.email?.split("@")[0] || "Parent B";
+  const result = await window.acceptInviteToken(token, session.user.id, displayName);
+  if (!result?.ok) {
+    showToast(result?.reason === "already_accepted" ? "Invite already accepted" : "Could not join family - try again");
+  } else {
+    showToast(`Joined the family board`);
+  }
+  if (elements.inviteScreen) elements.inviteScreen.hidden = true;
+  showApp(session);
+}
+
+function chooseInviteProvider(provider) {
+  if (provider === "Google") {
+    if (!supabaseClient) return;
+    supabaseClient.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin + "/",
+        scopes: "openid profile email",
+      },
+    }).catch(() => showInviteError("Google sign in could not start. Try again."));
+    return;
+  }
+  showInviteError(`${provider} sign in is not available yet. Use Google or email.`);
+}
+
+async function acceptInviteWithPassword(email, password) {
+  if (!supabaseClient || !email || !password) return;
+  clearInviteError();
+  // Try sign in first, then sign up if not found
+  const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (signInData?.session) return; // onAuthStateChange handles the rest
+  if (signInError && signInError.message?.toLowerCase().includes("invalid")) {
+    // Account may not exist yet - sign up
+    const { error: signUpError } = await supabaseClient.auth.signUp({ email, password });
+    if (signUpError) { showInviteError(signUpError.message); return; }
+    showInviteError("Check your email to confirm your account, then sign in here.");
+    return;
+  }
+  if (signInError) showInviteError(signInError.message);
+}
+
+function showInviteError(message) {
+  if (!elements.inviteError) return;
+  elements.inviteError.textContent = message || "";
+  elements.inviteError.hidden = !message;
+}
+
+function clearInviteError() { showInviteError(""); }
 
 async function chooseAuthProvider(provider) {
   if (provider === "Google") {
@@ -839,6 +958,31 @@ function renderDailySummary() {
   elements.dailySummary.querySelectorAll(".daily-summary-list [data-card-id]").forEach((button) => {
     button.addEventListener("click", () => openCardDialog(button.dataset.cardId));
   });
+
+  // Fetch AI summary in background and update text
+  fetchAiDailySummary();
+}
+
+async function fetchAiDailySummary() {
+  if (!state.cards.length) return;
+  try {
+    const setup = getOnboardingState() || {};
+    const res = await fetch("/api/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cards: state.cards.slice(0, 20),
+        parentName: setup.parents?.primary || null,
+        coparentName: setup.parents?.coparent || null,
+        childNames: (setup.children || []).map((c) => c.name).filter(Boolean),
+      }),
+    });
+    if (!res.ok) return;
+    const { summary } = await res.json();
+    if (summary && elements.dailySummaryText) {
+      elements.dailySummaryText.textContent = summary;
+    }
+  } catch {}
 }
 
 function parseAmount(value) {
@@ -1257,12 +1401,67 @@ function syncLlmCardPrompt(options = {}) {
   const text = elements.llmCardPromptInput?.value.trim() || "";
   elements.voiceTranscriptInput.value = text;
   elements.detailsInput.value = text;
+  // Always run local inference immediately for instant feedback
   const derived = deriveFieldsFromShortInfo(text, { silent: true });
   renderLlmInterpretation(text);
-  if (options.announce) {
-    showToast(derived ? "Do preview updated" : "Add a little more detail");
+  // If user clicked Interpret, also call the real AI
+  if (options.announce && text.length > 8) {
+    callAiInterpret(text);
+  } else if (options.announce) {
+    showToast("Add a little more detail");
   }
   return derived;
+}
+
+async function callAiInterpret(text) {
+  if (!text?.trim()) return;
+  const interpretBtn = elements.llmInterpretButton;
+  if (interpretBtn) {
+    interpretBtn.textContent = "Thinking...";
+    interpretBtn.disabled = true;
+  }
+
+  try {
+    const setup = getOnboardingState();
+    const body = {
+      text,
+      parentAName: setup?.parents?.primary || null,
+      parentBName: setup?.parents?.coparent || null,
+      childNames: (setup?.children || []).map((c) => c.name).filter(Boolean),
+    };
+
+    const res = await fetch("/api/interpret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) throw new Error(`${res.status}`);
+    const fields = await res.json();
+
+    // Apply AI-returned fields to the form
+    if (fields.title) elements.titleInput.value = fields.title;
+    if (fields.topic) elements.topicInput.value = fields.topic;
+    if (fields.type) elements.typeInput.value = fields.type;
+    if (fields.status) elements.statusInput.value = fields.status;
+    if (fields.due) elements.dueInput.value = toDateTimeInputValue(new Date(fields.due));
+    if (fields.amount) elements.amountInput.value = fields.amount;
+    if (fields.assignee !== undefined) setSelectValue(elements.assigneeInput, fields.assignee);
+    if (fields.child !== undefined) setSelectValue(elements.childInput, fields.child);
+    if (fields.details) elements.detailsInput.value = fields.details;
+
+    renderDerivedTags();
+    renderLlmInterpretation(fields.title || text);
+    showToast("Do filled in by AI");
+  } catch (err) {
+    console.warn("AI interpret failed, using local inference:", err.message);
+    showToast("Do preview updated");
+  } finally {
+    if (interpretBtn) {
+      interpretBtn.textContent = "Interpret";
+      interpretBtn.disabled = false;
+    }
+  }
 }
 
 function renderLlmInterpretation(text) {
@@ -1962,6 +2161,8 @@ function quickRespondCard(id, response) {
   persist();
   showToast(text);
   render();
+  const updated = state.cards.find((c) => c.id === id);
+  if (updated && window.saveCardToSupabase) window.saveCardToSupabase(updated).catch(() => {});
 }
 
 function quickRespondCardFromDialog(response) {
@@ -2695,7 +2896,7 @@ function escapeHtml(value) {
 function showToast(message) {
   elements.toast.textContent = message;
   elements.toast.classList.add("show");
-  window.setTimeout(() => elements.toast.classList.remove("show"), 2200);
+  window.setTimeout(() => elements.toast.classList.remove("show"), 3800);
 }
 
 function registerServiceWorker() {

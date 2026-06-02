@@ -499,15 +499,42 @@ function renderFeature(moduleName, data) {
         </section>
       `).join("")}
       ${moduleName === "settings" ? renderSpecialPanel(moduleName, "vaccine") : renderSpecialPanel(moduleName)}
+      ${moduleName === "settings" ? `
+        <section class="feature-panel">
+          <h3>Account</h3>
+          <div class="feature-items">
+            <article class="feature-item">
+              <strong>Google Calendar</strong>
+              <span>Sign out and back in to reconnect calendar sync</span>
+            </article>
+          </div>
+          <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <button class="secondary-button" id="signOutButton" style="color: #ef4444; border-color: #ef4444;">Sign out</button>
+          </div>
+        </section>
+      ` : ""}
     </div>
   `;
 
   featureModule.querySelectorAll(".feature-action").forEach((button) => {
-    button.addEventListener("click", () => {
-      window.appStorage?.setItem(`kinship-${moduleName}-${button.dataset.action}`, "clicked");
-      showFeatureToast(`${button.dataset.action} simulated`);
-    });
+    const action = button.dataset.action;
+    if (action === "Add child") {
+      button.addEventListener("click", () => promptAddChild());
+    } else if (action === "Add pet") {
+      button.addEventListener("click", () => promptAddPet());
+    } else {
+      button.addEventListener("click", () => {
+        window.appStorage?.setItem(`kinship-${moduleName}-${action}`, "clicked");
+        showFeatureToast(`${action} simulated`);
+      });
+    }
   });
+
+  if (moduleName === "settings") {
+    featureModule.querySelector("#signOutButton")?.addEventListener("click", () => {
+      if (typeof signOut === "function") signOut();
+    });
+  }
 
   featureModule.querySelectorAll("[data-toggle-integration]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -597,55 +624,69 @@ function saveShoppingLists(lists) {
   window.appStorage?.setItem(shoppingStorageKey, JSON.stringify(lists));
 }
 
-function renderShoppingFeature() {
-  const lists = loadShoppingLists();
-  featureModule.innerHTML = `
-    <div class="shopping-board">
-      ${renderShoppingGroup("groceries", "Groceries", lists.groceries)}
-      ${renderShoppingGroup("other", "Other", lists.other)}
-    </div>
+async function renderShoppingFeature() {
+  featureModule.innerHTML = `<div class="shopping-board" id="shoppingBoard"><p style="padding:16px;color:var(--muted);font-size:13px;">Loading...</p></div>`;
+
+  // Try Supabase first, fall back to localStorage
+  let lists = await window.loadShoppingItems?.() || null;
+  if (!lists) lists = loadShoppingLists();
+
+  _renderShoppingBoard(lists);
+}
+
+function _renderShoppingBoard(lists) {
+  const board = featureModule.querySelector("#shoppingBoard") || featureModule;
+  board.innerHTML = `
+    ${renderShoppingGroup("groceries", "Groceries", lists.groceries)}
+    ${renderShoppingGroup("other", "Other", lists.other)}
   `;
 
-  featureModule.querySelectorAll("[data-shopping-check]").forEach((input) => {
-    input.addEventListener("change", () => {
-      const nextLists = loadShoppingLists();
-      const list = nextLists[input.dataset.shoppingList] || [];
-      const item = list.find((entry) => entry.id === input.dataset.shoppingCheck);
-      if (!item) return;
-      item.bought = input.checked;
-      item.boughtBy = input.checked ? "Parent A" : "";
-      saveShoppingLists(nextLists);
-      renderShoppingFeature();
-      showFeatureToast(input.checked ? "Marked as bought" : "Returned to shopping list");
+  board.querySelectorAll("[data-shopping-check]").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const id = input.dataset.shoppingCheck;
+      const listKey = input.dataset.shoppingList;
+      if (id.startsWith(listKey + "-")) {
+        // localStorage item
+        const nextLists = loadShoppingLists();
+        const list = nextLists[listKey] || [];
+        const item = list.find((e) => e.id === id);
+        if (item) { item.bought = input.checked; saveShoppingLists(nextLists); }
+      } else {
+        // Supabase item
+        await window.toggleShoppingItem?.(id, input.checked);
+      }
+      showFeatureToast(input.checked ? "Marked as bought" : "Returned to list");
     });
   });
 
-  featureModule.querySelectorAll("[data-shopping-add-form]").forEach((form) => {
+  board.querySelectorAll("[data-shopping-add-form]").forEach((form) => {
     const input = form.querySelector("[data-shopping-input]");
     const mic = form.querySelector("[data-shopping-mic]");
     mic?.addEventListener("click", () => window.startDictationForField?.(input, {
       button: mic,
-      success: "Shopping item dictated",
-      fallback: "Voice dictation is not available here. Type the shopping item instead.",
+      success: "Item dictated",
+      fallback: "Type the item instead.",
     }));
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const label = input.value.trim();
-      if (!label) {
-        input.focus();
-        return;
-      }
-      const nextLists = loadShoppingLists();
+      if (!label) { input.focus(); return; }
       const listKey = form.dataset.shoppingAddForm;
+      input.value = "";
+
+      // Try Supabase, fall back to localStorage
+      const saved = await window.addShoppingItem?.(listKey, label);
+      if (saved) {
+        const refreshed = await window.loadShoppingItems?.();
+        if (refreshed) { _renderShoppingBoard(refreshed); return; }
+      }
+      // localStorage fallback
+      const nextLists = loadShoppingLists();
       const list = nextLists[listKey] || [];
-      list.push({
-        id: `${listKey}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        label,
-        bought: false,
-      });
+      list.push({ id: `${listKey}-${Date.now()}`, label, bought: false });
       nextLists[listKey] = list;
       saveShoppingLists(nextLists);
-      renderShoppingFeature();
+      _renderShoppingBoard(nextLists);
       showFeatureToast(`Added to ${listKey === "groceries" ? "Groceries" : "Other"}`);
     });
   });
@@ -763,64 +804,39 @@ function formatCurrency(value) {
   return new Intl.NumberFormat("de-CH").format(value);
 }
 
-function renderMessagesFeature() {
+let activeMessageTopic = "Schedule";
+
+async function renderMessagesFeature() {
+  // Build sidebar with real unread counts
+  const counts = await window.getUnreadCounts?.() || {};
+  const topics = ["Schedule", "School", "Medical", "Expenses", "General"];
+
   featureModule.innerHTML = `
     <section class="slack-shell">
       <aside class="slack-sidebar" aria-label="Message topics">
-        <button class="slack-channel active" type="button" data-message-tag="Schedule">
-          <span>Schedule</span>
-          <strong>3</strong>
-        </button>
-        <button class="slack-channel" type="button" data-message-tag="School">
-          <span>School</span>
-          <strong>1</strong>
-        </button>
-        <button class="slack-channel" type="button" data-message-tag="Medical">
-          <span>Medical</span>
-          <strong></strong>
-        </button>
-        <button class="slack-channel" type="button" data-message-tag="Expenses">
-          <span>Expenses</span>
-          <strong>2</strong>
-        </button>
-        <button class="slack-channel" type="button" data-message-tag="General">
-          <span>General</span>
-          <strong></strong>
-        </button>
+        ${topics.map((t) => `
+          <button class="slack-channel${t === activeMessageTopic ? " active" : ""}" type="button" data-message-tag="${t}">
+            <span>${t}</span>
+            ${counts[t] ? `<strong>${counts[t]}</strong>` : ""}
+          </button>
+        `).join("")}
       </aside>
 
       <section class="chat-panel" aria-label="Selected message thread">
         <header class="chat-header">
           <div>
-            <span>Schedule</span>
-            <strong>Friday pickup swap</strong>
+            <span>${activeMessageTopic}</span>
+            <strong>Family messages</strong>
           </div>
         </header>
 
-        <div class="thread-mode">
-          <button class="active" type="button">Linked to card</button>
-          <button type="button">Separate message</button>
-        </div>
-
         <div class="message-list" id="messageList">
-          <div class="thread-context-card">
-            ${renderUniversalFeatureCard(linkedMessageCard(), "message-linked-card")}
-          </div>
-          ${renderMessage("A", "Parent A", "School called. Friday dismissal is now 15:10, not 17:30.", "09:12", true)}
-          ${renderMessage("B", "Parent B", "I can probably do it, but I need to move one meeting.", "09:18", false)}
-          ${renderMessage("A", "Parent A", "Thanks. Please confirm before 13:00 so I can tell after-school care.", "09:20", true)}
-          <article class="message-card attachment-message">
-            <div class="message-avatar child-mini">A</div>
-            <div>
-              <div class="message-meta"><strong>Linked Do</strong><span>09:21</span></div>
-              ${renderUniversalFeatureCard(linkedMessageCard(), "inline-card-preview")}
-            </div>
-          </article>
+          <p class="chat-loading" style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">Loading messages...</p>
         </div>
 
         <form class="message-composer" id="messageComposer">
           <button class="composer-icon" type="button" aria-label="Attach card">+</button>
-          <input id="messageInput" placeholder="Message #schedule" autocomplete="off" />
+          <input id="messageInput" placeholder="Message #${activeMessageTopic.toLowerCase()}" autocomplete="off" />
           <button class="composer-icon composer-mic" type="button" id="messageMicButton" aria-label="Dictate message">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
@@ -833,50 +849,115 @@ function renderMessagesFeature() {
     </section>
   `;
 
+  // Load and render real messages
+  await loadAndRenderMessages(activeMessageTopic);
+
+  // Topic switching
   featureModule.querySelectorAll(".slack-channel").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       featureModule.querySelectorAll(".slack-channel").forEach((item) => item.classList.toggle("active", item === button));
-      window.applyCardTagFilter?.(button.dataset.messageTag);
+      activeMessageTopic = button.dataset.messageTag;
+      featureModule.querySelector(".chat-header div span").textContent = activeMessageTopic;
+      featureModule.querySelector("#messageInput").placeholder = `Message #${activeMessageTopic.toLowerCase()}`;
+      await loadAndRenderMessages(activeMessageTopic);
+      window.applyCardTagFilter?.(activeMessageTopic);
     });
   });
 
-  featureModule.querySelectorAll(".thread-mode button").forEach((button) => {
-    button.addEventListener("click", () => {
-      featureModule.querySelectorAll(".thread-mode button").forEach((item) => item.classList.toggle("active", item === button));
-      const cardContext = featureModule.querySelector(".thread-context-card");
-      cardContext.classList.toggle("hidden", button.textContent !== "Linked to card");
-      featureModule.querySelector("#messageInput").placeholder = button.textContent === "Linked to card" ? "Reply on card thread" : "Start a separate message";
-    });
-  });
-
-  featureModule.querySelectorAll(".feature-action").forEach((button) => {
-    button.addEventListener("click", () => showFeatureToast(`${button.dataset.action} simulated`));
-  });
-
+  // Send message
   const composer = featureModule.querySelector("#messageComposer");
   const input = featureModule.querySelector("#messageInput");
   const mic = featureModule.querySelector("#messageMicButton");
-  const list = featureModule.querySelector("#messageList");
+
   mic?.addEventListener("click", () => window.startDictationForField?.(input, {
     button: mic,
     success: "Message dictated",
-    fallback: "Voice dictation is not available here. Type the message instead.",
+    fallback: "Type your message instead.",
   }));
-  composer.addEventListener("submit", (event) => {
+
+  composer.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = input.value.trim();
     if (!text) return;
-    list.insertAdjacentHTML("beforeend", renderMessage("A", "Parent A", text, "Just now", true, window.extractMessageTags?.(text) || []));
-    const linkedMode = featureModule.querySelector(".thread-mode button.active")?.textContent === "Linked to card";
-    const linkedCard = linkedMessageCard();
-    if (linkedMode && linkedCard?.id) {
-      window.addMessageToCard?.(linkedCard.id, text);
-    }
+
     input.value = "";
-    list.scrollTop = list.scrollHeight;
+    const userId = window.getCurrentUserId?.();
+
+    // Optimistic render
+    appendMessageToList({ body: text, sender_id: userId, created_at: new Date().toISOString() });
+
+    // Save to Supabase
+    const saved = await window.sendMessage?.(activeMessageTopic, text);
+    if (!saved) showFeatureToast("Message could not be sent");
+  });
+
+  // Real-time subscription
+  window.unsubscribeMessages?.();
+  window.subscribeToMessages?.(activeMessageTopic, (msg) => {
+    // Only append if not our own (we already did optimistic)
+    if (msg.sender_id !== window.getCurrentUserId?.()) {
+      appendMessageToList(msg);
+    }
   });
 
   window.bindUnifiedCardInteractions?.(featureModule);
+}
+
+async function loadAndRenderMessages(topic) {
+  const list = featureModule.querySelector("#messageList");
+  if (!list) return;
+
+  const hasPair = Boolean(window.getCurrentPairId?.());
+  if (!hasPair) {
+    list.innerHTML = `<p style="padding:24px 16px;color:var(--muted);font-size:13px;text-align:center;">Connect with your co-parent first to start messaging.</p>`;
+    return;
+  }
+
+  const messages = await window.loadMessages?.(topic) || [];
+
+  if (!messages.length) {
+    list.innerHTML = `<p style="padding:24px 16px;color:var(--muted);font-size:13px;text-align:center;">No messages yet in #${topic.toLowerCase()}. Send the first one.</p>`;
+    return;
+  }
+
+  const userId = window.getCurrentUserId?.();
+  list.innerHTML = messages.map((msg) => renderRealMessage(msg, userId)).join("");
+  list.scrollTop = list.scrollHeight;
+}
+
+function appendMessageToList(msg) {
+  const list = featureModule.querySelector("#messageList");
+  if (!list) return;
+  // Remove empty state if present
+  const empty = list.querySelector("p");
+  if (empty) empty.remove();
+  const userId = window.getCurrentUserId?.();
+  list.insertAdjacentHTML("beforeend", renderRealMessage(msg, userId));
+  list.scrollTop = list.scrollHeight;
+}
+
+function renderRealMessage(msg, currentUserId) {
+  const own = msg.sender_id === currentUserId;
+  const setup = window.getOnboardingState?.() || {};
+  const name = own
+    ? (setup.parents?.primary || "You")
+    : (setup.parents?.coparent || "Co-parent");
+  const initial = name.charAt(0).toUpperCase();
+  const time = new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  return `
+    <article class="message-card ${own ? "own-message" : ""}">
+      <div class="message-avatar ${own ? "parent-a-mini" : "parent-b-mini"}">${initial}</div>
+      <div>
+        <div class="message-meta"><strong>${name}</strong><span>${time}</span></div>
+        <p>${msg.body}</p>
+        <div class="message-reactions">
+          <button type="button">OK</button>
+          <button type="button">Noted</button>
+        </div>
+      </div>
+    </article>
+  `;
 }
 
 function renderMessage(initial, name, text, time, own, tags = []) {
@@ -1533,6 +1614,34 @@ function showFeatureToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
   window.setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
+// ─── Add child (real) ─────────────────────────────────────────────────────────
+
+async function promptAddChild() {
+  const name = window.prompt("Child's first name:");
+  if (!name?.trim()) return;
+  const setup = window.getOnboardingState?.() || {};
+  const familyId = setup.familyId;
+  if (!familyId) { showFeatureToast("Complete setup first"); return; }
+  const saved = await window.saveChildrenToSupabase?.(familyId, [{ name: name.trim() }]);
+  // Also update local onboarding state
+  const updated = { ...setup, children: [...(setup.children || []), { name: name.trim() }] };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`${name.trim()} added`);
+  if (typeof switchModule === "function") switchModule("settings");
+}
+
+// ─── Add pet (localStorage - no Supabase table needed) ────────────────────────
+
+function promptAddPet() {
+  const name = window.prompt("Pet's name:");
+  if (!name?.trim()) return;
+  const setup = window.getOnboardingState?.() || {};
+  const updated = { ...setup, pets: [...(setup.pets || []), { name: name.trim() }] };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`${name.trim()} added`);
+  if (typeof switchModule === "function") switchModule("settings");
 }
 
 // Refresh calendar when Google Calendar events load

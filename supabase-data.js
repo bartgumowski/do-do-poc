@@ -297,7 +297,6 @@ async function saveOnboardingToSupabase(setup, userId) {
       .single();
 
     if (pairData?.id) {
-      // Link pair to profile
       await window.supabaseClient
         .from("profiles")
         .update({ pair_id: pairData.id })
@@ -305,15 +304,25 @@ async function saveOnboardingToSupabase(setup, userId) {
 
       currentPairId = pairData.id;
 
-      // Return the invite link so the app can show it
-      return {
-        familyId,
-        pairId: pairData.id,
-        inviteToken: pairData.invite_token,
-        inviteLink: pairData.invite_token
-          ? `${window.location.origin}/invite.html?token=${pairData.invite_token}`
-          : null,
-      };
+      const inviteLink = pairData.invite_token
+        ? `${window.location.origin}/invite/${pairData.invite_token}`
+        : null;
+
+      // Send invite email if co-parent email was provided
+      const inviteEmail = setup.parents?.invite;
+      if (inviteEmail && inviteLink) {
+        fetch("/api/invite-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            toEmail: inviteEmail,
+            fromName: setup.parents?.primary || null,
+            inviteLink,
+          }),
+        }).catch(() => {});
+      }
+
+      return { familyId, pairId: pairData.id, inviteToken: pairData.invite_token, inviteLink };
     }
 
     return { familyId };
@@ -652,6 +661,174 @@ function _emitCalendarUpdate() {
   }));
 }
 
+// ─── Messages ─────────────────────────────────────────────────────────────────
+
+const MSG_TOPIC_TO_DB = {
+  "Schedule": "schedule",
+  "School": "school",
+  "Medical": "medical",
+  "Expenses": "finance",
+  "General": "home",
+  "Other": "other",
+};
+
+let messageChannels = {};    // topic → realtime channel
+let userProfile = null;      // cached {id, first_name, display_name, role}
+
+async function loadUserProfile() {
+  if (userProfile || !currentUserId || !window.supabaseClient) return userProfile;
+  const { data } = await window.supabaseClient
+    .from("profiles")
+    .select("id, first_name, display_name, role")
+    .eq("id", currentUserId)
+    .maybeSingle();
+  userProfile = data || null;
+  return userProfile;
+}
+
+async function loadMessages(appTopic) {
+  if (!currentPairId || !window.supabaseClient) return [];
+  const dbTopic = MSG_TOPIC_TO_DB[appTopic] || "schedule";
+
+  const { data, error } = await window.supabaseClient
+    .from("messages_v2")
+    .select("id, body, sender_id, created_at, card_id")
+    .eq("pair_id", currentPairId)
+    .eq("topic", dbTopic)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+    .limit(100);
+
+  if (error) { console.warn("loadMessages failed:", error.message); return []; }
+  return data || [];
+}
+
+async function sendMessage(appTopic, body, cardId = null) {
+  if (!currentPairId || !currentUserId || !window.supabaseClient) return null;
+  const dbTopic = MSG_TOPIC_TO_DB[appTopic] || "schedule";
+
+  const { data, error } = await window.supabaseClient
+    .from("messages_v2")
+    .insert({
+      pair_id: currentPairId,
+      topic: dbTopic,
+      body,
+      sender_id: currentUserId,
+      card_id: cardId || null,
+    })
+    .select("id, body, sender_id, created_at, card_id")
+    .single();
+
+  if (error) { console.warn("sendMessage failed:", error.message); return null; }
+  return data;
+}
+
+async function getUnreadCounts() {
+  if (!currentPairId || !window.supabaseClient) return {};
+  // Count messages in last 7 days per topic as a proxy for unread
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await window.supabaseClient
+    .from("messages_v2")
+    .select("topic")
+    .eq("pair_id", currentPairId)
+    .is("deleted_at", null)
+    .neq("sender_id", currentUserId)
+    .gte("created_at", since);
+
+  const counts = {};
+  (data || []).forEach(({ topic }) => {
+    const appTopic = Object.entries(MSG_TOPIC_TO_DB).find(([, v]) => v === topic)?.[0];
+    if (appTopic) counts[appTopic] = (counts[appTopic] || 0) + 1;
+  });
+  return counts;
+}
+
+function subscribeToMessages(appTopic, onNewMessage) {
+  if (!currentPairId || !window.supabaseClient) return;
+  const dbTopic = MSG_TOPIC_TO_DB[appTopic] || "schedule";
+
+  // Unsubscribe existing channel for this topic
+  if (messageChannels[appTopic]) {
+    messageChannels[appTopic].unsubscribe();
+  }
+
+  messageChannels[appTopic] = window.supabaseClient
+    .channel(`messages:${currentPairId}:${dbTopic}`)
+    .on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "messages_v2",
+      filter: `pair_id=eq.${currentPairId}`,
+    }, (payload) => {
+      if (payload.new?.topic === dbTopic) onNewMessage(payload.new);
+    })
+    .subscribe();
+}
+
+function unsubscribeMessages() {
+  Object.values(messageChannels).forEach((ch) => ch.unsubscribe?.());
+  messageChannels = {};
+}
+
+// ─── Shopping list ────────────────────────────────────────────────────────────
+
+async function loadShoppingItems() {
+  const familyId = await _getFamilyId();
+  if (!familyId || !window.supabaseClient) return null;
+
+  const { data, error } = await window.supabaseClient
+    .from("shopping_items")
+    .select("id, list, name, checked, created_at")
+    .eq("family_id", familyId)
+    .order("created_at", { ascending: true });
+
+  if (error) { console.warn("loadShoppingItems failed:", error.message); return null; }
+
+  // Group into groceries / other
+  const result = { groceries: [], other: [] };
+  (data || []).forEach((item) => {
+    const group = item.list === "other" ? "other" : "groceries";
+    result[group].push({ id: item.id, name: item.name, bought: item.checked });
+  });
+  return result;
+}
+
+async function addShoppingItem(listKey, name) {
+  const familyId = await _getFamilyId();
+  if (!familyId || !currentUserId || !window.supabaseClient) return null;
+
+  const { data, error } = await window.supabaseClient
+    .from("shopping_items")
+    .insert({ family_id: familyId, created_by: currentUserId, list: listKey, name })
+    .select("id, list, name, checked")
+    .single();
+
+  if (error) { console.warn("addShoppingItem failed:", error.message); return null; }
+  return data;
+}
+
+async function toggleShoppingItem(id, checked) {
+  if (!window.supabaseClient) return;
+  await window.supabaseClient
+    .from("shopping_items")
+    .update({ checked, checked_by: checked ? currentUserId : null, checked_at: checked ? new Date().toISOString() : null })
+    .eq("id", id);
+}
+
+async function deleteShoppingItem(id) {
+  if (!window.supabaseClient) return;
+  await window.supabaseClient.from("shopping_items").delete().eq("id", id);
+}
+
+async function _getFamilyId() {
+  if (!currentUserId || !window.supabaseClient) return null;
+  const setup = (() => { try { return JSON.parse(localStorage.getItem("ido-you-do-onboarding-v1") || "null"); } catch { return null; } })();
+  if (setup?.familyId) return setup.familyId;
+  const { data } = await window.supabaseClient
+    .from("profiles").select("family_id").eq("id", currentUserId).maybeSingle();
+  return data?.family_id || null;
+}
+
 // ─── Expose globals ───────────────────────────────────────────────────────────
 
 window.initSupabaseData = initSupabaseData;
@@ -666,3 +843,79 @@ window.pushCardToFamilyCalendar = pushCardToFamilyCalendar;
 window.deleteCardFromFamilyCalendar = deleteCardFromFamilyCalendar;
 window.getCurrentPairId = () => currentPairId;
 window.getCurrentUserId = () => currentUserId;
+window.loadMessages = loadMessages;
+window.loadShoppingItems = loadShoppingItems;
+window.addShoppingItem = addShoppingItem;
+window.toggleShoppingItem = toggleShoppingItem;
+window.deleteShoppingItem = deleteShoppingItem;
+window.sendMessage = sendMessage;
+window.subscribeToMessages = subscribeToMessages;
+window.unsubscribeMessages = unsubscribeMessages;
+window.getUnreadCounts = getUnreadCounts;
+window.loadUserProfile = loadUserProfile;
+window.acceptInviteToken = acceptInviteToken;
+window.lookupInviteToken = lookupInviteToken;
+
+// ─── Invite acceptance ────────────────────────────────────────────────────────
+
+async function lookupInviteToken(token) {
+  if (!token || !window.supabaseClient) return null;
+  const { data, error } = await window.supabaseClient
+    .from("pairs")
+    .select("id, family_id, parent_a, invite_email, accepted_at, profiles!pairs_parent_a_fkey(display_name)")
+    .eq("invite_token", token)
+    .single();
+  if (error || !data) return null;
+  if (data.accepted_at) return { expired: true };
+  return {
+    pairId: data.id,
+    familyId: data.family_id,
+    parentAName: data.profiles?.display_name || "Your co-parent",
+    inviteEmail: data.invite_email,
+  };
+}
+
+async function acceptInviteToken(token, userId, displayName) {
+  if (!token || !userId || !window.supabaseClient) return { ok: false, reason: "missing_args" };
+
+  try {
+    // Look up pair
+    const { data: pair, error: pairErr } = await window.supabaseClient
+      .from("pairs")
+      .select("id, family_id, accepted_at")
+      .eq("invite_token", token)
+      .single();
+
+    if (pairErr || !pair) return { ok: false, reason: "invalid_token" };
+    if (pair.accepted_at) return { ok: false, reason: "already_accepted" };
+
+    // Mark pair as accepted with parent_b
+    const { error: updateErr } = await window.supabaseClient
+      .from("pairs")
+      .update({ parent_b: userId, accepted_at: new Date().toISOString() })
+      .eq("id", pair.id);
+
+    if (updateErr) return { ok: false, reason: updateErr.message };
+
+    // Upsert profile for parent_b
+    const firstName = (displayName || "Parent B").trim().split(/\s+/)[0];
+    await window.supabaseClient
+      .from("profiles")
+      .upsert({
+        id: userId,
+        first_name: firstName,
+        display_name: displayName || "Parent B",
+        role: "parent_b",
+        family_id: pair.family_id,
+        pair_id: pair.id,
+      });
+
+    currentPairId = pair.id;
+    currentFamilyId = pair.family_id;
+    currentUserId = userId;
+
+    return { ok: true, familyId: pair.family_id, pairId: pair.id };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+}
