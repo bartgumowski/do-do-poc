@@ -698,6 +698,9 @@ function showApp(session) {
   if (window.initSupabaseData) {
     window.initSupabaseData(currentAuthSession).catch(() => {});
   }
+  // Initialize notifications
+  initNotifications();
+  requestNotificationPermission();
   // Load Google Calendar events if provider token is available
   if (window.initGoogleCalendar) {
     window.initGoogleCalendar(currentAuthSession).catch(() => {});
@@ -2680,6 +2683,11 @@ function updateAutomationSettings(nextSettings) {
   if ("automateReminders" in nextSettings || "reminderDelivery" in nextSettings || "syncFamilyCalendar" in nextSettings || nextSettings.defaultReminderPreset) {
     applyAutomationSettingsToCards();
   }
+  if (nextSettings.automateReminders) {
+    requestNotificationPermission();
+  } else {
+    stopReminderChecker();
+  }
   render();
 }
 
@@ -2904,5 +2912,100 @@ function registerServiceWorker() {
   if (!canRegister) return;
   navigator.serviceWorker.register("./sw.js").catch(() => {
     showToast("Offline mode unavailable in this browser context");
+  });
+}
+
+// ─── Push notifications ───────────────────────────────────────────────────────
+
+let reminderCheckInterval = null;
+const firedReminders = new Set();
+
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "granted") return;
+  if (Notification.permission === "denied") return;
+  // Only ask if user has automateReminders on
+  const settings = getAutomationSettings();
+  if (!settings.automateReminders) return;
+  const permission = await Notification.requestPermission();
+  if (permission === "granted") {
+    showToast("Reminders enabled");
+    startReminderChecker();
+  }
+}
+
+function startReminderChecker() {
+  if (reminderCheckInterval) return;
+  checkDueReminders();
+  reminderCheckInterval = setInterval(checkDueReminders, 60 * 1000); // every minute
+}
+
+function stopReminderChecker() {
+  if (reminderCheckInterval) {
+    clearInterval(reminderCheckInterval);
+    reminderCheckInterval = null;
+  }
+}
+
+function checkDueReminders() {
+  if (Notification.permission !== "granted") return;
+  const settings = getAutomationSettings();
+  if (!shouldCreateAppReminder(settings)) return;
+
+  const now = Date.now();
+  const windowMs = 90 * 1000; // fire within 90s of reminder time
+
+  state.cards.forEach((card) => {
+    if (!card.reminder?.time) return;
+    if (card.status === "Done") return;
+    const reminderMs = new Date(card.reminder.time).getTime();
+    if (reminderMs > now + windowMs) return; // not yet
+    if (reminderMs < now - windowMs) return; // too old
+    if (firedReminders.has(card.id)) return;
+
+    firedReminders.add(card.id);
+    fireNotification(card);
+  });
+}
+
+function fireNotification(card) {
+  const title = card.title || "Reminder";
+  const topic = card.topic ? `${card.topic} - ` : "";
+  const assignee = card.assignee && card.assignee !== "Both" ? ` (${card.assignee})` : "";
+  const body = `${topic}${card.details || card.type || "Action needed"}${assignee}`;
+
+  const show = (reg) => {
+    const options = {
+      body,
+      icon: "./assets/dodo-icon.png",
+      badge: "./assets/dodo-icon.png",
+      tag: `do-do-card-${card.id}`,
+      data: { cardId: card.id },
+      requireInteraction: false,
+    };
+    if (reg) {
+      reg.showNotification(title, options);
+    } else {
+      new Notification(title, options);
+    }
+  };
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.ready.then(show).catch(() => show(null));
+  } else {
+    show(null);
+  }
+}
+
+function initNotifications() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "granted") {
+    startReminderChecker();
+  }
+  // Re-check permission each time app visibility changes
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && Notification.permission === "granted") {
+      checkDueReminders();
+    }
   });
 }

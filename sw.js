@@ -1,4 +1,4 @@
-const CACHE_NAME = "do-do-phone-v6";
+const CACHE_NAME = "do-do-phone-v7";
 const ASSETS = [
   "./",
   "./index.html",
@@ -21,6 +21,34 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) =>
       Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
     )
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let data = { title: "Do-Do", body: "You have a reminder" };
+  try { data = event.data?.json() || data; } catch {}
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "./assets/dodo-icon.png",
+      badge: "./assets/dodo-icon.png",
+      tag: data.tag || "do-do-reminder",
+      data: data.data || {},
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow("/");
+    })
   );
 });
 
