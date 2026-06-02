@@ -121,24 +121,26 @@
             <span>Continue with Apple</span>
           </button>
           <form class="auth-confirm" id="authPasswordForm">
-            <span class="auth-confirm-label">Or continue with email</span>
+            <div class="auth-mode-toggle" id="authModeToggle">
+              <button class="auth-mode-option active" type="button" data-auth-mode="signin">Sign in</button>
+              <button class="auth-mode-option" type="button" data-auth-mode="signup">Create account</button>
+            </div>
             <label>
               Email
               <input id="authEmailInput" type="email" autocomplete="email" placeholder="you@example.com" required />
             </label>
             <label>
               Password
-              <input id="authPasswordInput" type="password" autocomplete="current-password" placeholder="Password" minlength="6" required />
+              <input id="authPasswordInput" type="password" autocomplete="current-password" placeholder="At least 6 characters" minlength="6" required />
             </label>
-            <button class="auth-continue-button" type="submit">Sign in</button>
-            <button class="auth-switch-button" type="button" id="authSignUpButton">Create account</button>
+            <button class="auth-continue-button" type="submit" id="authSubmitButton">Sign in</button>
             <span class="auth-confirm-label" id="authError" role="status"></span>
           </form>
         </div>
         <div class="auth-confirm hidden" id="authConfirm">
-          <span class="auth-confirm-label" id="authProviderLabel">Google account ready</span>
-          <strong>Ava’s family board</strong>
-          <p>No password. We’ll use this account to keep your family board in sync.</p>
+          <span class="auth-confirm-label" id="authProviderLabel">Account ready</span>
+          <strong id="authConfirmTitle">Your family board</strong>
+          <p>We’ll use this account to keep your family board in sync.</p>
           <button class="auth-continue-button" type="button" id="authContinueButton">Continue to board</button>
           <button class="auth-switch-button" type="button" id="authSwitchButton">Use another sign in option</button>
         </div>

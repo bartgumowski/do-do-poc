@@ -326,10 +326,23 @@ function bindEvents() {
   elements.authSwitchButton?.addEventListener("click", resetAuthChoice);
   elements.authPasswordForm?.addEventListener("submit", (event) => {
     event.preventDefault();
-    signInWithPassword(elements.authEmailInput?.value.trim(), elements.authPasswordInput?.value);
+    const mode = elements.authPasswordForm?.dataset.mode || "signin";
+    if (mode === "signup") {
+      signUp(elements.authEmailInput?.value.trim(), elements.authPasswordInput?.value);
+    } else {
+      signInWithPassword(elements.authEmailInput?.value.trim(), elements.authPasswordInput?.value);
+    }
   });
-  elements.authSignUpButton?.addEventListener("click", () => {
-    signUp(elements.authEmailInput?.value.trim(), elements.authPasswordInput?.value);
+  // Mode toggle (Sign in / Create account)
+  document.querySelectorAll("[data-auth-mode]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = btn.dataset.authMode;
+      elements.authPasswordForm.dataset.mode = mode;
+      document.querySelectorAll("[data-auth-mode]").forEach((b) => b.classList.toggle("active", b === btn));
+      const submitBtn = document.querySelector("#authSubmitButton");
+      if (submitBtn) submitBtn.textContent = mode === "signup" ? "Create account" : "Sign in";
+      clearAuthError();
+    });
   });
   document.querySelectorAll("[data-auth-sign-out]").forEach((button) => {
     button.addEventListener("click", signOut);
@@ -612,7 +625,30 @@ async function chooseAuthProvider(provider) {
     await signInWithGoogle();
     return;
   }
+  if (provider === "Apple") {
+    await signInWithApple();
+    return;
+  }
   showAuthError(`${provider} sign in is not available yet. Use Google or email.`);
+}
+
+async function signInWithApple() {
+  if (!supabaseClient) {
+    showAuthError("Authentication could not load. Check your connection and refresh.");
+    return;
+  }
+  clearAuthError();
+  try {
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: "apple",
+      options: {
+        redirectTo: window.location.origin + "/",
+      },
+    });
+    if (error) showAuthError(error.message);
+  } catch (error) {
+    showAuthError(error?.message || "Apple sign in could not start. Try again.");
+  }
 }
 
 async function signInWithGoogle() {
@@ -1046,6 +1082,22 @@ function renderAttention() {
 }
 
 function renderBoard(cards) {
+  if (!cards.length) {
+    const setup = getOnboardingState();
+    const name = setup?.parents?.primary || "there";
+    elements.boardView.innerHTML = `
+      <div style="grid-column:1/-1;display:grid;place-items:center;padding:48px 24px;text-align:center;">
+        <p style="margin:0 0 6px;color:var(--muted);font-size:13px;font-weight:800;">WELCOME, ${name.toUpperCase()}</p>
+        <p style="margin:0 0 20px;color:var(--ink);font-size:18px;font-weight:900;max-width:22ch;line-height:1.3;">Your board is ready. Add your first Do to get started.</p>
+        <button class="primary-button" type="button" id="emptyStateNewCard" style="min-height:48px;padding:0 28px;border-radius:999px;font-size:15px;">
+          + New Do
+        </button>
+      </div>
+    `;
+    elements.boardView.querySelector("#emptyStateNewCard")?.addEventListener("click", () => openCardDialog());
+    return;
+  }
+
   elements.boardView.innerHTML = statusColumns.map((status) => {
     const columnCards = cards.filter((card) => card.status === status || (status === "To Do" && card.status === "Info Only"));
     if (!columnCards.length) return "";
@@ -2597,25 +2649,31 @@ function renderMessageTags(tags, className = "message-auto-tags") {
 }
 
 function loadCards() {
+  // Never show seed cards to real users - only load what they have saved.
+  // New users (no real familyId yet) start with an empty board.
+  // Supabase will replace this with their real cards once the session loads.
+  const familyId = getFamilyWorkspaceId();
+  if (familyId === "demo-family") return [];
+
   const schemaKey = `${cardsStorageKey()}:schema`;
   if (storage.getItem(schemaKey) !== cardSchemaVersion) {
-    const normalizedSeed = seedCards.map(normalizeCard);
+    // Schema changed - clear stale data and start fresh (Supabase is source of truth)
+    storage.removeItem(cardsStorageKey());
     storage.setItem(schemaKey, cardSchemaVersion);
-    storage.setItem(cardsStorageKey(), JSON.stringify(normalizedSeed));
-    return normalizedSeed;
+    return [];
   }
 
   const stored = storage.getItem(cardsStorageKey());
-  if (!stored) return seedCards.map(normalizeCard);
+  if (!stored) return [];
   try {
     const parsed = JSON.parse(stored);
-    const cards = Array.isArray(parsed) && parsed.length ? parsed : seedCards;
+    const cards = Array.isArray(parsed) ? parsed : [];
     const normalized = cards.map(normalizeCard);
     storage.setItem(cardsStorageKey(), JSON.stringify(normalized));
     return normalized;
   } catch {
-    storage.setItem(cardsStorageKey(), JSON.stringify(seedCards));
-    return seedCards.map(normalizeCard);
+    storage.removeItem(cardsStorageKey());
+    return [];
   }
 }
 

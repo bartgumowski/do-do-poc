@@ -703,6 +703,33 @@ body.auth-locked .onboarding-screen {
   line-height: 1.4;
 }
 
+.auth-mode-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--soft);
+}
+
+.auth-mode-option {
+  flex: 1;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.auth-mode-option.active {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgba(17, 24, 39, 0.1);
+}
+
 .auth-continue-button,
 .auth-switch-button {
   min-height: 46px;
