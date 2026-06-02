@@ -1,4 +1,9 @@
-const statusColumns = ["Important", "Waiting", "To Do", "Done"];
+const statusColumns = ["Important", "Waiting", "To Do", "Done"]; // kept for DB mapping
+const kanbanColumns = [
+  { id: "to-decide", label: "To decide", statuses: ["Important", "Waiting", "Disputed"] },
+  { id: "mine",      label: "Mine",       statuses: ["To Do", "Info Only", "Request"]    },
+  { id: "done",      label: "Done",       statuses: ["Done"]                              },
+];
 const topics = ["Schedule", "School", "Medical", "Expenses", "General"];
 const cardSchemaVersion = "2026-05-19-card-ui-v2";
 const onboardingStorageKey = "ido-you-do-onboarding-v1";
@@ -1081,7 +1086,16 @@ function renderAttention() {
   bindCardInteractions(elements.attentionStrip);
 }
 
+function isCardArchived(card) {
+  if (!card.due) return false;
+  if (card.status === "Done") return false;
+  return new Date(card.due) < new Date(Date.now() - 1000 * 60 * 60 * 24); // past midnight yesterday
+}
+
 function renderBoard(cards) {
+  const activeCards = cards.filter((card) => !isCardArchived(card));
+  const archivedCards = cards.filter(isCardArchived);
+
   if (!cards.length) {
     const setup = getOnboardingState();
     const name = setup?.parents?.primary || "there";
@@ -1098,18 +1112,43 @@ function renderBoard(cards) {
     return;
   }
 
-  elements.boardView.innerHTML = statusColumns.map((status) => {
-    const columnCards = cards.filter((card) => card.status === status || (status === "To Do" && card.status === "Info Only"));
-    if (!columnCards.length) return "";
+  const columnsHtml = kanbanColumns.map(({ id, label, statuses }) => {
+    const columnCards = activeCards.filter((card) => statuses.includes(card.status));
     return `
-      <section class="column" data-status="${status}">
-        <div class="column-header">${status}<span>${columnCards.length}</span></div>
+      <section class="column" data-column="${id}">
+        <div class="column-header">${label}<span>${columnCards.length}</span></div>
         <div class="column-body">
-          ${columnCards.map(renderCard).join("")}
+          ${columnCards.length
+            ? columnCards.map(renderCard).join("")
+            : `<p class="column-empty">No Dos here</p>`}
         </div>
       </section>
     `;
   }).join("");
+
+  const archivedHtml = archivedCards.length ? `
+    <div class="archive-section" style="grid-column:1/-1;" id="archiveSection">
+      <button class="archive-toggle" type="button" id="archiveToggle" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v4H3zM5 8v12h14V8"/><path d="M10 12h4"/></svg>
+        Archived
+        <span>${archivedCards.length}</span>
+        <svg class="archive-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="archive-grid hidden" id="archiveGrid">
+        ${archivedCards.map(renderCard).join("")}
+      </div>
+    </div>
+  ` : "";
+
+  elements.boardView.innerHTML = columnsHtml + archivedHtml;
+
+  elements.boardView.querySelector("#archiveToggle")?.addEventListener("click", () => {
+    const grid = elements.boardView.querySelector("#archiveGrid");
+    const btn = elements.boardView.querySelector("#archiveToggle");
+    const isOpen = grid.classList.toggle("hidden") === false;
+    btn.setAttribute("aria-expanded", String(!grid.classList.contains("hidden")));
+    elements.boardView.querySelector(".archive-chevron")?.style.setProperty("transform", isOpen ? "rotate(180deg)" : "");
+  });
 
   bindCardInteractions(elements.boardView);
 }
