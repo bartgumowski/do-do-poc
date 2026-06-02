@@ -410,13 +410,15 @@ function switchModule(moduleName) {
   moduleLinks.forEach((button) => button.classList.toggle("active", button.dataset.module === moduleName));
   window.setMobileActive?.(moduleName);
 
+  const topbar = document.querySelector(".topbar");
+
   if (moduleName === "board") {
     cardsModule.classList.remove("hidden");
     cardsModule.classList.remove("cards-content-hidden");
     featureModule.classList.add("hidden");
     topbarEyebrow.textContent = "";
     topbarTitle.textContent = "";
-    document.querySelector(".topbar-title").style.display = "none";
+    if (topbar) topbar.style.display = "none"; // no title needed on board
     topbarActions?.classList.remove("hidden");
     return;
   }
@@ -427,7 +429,7 @@ function switchModule(moduleName) {
   featureModule.classList.remove("hidden");
   topbarEyebrow.textContent = data.eyebrow;
   topbarTitle.textContent = data.title;
-  document.querySelector(".topbar-title").style.display = "none";
+  if (topbar) topbar.style.display = ""; // restore for modules that need a title
   topbarActions?.classList.add("hidden");
   renderFeature(moduleName, data);
 }

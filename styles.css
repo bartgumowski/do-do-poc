@@ -1038,13 +1038,19 @@ button {
   min-height: 116px;
   background: var(--paper);
   border-bottom: 1px solid var(--line);
-  display: flex;
+  display: none; /* hidden on mobile; shown on desktop via min-width query */
   align-items: center;
   justify-content: space-between;
   gap: 20px;
   padding: 24px 32px;
   position: relative;
   overflow: hidden;
+}
+
+@media (min-width: 761px) {
+  .topbar {
+    display: flex;
+  }
 }
 
 .topbar::after {
@@ -1206,22 +1212,55 @@ svg {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 18px;
-  padding: 0 20px;
+  gap: 12px;
+  margin-bottom: 0;
+  padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Drawer tab below toolbar */
+.toolbar-drawer {
+  display: flex;
+  align-items: flex-start;
+  padding: 0 16px;
   position: relative;
-  z-index: 3;
+  z-index: 4;
+  margin-bottom: -1px;
+}
+
+.toolbar-drawer-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 16px 16px;
+  background: var(--paper);
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.toolbar-drawer-tab img {
+  border-radius: 50%;
+  display: block;
 }
 
 @media (min-width: 761px) {
   .toolbar {
     display: grid;
-    grid-template-columns: auto minmax(280px, 1fr) auto;
+    grid-template-columns: minmax(280px, 1fr) auto;
     align-items: center;
     gap: 12px;
-    margin: 0;
     padding: 12px 20px 14px;
-    background: var(--surface-page);
+    background: var(--paper);
+    top: 0;
   }
 
   .toolbar .search-wrap {
@@ -1232,6 +1271,10 @@ svg {
     grid-column: 1 / -1;
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .toolbar-drawer {
+    display: none;
   }
 
   .attention-strip {
@@ -1570,11 +1613,12 @@ svg {
 }
 
 .inline-capture-host {
-  margin-top: -22px;
-  padding: 22px 20px 18px;
-  background: var(--surface-page);
+  margin-top: 0;
+  padding: 0 16px 14px;
+  background: var(--paper);
   position: relative;
-  z-index: 1;
+  z-index: 2;
+  border-bottom: 1px solid var(--line);
 }
 
 .inline-card-capture {
@@ -1582,13 +1626,13 @@ svg {
   max-width: 100%;
   margin: 0;
   border: 0;
-  border-radius: 0 0 28px 28px;
+  border-radius: 0 0 20px 20px;
   display: grid;
   gap: 10px;
   padding: 12px;
   background: var(--accent);
   color: var(--ink);
-  box-shadow: 0 22px 52px rgba(101, 214, 198, 0.22);
+  box-shadow: 0 12px 32px rgba(217, 70, 239, 0.18);
 }
 
 .inline-card-input-wrap {
