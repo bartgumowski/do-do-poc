@@ -8,6 +8,6 @@
     { "source": "/invite/:token", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/remind", "schedule": "*/15 * * * *" }
+    { "path": "/api/remind", "schedule": "0 * * * *" }
   ]
 }
