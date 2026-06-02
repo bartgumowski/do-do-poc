@@ -1797,6 +1797,12 @@ svg {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
   gap: 14px;
+  align-items: start;
+}
+
+.settings-layout {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  align-items: start;
 }
 
 .feature-panel {

@@ -1467,7 +1467,7 @@ function renderSpecialPanel(moduleName, part = "all") {
       ["at-due", "At due time"],
     ];
     return `
-      ${part === "all" || part === "automation" ? `
+      ${part === "all" || part === "appearance" ? `
       <section class="feature-panel appearance-settings">
         <h3>Appearance</h3>
         <div class="settings-control-list">
@@ -1669,7 +1669,7 @@ function renderSettingsFeature() {
   `;
 
   featureModule.innerHTML = `
-    <div class="feature-layout">
+    <div class="feature-layout settings-layout">
       ${renderSpecialPanel("settings", "automation")}
 
       <section class="feature-panel">
@@ -1717,6 +1717,8 @@ function renderSettingsFeature() {
           <button class="secondary-button" id="signOutButton" style="color:#ef4444;border-color:#ef4444;">Sign out</button>
         </div>
       </section>
+
+      ${renderSpecialPanel("settings", "appearance")}
     </div>
   `;
 
