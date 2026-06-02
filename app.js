@@ -755,14 +755,12 @@ function completeOnboarding(event) {
     familyId,
     parents: {
       primary: elements.onboardingParentA?.value.trim() || "Parent A",
-      coparent: elements.onboardingParentB?.value.trim() || "Parent B",
+      coparent: elements.onboardingParentB?.value.trim() || "Co-parent",
       invite: elements.onboardingInvite?.value.trim() || "",
     },
-    children: [
-      {
-        name: elements.onboardingChildName?.value.trim() || "Ava",
-      },
-    ],
+    children: elements.onboardingChildName?.value.trim()
+      ? [{ name: elements.onboardingChildName.value.trim() }]
+      : [],
     pets: elements.onboardingPetName?.value.trim()
       ? [
         {
@@ -802,8 +800,15 @@ function completeOnboarding(event) {
   // Save family, profile, children, and pair to Supabase
   if (window.saveOnboardingToSupabase && window.getCurrentUserId?.()) {
     window.saveOnboardingToSupabase(setup, window.getCurrentUserId()).then((result) => {
-      if (result?.inviteLink) {
-        showToast("Invite link ready - share with your co-parent");
+      if (!result?.inviteLink) return;
+      if (result.emailSent) {
+        showToast(`Invite sent to ${setup.parents?.invite}`);
+      } else if (setup.parents?.invite) {
+        // Email couldn't be sent - show the link so user can share manually
+        showInviteLinkFallback(result.inviteLink, setup.parents.invite);
+      } else {
+        // No email provided - show the link for manual sharing
+        showInviteLinkFallback(result.inviteLink, null);
       }
     }).catch(() => {});
   }
@@ -1295,6 +1300,16 @@ function openCardDialog(id = "", focusSection = "info") {
   elements.dialogCardMeta.classList.toggle("hidden", !card);
   elements.dialogQuickActions.classList.toggle("hidden", !card);
 
+  // View-only hint for existing cards
+  const viewHint = document.querySelector("#dialogViewHint");
+  if (viewHint) {
+    viewHint.hidden = !card;
+    const hintEditBtn = document.querySelector("#dialogViewHintEdit");
+    if (hintEditBtn) {
+      hintEditBtn.onclick = () => setCardDialogEditMode(true);
+    }
+  }
+
   if (card) {
     elements.titleInput.value = card.title;
     elements.topicInput.value = card.topic;
@@ -1377,14 +1392,33 @@ function setCardDialogEditMode(isEditing) {
   const useChatFlow = isEditing && !isExistingCard;
   elements.cardForm.classList.toggle("llm-new-card-mode", useChatFlow);
   elements.llmCardChat?.classList.toggle("hidden", !useChatFlow);
-  document.querySelector(".voice-card").classList.toggle("hidden", !isEditing || useChatFlow);
-  document.querySelector(".voice-transcript").classList.toggle("hidden", !isEditing || useChatFlow);
-  elements.autofillButton.classList.toggle("hidden", !isEditing || useChatFlow);
+  // Voice panel: hidden in view mode and new-card (LLM) mode; accessible via toggle in edit mode
+  const voicePanel = document.querySelector("#voicePanel");
+  const voiceToggle = document.querySelector("#detailsVoiceToggle");
+  const detailsHeader = document.querySelector("#detailsSectionHeader");
+  if (voicePanel) {
+    if (!isEditing || useChatFlow) {
+      voicePanel.classList.remove("open");
+    }
+  }
+  if (detailsHeader) detailsHeader.style.display = isEditing && !useChatFlow ? "flex" : "none";
+  if (voiceToggle && !voiceToggle._bound) {
+    voiceToggle._bound = true;
+    voiceToggle.addEventListener("click", () => {
+      const panel = document.querySelector("#voicePanel");
+      const isOpen = panel?.classList.toggle("open");
+      voiceToggle.classList.toggle("active", isOpen);
+      voiceToggle.title = isOpen ? "Hide voice input" : "Voice input";
+    });
+  }
   elements.deleteButton.classList.toggle("hidden", !isEditing || !isExistingCard);
   elements.cardForm.querySelector(".dialog-actions .primary-button").classList.toggle("hidden", !isEditing);
   elements.cardSaveButton.textContent = useChatFlow ? "Create Do" : "Save";
   elements.ackButton.classList.toggle("hidden", isEditing || !isExistingCard);
   elements.editCardMenuButton.classList.toggle("hidden", isEditing || !isExistingCard);
+  // Hide the view-only hint when editing starts
+  const viewHint = document.querySelector("#dialogViewHint");
+  if (viewHint && isEditing) viewHint.hidden = true;
   elements.dialogMode.textContent = isEditing
     ? (isExistingCard ? "Editing card" : "New Do")
     : "Information, thread, reminder, and activity";
@@ -2730,6 +2764,9 @@ window.updateAutomationSettings = updateAutomationSettings;
 window.getThemePreference = getThemePreference;
 window.updateThemePreference = updateThemePreference;
 window.signOut = signOut;
+window.quickCompleteCard = quickCompleteCard;
+window.quickRespondCard = quickRespondCard;
+window.openCardDialog = openCardDialog;
 window.startDictationForField = startDictationForField;
 window.extractMessageTags = extractMessageTags;
 window.renderMessageTags = renderMessageTags;
@@ -2907,6 +2944,52 @@ function showToast(message) {
   elements.toast.textContent = message;
   elements.toast.classList.add("show");
   window.setTimeout(() => elements.toast.classList.remove("show"), 3800);
+}
+
+function showInviteLinkFallback(inviteLink, toEmail) {
+  // Show a persistent banner with a copy button when email delivery isn't available
+  const existing = document.querySelector("#inviteLinkBanner");
+  if (existing) existing.remove();
+
+  const notice = toEmail
+    ? `Email to ${toEmail} couldn't be delivered. Share this link manually:`
+    : "Share this link with your co-parent:";
+
+  const banner = document.createElement("div");
+  banner.id = "inviteLinkBanner";
+  banner.style.cssText = `
+    position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); left: 50%;
+    transform: translateX(-50%); width: min(480px, calc(100vw - 32px));
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 18px; padding: 16px; box-shadow: 0 18px 46px rgba(17,24,39,0.12);
+    z-index: 9998; display: grid; gap: 10px;
+  `;
+  banner.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+      <p style="margin:0;font-size:13px;color:var(--muted);line-height:1.4;">${notice}</p>
+      <button id="inviteLinkBannerClose" style="flex:0 0 auto;border:0;background:transparent;color:var(--muted);font-size:18px;cursor:pointer;padding:0;line-height:1;" aria-label="Close">&times;</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input readonly value="${inviteLink}" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;background:var(--soft);color:var(--ink);" />
+      <button id="inviteLinkCopy" style="flex:0 0 auto;min-height:36px;padding:0 14px;border:0;border-radius:999px;background:var(--accent);color:var(--ink);font-weight:900;font-size:12px;cursor:pointer;">Copy</button>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+
+  banner.querySelector("#inviteLinkCopy").addEventListener("click", () => {
+    navigator.clipboard.writeText(inviteLink).then(() => {
+      banner.querySelector("#inviteLinkCopy").textContent = "Copied!";
+      window.setTimeout(() => banner.remove(), 2000);
+    }).catch(() => {
+      banner.querySelector("input").select();
+    });
+  });
+
+  banner.querySelector("#inviteLinkBannerClose").addEventListener("click", () => banner.remove());
+
+  // Store the link so Settings can re-surface it
+  try { sessionStorage.setItem("do-do-pending-invite-link", inviteLink); } catch {}
 }
 
 function registerServiceWorker() {

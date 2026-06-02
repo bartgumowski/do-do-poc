@@ -63,14 +63,6 @@
             <span class="auth-provider-mark google-mark">G</span>
             <span>Continue with Google</span>
           </button>
-          <button class="auth-provider-button apple" type="button" data-invite-provider="Apple">
-            <span class="auth-provider-mark apple-mark">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M16.6 13.1c0-2.1 1.7-3.1 1.8-3.2-1-1.5-2.5-1.7-3-1.7-1.3-.1-2.5.8-3.1.8-.7 0-1.7-.8-2.8-.8-1.4 0-2.8.8-3.5 2.1-1.5 2.6-.4 6.4 1.1 8.5.7 1 1.5 2.2 2.7 2.1 1.1 0 1.5-.7 2.8-.7s1.7.7 2.8.7c1.2 0 1.9-1 2.6-2.1.8-1.2 1.1-2.3 1.1-2.4 0 0-2.4-.9-2.5-3.3ZM14.5 6.9c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.6.6-1 1.6-.9 2.6 1 .1 1.9-.5 2.5-1.2Z" />
-              </svg>
-            </span>
-            <span>Continue with Apple</span>
-          </button>
           <form class="auth-confirm" id="inviteEmailForm">
             <span class="auth-confirm-label">Or continue with email</span>
             <label>
@@ -169,18 +161,18 @@
         <div class="onboarding-sections">
           <section class="onboarding-card">
             <h2>Parents</h2>
-            <label>Your name<input id="onboardingParentA" placeholder="Parent A" value="Parent A" /></label>
-            <label>Co-parent name<input id="onboardingParentB" placeholder="Parent B" value="Parent B" /></label>
+            <label>Your name<input id="onboardingParentA" placeholder="e.g. Sarah" /></label>
+            <label>Co-parent name<input id="onboardingParentB" placeholder="e.g. Tom" /></label>
             <label>Invite email<input id="onboardingInvite" type="email" placeholder="coparent@example.com" /></label>
           </section>
           <section class="onboarding-card">
             <h2>Children</h2>
-            <label>Child name<input id="onboardingChildName" placeholder="Ava" value="Ava" /></label>
+            <label>Child name<input id="onboardingChildName" placeholder="e.g. Ava" /></label>
             <button class="onboarding-inline-button" type="button" id="onboardingAddChild">Add another child later</button>
           </section>
           <section class="onboarding-card">
             <h2>Pets</h2>
-            <label>Pet name<input id="onboardingPetName" placeholder="Milo" value="Milo" /></label>
+            <label>Pet name<input id="onboardingPetName" placeholder="e.g. Milo" /></label>
             <button class="onboarding-inline-button" type="button" id="onboardingSkipPet">Skip pets</button>
           </section>
           <section class="onboarding-card">
@@ -292,7 +284,7 @@
                 <span>Expenses</span>
                 <strong id="topCosts">CHF 0</strong>
               </button>
-              <button class="mini-stat" type="button">
+              <button class="mini-stat" type="button" data-module="messages" aria-label="Open messages">
                 <span>Messages</span>
                 <strong id="topMessages">0</strong>
               </button>
@@ -396,6 +388,11 @@
         </div>
 
         <input type="hidden" id="cardId" />
+        <p class="dialog-view-hint" id="dialogViewHint" hidden>
+          Read only - tap
+          <button type="button" id="dialogViewHintEdit">Edit</button>
+          to make changes
+        </p>
         <div class="dialog-card-meta hidden" id="dialogCardMeta">
           <div class="card-people" id="dialogCardPeople"></div>
         </div>
@@ -420,27 +417,37 @@
               </div>
             </section>
 
-            <section class="voice-card">
-              <button class="voice-button" type="button" id="voiceButton" aria-label="Record Do details">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z" />
-                  <path d="M19 10a7 7 0 0 1-14 0M12 17v4M8 21h8" />
-                </svg>
-              </button>
-              <div>
-                <strong id="voiceStatus">Record what has to be done</strong>
-                <span>Speak naturally. Example: “Please pay Leo’s school trip CHF 45 tomorrow, assign Parent B.”</span>
-              </div>
-            </section>
+            <div class=”voice-panel” id=”voicePanel”>
+              <section class=”voice-card”>
+                <button class=”voice-button” type=”button” id=”voiceButton” aria-label=”Record Do details”>
+                  <svg viewBox=”0 0 24 24” aria-hidden=”true”>
+                    <path d=”M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z” />
+                    <path d=”M19 10a7 7 0 0 1-14 0M12 17v4M8 21h8” />
+                  </svg>
+                </button>
+                <div>
+                  <strong id=”voiceStatus”>Record what has to be done</strong>
+                  <span>Speak naturally. Example: “Please pay Leo’s school trip CHF 45 tomorrow, assign Parent B.”</span>
+                </div>
+              </section>
 
-            <label class="voice-transcript">
-              Voice transcript
-              <textarea id="voiceTranscriptInput" rows="3" placeholder="Transcript appears here, or type/paste the request and autofill."></textarea>
-            </label>
+              <label class=”voice-transcript”>
+                Voice transcript
+                <textarea id=”voiceTranscriptInput” rows=”3” placeholder=”Transcript appears here, or type/paste the request and autofill.”></textarea>
+              </label>
 
-            <button class="secondary-button autofill-button" type="button" id="autofillButton">Autofill fields</button>
+              <button class=”secondary-button autofill-button” type=”button” id=”autofillButton”>Autofill fields</button>
+            </div>
 
             <section class="card-info-section">
+              <div class="card-info-section-header" id="detailsSectionHeader">
+                <button class="ghost-button details-voice-toggle" type="button" id="detailsVoiceToggle" aria-label="Toggle voice input" title="Voice input">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
+                  </svg>
+                </button>
+              </div>
               <label class="short-info-field clean-field">
                 <span class="visually-hidden">Short info</span>
                 <textarea id="detailsInput" rows="5" maxlength="420" placeholder="Parent-teacher meeting for Ava tomorrow at 14:00. Both parents should respond."></textarea>

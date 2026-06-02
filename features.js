@@ -746,14 +746,75 @@ function renderExpensesFeature() {
       </div>
       <div class="upcoming-expense-list">
         ${expenseCards.length
-          ? expenseCards.map((card) => renderUniversalFeatureCard(card, "expense-preview-card")).join("")
+          ? expenseCards.map((card) => renderExpenseCard(card)).join("")
           : `<article class="agenda-empty">No expense Dos yet.</article>`}
       </div>
     </section>
   `;
 
   featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => openCardDialog());
+
+  // Expense quick-action buttons
+  featureModule.querySelectorAll("[data-expense-action]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const { cardId, expenseAction } = btn.dataset;
+      handleExpenseAction(cardId, expenseAction);
+    });
+  });
+
   window.bindUnifiedCardInteractions?.(featureModule);
+}
+
+function renderExpenseCard(card) {
+  const isDone = card.status === "Done" || card.status === "Paid";
+  const isDisputed = card.status === "Disputed";
+  const statusLabel = card.status === "Paid" ? "Paid" : card.status === "Disputed" ? "Disputed" : card.status;
+  const amount = card.amount ? `<span class="expense-amount">${card.amount}</span>` : "";
+
+  const actions = isDone ? "" : `
+    <div class="expense-card-actions">
+      ${!isDisputed ? `<button class="expense-action-btn approve" data-expense-action="approve" data-card-id="${card.id}">Approve</button>` : ""}
+      ${!isDisputed ? `<button class="expense-action-btn dispute" data-expense-action="dispute" data-card-id="${card.id}">Dispute</button>` : ""}
+      <button class="expense-action-btn paid" data-expense-action="paid" data-card-id="${card.id}">Mark paid</button>
+    </div>
+  `;
+
+  return `
+    <article class="expense-preview-card" data-card-id="${card.id}">
+      <div class="expense-card-top">
+        <div>
+          <strong class="expense-card-title">${card.title || "Expense"}</strong>
+          ${card.details ? `<span class="expense-card-detail">${card.details}</span>` : ""}
+        </div>
+        <div class="expense-card-meta">
+          ${amount}
+          <span class="expense-status-badge expense-status-${(statusLabel || "").toLowerCase().replace(/\s/g, "-")}">${statusLabel}</span>
+        </div>
+      </div>
+      ${actions}
+    </article>
+  `;
+}
+
+function handleExpenseAction(cardId, action) {
+  if (!cardId || !action) return;
+  const nextStatus = action === "approve" ? "To Do" : action === "dispute" ? "Disputed" : "Paid";
+  // Use app.js updateCardStatus if available, otherwise call quickCompleteCard / quickRespondCard
+  if (action === "paid" && typeof window.quickCompleteCard === "function") {
+    window.quickCompleteCard(cardId);
+    return;
+  }
+  if (action === "dispute" && typeof window.quickRespondCard === "function") {
+    window.quickRespondCard(cardId, "cannot");
+    return;
+  }
+  if (action === "approve" && typeof window.quickRespondCard === "function") {
+    window.quickRespondCard(cardId, "will");
+    return;
+  }
+  // Fallback: open card dialog
+  if (typeof window.openCardDialog === "function") window.openCardDialog(cardId);
 }
 
 function expenseAmount(value) {
@@ -1637,6 +1698,13 @@ function renderSettingsFeature() {
 
       ${renderSpecialPanel("settings", "vaccine")}
 
+      <section class="feature-panel" id="invitePanel">
+        <h3>Co-parent</h3>
+        <div class="feature-items" id="invitePanelContent">
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">Checking connection...</p>
+        </div>
+      </section>
+
       <section class="feature-panel">
         <h3>Account</h3>
         <div class="feature-items">
@@ -1664,6 +1732,9 @@ function renderSettingsFeature() {
     if (typeof signOut === "function") signOut();
   });
 
+  // Co-parent invite panel
+  renderInvitePanel();
+
   // Edit/delete children
   featureModule.querySelectorAll("[data-edit-child]").forEach((btn) => {
     const i = Number(btn.dataset.editChild);
@@ -1687,6 +1758,101 @@ function renderSettingsFeature() {
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
+}
+
+async function renderInvitePanel() {
+  const panel = featureModule.querySelector("#invitePanelContent");
+  if (!panel) return;
+
+  const hasPair = Boolean(window.getCurrentPairId?.());
+  const setup = window.getOnboardingState?.() || {};
+  const coparentName = setup.parents?.coparent || "Co-parent";
+  const inviteEmail = setup.parents?.invite || "";
+
+  if (hasPair) {
+    // Check if parent B has actually joined (pair has parent_b set)
+    const pairStatus = await window.supabaseClient
+      ?.from("pairs")
+      .select("parent_b, accepted_at")
+      .eq("id", window.getCurrentPairId())
+      .maybeSingle()
+      .then(({ data }) => data)
+      .catch(() => null);
+
+    if (pairStatus?.parent_b) {
+      panel.innerHTML = `
+        <article class="feature-item">
+          <strong>${escapeHtml(coparentName)}</strong>
+          <span style="color:#0ea58f;">Connected - on the same board</span>
+        </article>
+      `;
+      return;
+    }
+  }
+
+  // Co-parent hasn't joined yet - show invite options
+  const pendingLink = (() => { try { return sessionStorage.getItem("do-do-pending-invite-link"); } catch { return null; } })();
+
+  panel.innerHTML = `
+    <article class="feature-item">
+      <strong>${escapeHtml(coparentName || "Co-parent")}</strong>
+      <span>Not joined yet${inviteEmail ? ` - invited as ${escapeHtml(inviteEmail)}` : ""}</span>
+    </article>
+    ${pendingLink ? `
+    <div style="display:grid;gap:8px;">
+      <label style="display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:800;">
+        Invite link
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="settingsInviteInput" readonly value="${escapeHtml(pendingLink)}"
+            style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;background:var(--soft);color:var(--ink);" />
+          <button id="settingsInviteCopy" class="secondary-button" style="white-space:nowrap;min-height:36px;padding:0 12px;font-size:12px;">Copy link</button>
+        </div>
+      </label>
+      ${inviteEmail ? `<button id="settingsResendEmail" class="secondary-button" style="justify-self:start;min-height:36px;padding:0 14px;font-size:12px;">Re-send email</button>` : ""}
+    </div>
+    ` : inviteEmail ? `
+    <button id="settingsResendEmail" class="secondary-button" style="justify-self:start;min-height:36px;padding:0 14px;font-size:12px;">Re-send invite email</button>
+    ` : `
+    <p style="margin:0;font-size:13px;color:var(--muted);">Add your co-parent's email in onboarding to send an invite.</p>
+    `}
+  `;
+
+  panel.querySelector("#settingsInviteCopy")?.addEventListener("click", () => {
+    navigator.clipboard.writeText(pendingLink).then(() => {
+      panel.querySelector("#settingsInviteCopy").textContent = "Copied!";
+    }).catch(() => panel.querySelector("#settingsInviteInput")?.select());
+  });
+
+  panel.querySelector("#settingsResendEmail")?.addEventListener("click", async () => {
+    const btn = panel.querySelector("#settingsResendEmail");
+    btn.disabled = true;
+    btn.textContent = "Sending...";
+    try {
+      const link = pendingLink || `${window.location.origin}/invite/unknown`;
+      const res = await fetch("/api/invite-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          toEmail: inviteEmail,
+          fromName: setup.parents?.primary || null,
+          inviteLink: link,
+        }),
+      });
+      const data = res.ok ? await res.json() : {};
+      if (data.sent) {
+        btn.textContent = "Sent!";
+        showFeatureToast(`Invite re-sent to ${inviteEmail}`);
+      } else {
+        btn.textContent = "Re-send email";
+        btn.disabled = false;
+        showFeatureToast("Email not configured - share the link manually");
+      }
+    } catch {
+      btn.textContent = "Re-send email";
+      btn.disabled = false;
+      showFeatureToast("Could not send - share the link manually");
+    }
+  });
 }
 
 // ─── Children CRUD ─────────────────────────────────────────────────────────────

@@ -30,7 +30,7 @@ const STATUS_TO_DB = {
   "Waiting": "waiting",
   "To Do": "todo",
   "Done": "done",
-  "Disputed": "waiting",
+  "Disputed": "disputed",
   "Info Only": "todo",
   "Paid": "paid",
 };
@@ -39,7 +39,8 @@ const STATUS_FROM_DB = {
   "waiting": "Waiting",
   "todo": "To Do",
   "done": "Done",
-  "paid": "Done",
+  "paid": "Paid",
+  "disputed": "Disputed",
   "cancelled": "Done",
 };
 
@@ -310,19 +311,26 @@ async function saveOnboardingToSupabase(setup, userId) {
 
       // Send invite email if co-parent email was provided
       const inviteEmail = setup.parents?.invite;
+      let emailSent = false;
       if (inviteEmail && inviteLink) {
-        fetch("/api/invite-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            toEmail: inviteEmail,
-            fromName: setup.parents?.primary || null,
-            inviteLink,
-          }),
-        }).catch(() => {});
+        try {
+          const emailRes = await fetch("/api/invite-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              toEmail: inviteEmail,
+              fromName: setup.parents?.primary || null,
+              inviteLink,
+            }),
+          });
+          const emailData = emailRes.ok ? await emailRes.json() : {};
+          emailSent = emailData.sent === true;
+        } catch {
+          emailSent = false;
+        }
       }
 
-      return { familyId, pairId: pairData.id, inviteToken: pairData.invite_token, inviteLink };
+      return { familyId, pairId: pairData.id, inviteToken: pairData.invite_token, inviteLink, emailSent };
     }
 
     return { familyId };

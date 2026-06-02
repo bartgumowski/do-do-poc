@@ -45,7 +45,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Do-Do <invite@do-do.app>",
+        from: process.env.RESEND_FROM_EMAIL || "Do-Do <onboarding@resend.dev>",
         to: [toEmail],
         subject: `${senderName} invited you to Do-Do`,
         html,
