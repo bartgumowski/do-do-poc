@@ -1,6 +1,7 @@
 // Vercel cron function - sends reminder emails for due cards
 // Schedule: every 15 minutes via vercel.json crons config
-// Requires env vars: RESEND_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY
+// Requires env vars: RESEND_API_KEY (add to Vercel)
+// Uses existing: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -9,8 +10,8 @@ export default async function handler(req, res) {
   // Allow GET (cron) and POST (manual trigger)
   if (req.method !== "GET" && req.method !== "POST") return res.status(405).end();
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const resendKey = process.env.RESEND_API_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
