@@ -2073,7 +2073,8 @@ function saveCard(event) {
   const syncCard = async () => {
     let savedCard = { ...card };
     if (card.due && window.pushCardToFamilyCalendar) {
-      const gcal = await window.pushCardToFamilyCalendar(card).catch(() => null);
+      const reminderMinutes = presetToMinutes(state.automationSettings.defaultReminderPreset);
+      const gcal = await window.pushCardToFamilyCalendar(card, reminderMinutes).catch(() => null);
       if (gcal) {
         savedCard = { ...card, googleCalendar: gcal };
         state.cards = state.cards.map((c) => (c.id === card.id ? savedCard : c));
@@ -2258,6 +2259,12 @@ function buildReminderTime(card, preset) {
   const base = card.due ? new Date(card.due) : new Date(Date.now() + 60 * 60 * 1000);
   const reminderDate = reminderDateFromBase(base, preset);
   return toDateTimeInputValue(reminderDate);
+}
+
+function presetToMinutes(preset) {
+  if (!preset || preset === "at-due" || preset === "custom") return 0;
+  const n = Number(preset);
+  return Number.isFinite(n) ? n : 60;
 }
 
 function reminderIsoFromDue(due, preset) {
@@ -2683,11 +2690,6 @@ function updateAutomationSettings(nextSettings) {
   if ("automateReminders" in nextSettings || "reminderDelivery" in nextSettings || "syncFamilyCalendar" in nextSettings || nextSettings.defaultReminderPreset) {
     applyAutomationSettingsToCards();
   }
-  if (nextSettings.automateReminders) {
-    requestNotificationPermission();
-  } else {
-    stopReminderChecker();
-  }
   render();
 }
 
@@ -2915,97 +2917,11 @@ function registerServiceWorker() {
   });
 }
 
-// ─── Push notifications ───────────────────────────────────────────────────────
+// ─── Notifications ────────────────────────────────────────────────────────────
+// Reminders are delivered via Google Calendar alerts set at event creation.
+// The "minutes before" value comes from defaultReminderPreset in automation settings.
+// Browser Notification API polling is not used.
 
-let reminderCheckInterval = null;
-const firedReminders = new Set();
-
-async function requestNotificationPermission() {
-  if (!("Notification" in window)) return;
-  if (Notification.permission === "granted") return;
-  if (Notification.permission === "denied") return;
-  // Only ask if user has automateReminders on
-  const settings = getAutomationSettings();
-  if (!settings.automateReminders) return;
-  const permission = await Notification.requestPermission();
-  if (permission === "granted") {
-    showToast("Reminders enabled");
-    startReminderChecker();
-  }
-}
-
-function startReminderChecker() {
-  if (reminderCheckInterval) return;
-  checkDueReminders();
-  reminderCheckInterval = setInterval(checkDueReminders, 60 * 1000); // every minute
-}
-
-function stopReminderChecker() {
-  if (reminderCheckInterval) {
-    clearInterval(reminderCheckInterval);
-    reminderCheckInterval = null;
-  }
-}
-
-function checkDueReminders() {
-  if (Notification.permission !== "granted") return;
-  const settings = getAutomationSettings();
-  if (!shouldCreateAppReminder(settings)) return;
-
-  const now = Date.now();
-  const windowMs = 90 * 1000; // fire within 90s of reminder time
-
-  state.cards.forEach((card) => {
-    if (!card.reminder?.time) return;
-    if (card.status === "Done") return;
-    const reminderMs = new Date(card.reminder.time).getTime();
-    if (reminderMs > now + windowMs) return; // not yet
-    if (reminderMs < now - windowMs) return; // too old
-    if (firedReminders.has(card.id)) return;
-
-    firedReminders.add(card.id);
-    fireNotification(card);
-  });
-}
-
-function fireNotification(card) {
-  const title = card.title || "Reminder";
-  const topic = card.topic ? `${card.topic} - ` : "";
-  const assignee = card.assignee && card.assignee !== "Both" ? ` (${card.assignee})` : "";
-  const body = `${topic}${card.details || card.type || "Action needed"}${assignee}`;
-
-  const show = (reg) => {
-    const options = {
-      body,
-      icon: "./assets/dodo-icon.png",
-      badge: "./assets/dodo-icon.png",
-      tag: `do-do-card-${card.id}`,
-      data: { cardId: card.id },
-      requireInteraction: false,
-    };
-    if (reg) {
-      reg.showNotification(title, options);
-    } else {
-      new Notification(title, options);
-    }
-  };
-
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.ready.then(show).catch(() => show(null));
-  } else {
-    show(null);
-  }
-}
-
-function initNotifications() {
-  if (!("Notification" in window)) return;
-  if (Notification.permission === "granted") {
-    startReminderChecker();
-  }
-  // Re-check permission each time app visibility changes
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && Notification.permission === "granted") {
-      checkDueReminders();
-    }
-  });
-}
+function requestNotificationPermission() { /* handled by calendar */ }
+function stopReminderChecker() { /* no-op */ }
+function initNotifications() { /* no-op - reminders via calendar alerts */ }

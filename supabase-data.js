@@ -558,12 +558,18 @@ async function _fetchFamilyCalendarEvents(token, calId) {
 
 // ─── Level 2: Push a card as a Google Calendar event ──────────────────────────
 
-async function pushCardToFamilyCalendar(card) {
+async function pushCardToFamilyCalendar(card, reminderMinutes) {
   if (!googleAccessToken || !familyCalendarId || !card.due) return null;
 
   try {
     const start = new Date(card.due);
     const end = new Date(start.getTime() + 60 * 60 * 1000); // 1 hour default
+
+    // Build reminders block - use calendar popup alert at the configured offset
+    const mins = typeof reminderMinutes === "number" && reminderMinutes >= 0 ? reminderMinutes : null;
+    const remindersBlock = mins !== null
+      ? { useDefault: false, overrides: [{ method: "popup", minutes: mins }] }
+      : { useDefault: true };
 
     const eventBody = {
       summary: card.title,
@@ -575,6 +581,7 @@ async function pushCardToFamilyCalendar(card) {
       ].filter(Boolean).join("\n"),
       start: { dateTime: start.toISOString() },
       end: { dateTime: end.toISOString() },
+      reminders: remindersBlock,
       extendedProperties: {
         private: { doDoCardId: card.id },
       },
