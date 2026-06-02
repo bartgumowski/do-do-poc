@@ -2410,8 +2410,53 @@ svg {
 }
 
 .dialog-card-meta {
+  display: grid;
+  gap: 8px;
+}
+
+.dialog-meta-row {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.dialog-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.dialog-meta-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.dialog-meta-cal {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #0ea58f;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 3px 7px;
+  background: rgba(14, 165, 143, 0.1);
+}
+
+.dialog-meta-cal:hover {
+  background: rgba(14, 165, 143, 0.18);
+}
+
+.dialog-meta-cal svg {
+  width: 13px;
+  height: 13px;
 }
 
 .dialog-quick-actions {

@@ -1385,7 +1385,9 @@ function openCardDialog(id = "", focusSection = "info") {
   elements.dialogMode.textContent = card ? "Information and thread" : "New Do";
   elements.llmCardChat?.classList.toggle("hidden", Boolean(card));
   elements.commentPanel.classList.toggle("hidden", !card);
-  elements.cardReminderPanel.classList.toggle("hidden", !card);
+  // Hide reminder panel when GCal is connected - alert is set on the calendar event instead
+  const gcalActive = Boolean(state.automationSettings?.syncFamilyCalendar);
+  elements.cardReminderPanel.classList.toggle("hidden", !card || gcalActive);
   elements.activityPanel.classList.toggle("hidden", !card);
   elements.editCardMenuButton.classList.toggle("hidden", !card);
   elements.dialogCardMeta.classList.toggle("hidden", !card);
@@ -1415,7 +1417,7 @@ function openCardDialog(id = "", focusSection = "info") {
     elements.cardReminderTimeInput.value = card.reminder?.time
       ? toDateTimeInputValue(new Date(card.reminder.time))
       : buildReminderTime(card, elements.cardReminderPresetInput.value);
-    renderDialogPeople(card);
+    renderDialogMeta(card);
     updateDialogQuickActions(card);
     renderComments(card);
     renderActivity(card);
@@ -1441,6 +1443,43 @@ function openCardDialog(id = "", focusSection = "info") {
 function renderDialogPeople(card) {
   elements.dialogCardPeople.outerHTML = renderPeopleIcons(card, "dialogCardPeople");
   elements.dialogCardPeople = document.querySelector("#dialogCardPeople");
+}
+
+function renderDialogMeta(card) {
+  const meta = elements.dialogCardMeta;
+  if (!meta || !card) return;
+
+  const createdDate = card.createdAt
+    ? new Date(card.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+    : null;
+  const gcalLinked = card.googleCalendar?.synced && card.googleCalendar?.htmlLink;
+  const reminderPreset = card.googleCalendar?.reminderPreset || card.reminder?.preset;
+  const reminderLabel = reminderPreset ? presetLabel(reminderPreset) : null;
+
+  meta.innerHTML = `
+    <div class="dialog-meta-row">
+      ${card.author ? `<span class="dialog-meta-item"><span class="dialog-meta-label">Added by</span>${escapeHtml(card.author)}</span>` : ""}
+      ${createdDate ? `<span class="dialog-meta-item"><span class="dialog-meta-label">Added on</span>${createdDate}</span>` : ""}
+      ${gcalLinked
+        ? `<a class="dialog-meta-item dialog-meta-cal" href="${card.googleCalendar.htmlLink}" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4M16 2v4M4 9h16M5 5h14v16H5z"/></svg>
+            ${reminderLabel ? `Alert ${reminderLabel}` : "In calendar"}
+           </a>`
+        : (reminderLabel ? `<span class="dialog-meta-item"><span class="dialog-meta-label">Reminder</span>${reminderLabel}</span>` : "")}
+    </div>
+    <div id="dialogCardPeople" class="card-people"></div>
+  `;
+  // Re-render people icons inside the new meta HTML
+  const peopleEl = meta.querySelector("#dialogCardPeople");
+  if (peopleEl) {
+    peopleEl.outerHTML = renderPeopleIcons(card, "dialogCardPeople");
+    elements.dialogCardPeople = document.querySelector("#dialogCardPeople");
+  }
+}
+
+function presetLabel(preset) {
+  const map = { "15": "15 min before", "60": "1 hr before", "1440": "1 day before", "10080": "1 week before", "at-due": "at event time" };
+  return map[preset] || preset;
 }
 
 function updateDialogQuickActions(card) {
@@ -2166,6 +2205,19 @@ function saveCard(event) {
       }
     : existing?.googleCalendar || null;
 
+  // Author: use onboarding name → Google display name → email prefix
+  const setup = getOnboardingState() || {};
+  const authorName = setup.parents?.primary
+    || currentAuthSession?.user?.user_metadata?.full_name
+    || currentAuthSession?.user?.email?.split("@")[0]
+    || "Parent A";
+
+  // Prefer GCal alert over app reminder when calendar is connected
+  const gcalConnected = Boolean(window.getGoogleCalendarConnected?.() || state.automationSettings.syncFamilyCalendar);
+  const reminder = gcalConnected
+    ? null  // GCal event alert handles delivery
+    : (existing?.reminder || autoReminder);
+
   const card = {
     id,
     title: elements.titleInput.value.trim(),
@@ -2179,8 +2231,9 @@ function saveCard(event) {
     details: elements.detailsInput.value.trim(),
     comments,
     acknowledged: existing?.acknowledged || false,
-    reminder: existing?.reminder || autoReminder,
+    reminder,
     googleCalendar,
+    author: existing?.author || authorName,
     createdAt: existing?.createdAt || Date.now(),
   };
 
@@ -2308,7 +2361,7 @@ function syncOpenCardDialog(id) {
   setSelectValue(elements.statusInput, card.status);
   setSelectValue(elements.assigneeInput, card.assignee);
   setSelectValue(elements.childInput, card.child);
-  renderDialogPeople(card);
+  renderDialogMeta(card);
   updateDialogQuickActions(card);
   renderComments(card);
   renderActivity(card);
