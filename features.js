@@ -1654,12 +1654,12 @@ function renderSettingsFeature() {
         <strong>${escapeHtml(name)}</strong>
       </div>
       <div class="feature-item-actions">
-        <button class="icon-button" data-edit-${type}="${index}" aria-label="Edit ${name}">
+        <button class="icon-button icon-button-sm" data-edit-${type}="${index}" aria-label="Edit ${name}">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/>
           </svg>
         </button>
-        <button class="icon-button icon-button-danger" data-delete-${type}="${index}" aria-label="Delete ${name}">
+        <button class="icon-button icon-button-sm icon-button-danger" data-delete-${type}="${index}" aria-label="Delete ${name}">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <path d="M3 4h10M6 4V2.5h4V4M5 4l.5 9h5L11 4"/>
           </svg>
