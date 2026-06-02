@@ -455,39 +455,27 @@ function renderFeature(moduleName, data) {
     return;
   }
 
-  const settingsSectionActions = {
-    Children: "Add child",
-    Pets: "Add pet",
-  };
+  if (moduleName === "settings") {
+    renderSettingsFeature();
+    return;
+  }
 
   featureModule.innerHTML = `
-    ${moduleName === "settings" ? "" : `
-      <div class="feature-actions module-actions">
-        ${data.actions.map((action) => `<button class="secondary-button feature-action" data-action="${action}">${action}</button>`).join("")}
-      </div>
-    `}
-
-    ${moduleName === "settings" ? "" : `
-      <div class="feature-stat-grid">
-        ${data.stats.map(([label, value]) => `
-          <div class="feature-stat">
-            <span>${label}</span>
-            <strong>${value}</strong>
-          </div>
-        `).join("")}
-      </div>
-    `}
-
+    <div class="feature-actions module-actions">
+      ${data.actions.map((action) => `<button class="secondary-button feature-action" data-action="${action}">${action}</button>`).join("")}
+    </div>
+    <div class="feature-stat-grid">
+      ${data.stats.map(([label, value]) => `
+        <div class="feature-stat">
+          <span>${label}</span>
+          <strong>${value}</strong>
+        </div>
+      `).join("")}
+    </div>
     <div class="feature-layout">
-      ${moduleName === "settings" ? renderSpecialPanel(moduleName, "automation") : ""}
       ${data.sections.map((section) => `
         <section class="feature-panel">
-          ${settingsSectionActions[section.title] ? `
-            <div class="feature-panel-header">
-              <h3>${section.title}</h3>
-              <button class="secondary-button feature-action" data-action="${settingsSectionActions[section.title]}">${settingsSectionActions[section.title]}</button>
-            </div>
-          ` : `<h3>${section.title}</h3>`}
+          <h3>${section.title}</h3>
           <div class="feature-items">
             ${section.items.map(([title, detail]) => `
               <article class="feature-item">
@@ -498,21 +486,7 @@ function renderFeature(moduleName, data) {
           </div>
         </section>
       `).join("")}
-      ${moduleName === "settings" ? renderSpecialPanel(moduleName, "vaccine") : renderSpecialPanel(moduleName)}
-      ${moduleName === "settings" ? `
-        <section class="feature-panel">
-          <h3>Account</h3>
-          <div class="feature-items">
-            <article class="feature-item">
-              <strong>Google Calendar</strong>
-              <span>Sign out and back in to reconnect calendar sync</span>
-            </article>
-          </div>
-          <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
-            <button class="secondary-button" id="signOutButton" style="color: #ef4444; border-color: #ef4444;">Sign out</button>
-          </div>
-        </section>
-      ` : ""}
+      ${renderSpecialPanel(moduleName)}
     </div>
   `;
 
@@ -530,12 +504,6 @@ function renderFeature(moduleName, data) {
     }
   });
 
-  if (moduleName === "settings") {
-    featureModule.querySelector("#signOutButton")?.addEventListener("click", () => {
-      if (typeof signOut === "function") signOut();
-    });
-  }
-
   featureModule.querySelectorAll("[data-toggle-integration]").forEach((button) => {
     button.addEventListener("click", () => {
       const isConnected = button.dataset.connected === "true";
@@ -545,10 +513,6 @@ function renderFeature(moduleName, data) {
       showFeatureToast(isConnected ? "Integration disconnected" : "Integration connected");
     });
   });
-
-  if (moduleName === "settings") {
-    bindAutomationSettings();
-  }
 }
 
 function bindAutomationSettings() {
@@ -1616,7 +1580,116 @@ function showFeatureToast(message) {
   window.setTimeout(() => toast.classList.remove("show"), 2200);
 }
 
-// ─── Add child (real) ─────────────────────────────────────────────────────────
+// ─── Settings feature (real data) ────────────────────────────────────────────
+
+function renderSettingsFeature() {
+  const setup = window.getOnboardingState?.() || {};
+  const children = setup.children || [];
+  const pets = setup.pets || [];
+
+  const renderMemberRow = (name, index, type) => `
+    <article class="feature-item feature-item-editable">
+      <div class="feature-item-main">
+        <strong>${escapeHtml(name)}</strong>
+      </div>
+      <div class="feature-item-actions">
+        <button class="icon-button" data-edit-${type}="${index}" aria-label="Edit ${name}">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/>
+          </svg>
+        </button>
+        <button class="icon-button icon-button-danger" data-delete-${type}="${index}" aria-label="Delete ${name}">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M3 4h10M6 4V2.5h4V4M5 4l.5 9h5L11 4"/>
+          </svg>
+        </button>
+      </div>
+    </article>
+  `;
+
+  featureModule.innerHTML = `
+    <div class="feature-layout">
+      ${renderSpecialPanel("settings", "automation")}
+
+      <section class="feature-panel">
+        <div class="feature-panel-header">
+          <h3>Children</h3>
+          <button class="secondary-button" id="addChildBtn">+ Add child</button>
+        </div>
+        <div class="feature-items" id="childrenList">
+          ${children.length
+            ? children.map((c, i) => renderMemberRow(c.name || c, i, "child")).join("")
+            : `<p class="feature-empty">No children added yet.</p>`}
+        </div>
+      </section>
+
+      <section class="feature-panel">
+        <div class="feature-panel-header">
+          <h3>Pets</h3>
+          <button class="secondary-button" id="addPetBtn">+ Add pet</button>
+        </div>
+        <div class="feature-items" id="petsList">
+          ${pets.length
+            ? pets.map((p, i) => renderMemberRow(p.name || p, i, "pet")).join("")
+            : `<p class="feature-empty">No pets added yet.</p>`}
+        </div>
+      </section>
+
+      ${renderSpecialPanel("settings", "vaccine")}
+
+      <section class="feature-panel">
+        <h3>Account</h3>
+        <div class="feature-items">
+          <article class="feature-item">
+            <strong>Google Calendar</strong>
+            <span>Sign out and back in to reconnect calendar sync</span>
+          </article>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="secondary-button" id="signOutButton" style="color:#ef4444;border-color:#ef4444;">Sign out</button>
+        </div>
+      </section>
+    </div>
+  `;
+
+  // Bind automation settings panel
+  bindAutomationSettings();
+
+  // Add child/pet
+  featureModule.querySelector("#addChildBtn")?.addEventListener("click", () => promptAddChild());
+  featureModule.querySelector("#addPetBtn")?.addEventListener("click", () => promptAddPet());
+
+  // Sign out
+  featureModule.querySelector("#signOutButton")?.addEventListener("click", () => {
+    if (typeof signOut === "function") signOut();
+  });
+
+  // Edit/delete children
+  featureModule.querySelectorAll("[data-edit-child]").forEach((btn) => {
+    const i = Number(btn.dataset.editChild);
+    btn.addEventListener("click", () => promptEditChild(i));
+  });
+  featureModule.querySelectorAll("[data-delete-child]").forEach((btn) => {
+    const i = Number(btn.dataset.deleteChild);
+    btn.addEventListener("click", () => confirmDeleteChild(i));
+  });
+
+  // Edit/delete pets
+  featureModule.querySelectorAll("[data-edit-pet]").forEach((btn) => {
+    const i = Number(btn.dataset.editPet);
+    btn.addEventListener("click", () => promptEditPet(i));
+  });
+  featureModule.querySelectorAll("[data-delete-pet]").forEach((btn) => {
+    const i = Number(btn.dataset.deletePet);
+    btn.addEventListener("click", () => confirmDeletePet(i));
+  });
+}
+
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
+}
+
+// ─── Children CRUD ─────────────────────────────────────────────────────────────
 
 async function promptAddChild() {
   const name = window.prompt("Child's first name:");
@@ -1624,15 +1697,39 @@ async function promptAddChild() {
   const setup = window.getOnboardingState?.() || {};
   const familyId = setup.familyId;
   if (!familyId) { showFeatureToast("Complete setup first"); return; }
-  const saved = await window.saveChildrenToSupabase?.(familyId, [{ name: name.trim() }]);
-  // Also update local onboarding state
+  await window.saveChildrenToSupabase?.(familyId, [{ name: name.trim() }]);
   const updated = { ...setup, children: [...(setup.children || []), { name: name.trim() }] };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
   showFeatureToast(`${name.trim()} added`);
-  if (typeof switchModule === "function") switchModule("settings");
+  switchModule("settings");
 }
 
-// ─── Add pet (localStorage - no Supabase table needed) ────────────────────────
+async function promptEditChild(index) {
+  const setup = window.getOnboardingState?.() || {};
+  const children = [...(setup.children || [])];
+  const current = children[index]?.name || children[index] || "";
+  const name = window.prompt("Edit name:", current);
+  if (!name?.trim() || name.trim() === current) return;
+  children[index] = { ...(typeof children[index] === "object" ? children[index] : {}), name: name.trim() };
+  const updated = { ...setup, children };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`Updated to ${name.trim()}`);
+  switchModule("settings");
+}
+
+function confirmDeleteChild(index) {
+  const setup = window.getOnboardingState?.() || {};
+  const children = [...(setup.children || [])];
+  const name = children[index]?.name || children[index] || "this child";
+  if (!window.confirm(`Remove ${name}?`)) return;
+  children.splice(index, 1);
+  const updated = { ...setup, children };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`${name} removed`);
+  switchModule("settings");
+}
+
+// ─── Pets CRUD ─────────────────────────────────────────────────────────────────
 
 function promptAddPet() {
   const name = window.prompt("Pet's name:");
@@ -1641,7 +1738,32 @@ function promptAddPet() {
   const updated = { ...setup, pets: [...(setup.pets || []), { name: name.trim() }] };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
   showFeatureToast(`${name.trim()} added`);
-  if (typeof switchModule === "function") switchModule("settings");
+  switchModule("settings");
+}
+
+function promptEditPet(index) {
+  const setup = window.getOnboardingState?.() || {};
+  const pets = [...(setup.pets || [])];
+  const current = pets[index]?.name || pets[index] || "";
+  const name = window.prompt("Edit name:", current);
+  if (!name?.trim() || name.trim() === current) return;
+  pets[index] = { ...(typeof pets[index] === "object" ? pets[index] : {}), name: name.trim() };
+  const updated = { ...setup, pets };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`Updated to ${name.trim()}`);
+  switchModule("settings");
+}
+
+function confirmDeletePet(index) {
+  const setup = window.getOnboardingState?.() || {};
+  const pets = [...(setup.pets || [])];
+  const name = pets[index]?.name || pets[index] || "this pet";
+  if (!window.confirm(`Remove ${name}?`)) return;
+  pets.splice(index, 1);
+  const updated = { ...setup, pets };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`${name} removed`);
+  switchModule("settings");
 }
 
 // Refresh calendar when Google Calendar events load
