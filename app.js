@@ -1189,58 +1189,54 @@ function renderUnifiedCard(card, options = {}) {
   const attributes = options.attributes || `data-card-id="${card.id}" role="button" tabindex="0"`;
   const className = ["card", "unified-card", options.className || "", isDone ? "done-card" : ""].filter(Boolean).join(" ");
 
+  const dateStr = formatDate(card.due);
+  const statusLabel = isDone ? "Done"
+    : card.status === "Waiting" ? "Waiting"
+    : card.status === "Important" ? "Urgent"
+    : !card.acknowledged ? "Needs response"
+    : "";
+
   return `
     <article class="${className}" ${attributes}>
       <div class="card-state-row">
-        <span class="card-date-tag">${formatDate(card.due)}</span>
-        <span class="${card.acknowledged ? "" : "needs-response-tag"}">${card.acknowledged ? "Acknowledged" : "Needs response"}</span>
+        <span class="card-date-tag">${dateStr}</span>
+        ${statusLabel ? `<span class="card-status-label${isDone ? " card-status-done" : ""}">${statusLabel}</span>` : ""}
         ${card.amount ? `<span class="card-money-tag">${escapeHtml(card.amount)}</span>` : ""}
       </div>
-      <div class="card-top">
-        <h3 class="card-title">${escapeHtml(card.title)}</h3>
-        <div class="card-title-actions">
-          ${renderPeopleIcons(card)}
-        </div>
-      </div>
-      <p class="card-details">${escapeHtml(card.details)}</p>
-      ${card.reminder ? `
-        <div class="card-reminder">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-            <path d="M10 21h4" />
-          </svg>
-          <span>${formatReminder(card.reminder)}</span>
-        </div>
-      ` : ""}
+
+      <div class="card-people-row">${renderPeopleIcons(card)}</div>
+
+      <h3 class="card-title">${escapeHtml(card.title)}</h3>
+
+      ${card.details ? `<p class="card-details">${escapeHtml(card.details)}</p>` : ""}
+
       ${card.googleCalendar?.synced ? `
         <div class="card-sync">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 3v4M17 3v4M4 11h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
-          </svg>
-          <span>${card.googleCalendar.provider === "outlook" ? "Outlook Calendar" : "Google Calendar"}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v4M17 3v4M4 11h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
+          <span>${card.googleCalendar.provider === "outlook" ? "Outlook" : "Google Calendar"}</span>
         </div>
       ` : ""}
-      ${showActions ? `<div class="quick-actions">
-        <button class="quick-complete" type="button" data-quick-complete="${card.id}" ${isDone ? "disabled" : ""}>
-          ${isDone ? "Completed" : actionLabel}
-        </button>
-        <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="do" ${isDone ? "disabled" : ""}>I'll do it</button>
-        <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="will" ${isDone ? "disabled" : ""}>Please do it</button>
-        <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="cannot" ${isDone ? "disabled" : ""}>Can't</button>
-        <button class="quick-message quick-remind" type="button" data-remind-card="${card.id}" aria-label="Set reminder for this card">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-            <path d="M10 21h4" />
-          </svg>
-          Reminder
-        </button>
-        <button class="quick-message" type="button" data-message-card="${card.id}" aria-label="Message about this card">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" />
-          </svg>
-          Message
-        </button>
-      </div>` : ""}
+
+      ${showActions ? `
+        <div class="quick-actions">
+          <button class="quick-complete" type="button" data-quick-complete="${card.id}" ${isDone ? "disabled" : ""}>
+            ${isDone ? "Completed" : actionLabel}
+          </button>
+          <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="do" ${isDone ? "disabled" : ""}>I'll do it</button>
+          <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="will" ${isDone ? "disabled" : ""}>Please do it</button>
+          <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="cannot" ${isDone ? "disabled" : ""}>Can't</button>
+        </div>
+        <div class="card-footer-actions">
+          <button class="card-footer-btn" type="button" data-remind-card="${card.id}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+            Reminder
+          </button>
+          <button class="card-footer-btn" type="button" data-message-card="${card.id}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/></svg>
+            Message
+          </button>
+        </div>
+      ` : ""}
     </article>
   `;
 }
