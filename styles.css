@@ -14,10 +14,10 @@
   --line: rgba(0, 0, 0, 0.08);
   --nav: #ffffff;
   --nav-muted: #666666;
-  /* Accent - soft magenta */
-  --accent: #d946ef;
-  --accent-weak: #fdf4ff;
-  --accent-mid: #f5d0fe;
+  /* Accent */
+  --accent: #171918;
+  --accent-weak: #f3f3f3;
+  --accent-mid: #e0e0e0;
   /* Elevation */
   --shadow: 0 18px 46px rgba(17, 24, 39, 0.08);
   /* Border radius scale */
@@ -50,9 +50,9 @@ html[data-theme="dark"] {
   --line: rgba(236, 248, 245, 0.1);
   --nav: #1d2524;
   --nav-muted: rgba(236, 248, 245, 0.68);
-  --accent: #e879f9;
-  --accent-weak: rgba(232, 121, 249, 0.15);
-  --accent-mid: rgba(232, 121, 249, 0.35);
+  --accent: #65d6c6;
+  --accent-weak: rgba(101, 214, 198, 0.18);
+  --accent-mid: rgba(101, 214, 198, 0.42);
   --shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
 }
 
@@ -193,7 +193,7 @@ body {
   margin: 0;
   color: var(--ink);
   background: #f7f7f7;
-  font-family: 'Hanken Grotesk', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: Manrope, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -255,6 +255,10 @@ body.auth-locked .onboarding-screen {
   place-items: center;
   padding: 14px;
   background: var(--surface-page);
+}
+
+.auth-screen[hidden] {
+  display: none !important;
 }
 
 .onboarding-screen {
@@ -3678,7 +3682,7 @@ textarea {
   --line: rgba(30, 29, 34, 0.08);
   --nav: #eef5ef;
   --nav-muted: rgba(30, 29, 34, 0.66);
-  --accent: #e879f9;
+  --accent: #65d6c6;
   --accent-weak: #dff8f3;
   --accent-mid: #aeece3;
   --sage: #eaf3e8;
@@ -5619,9 +5623,9 @@ html[data-theme="dark"] {
   --line: rgba(236, 248, 245, 0.1);
   --nav: #1d2524;
   --nav-muted: rgba(236, 248, 245, 0.68);
-  --accent: #e879f9;
-  --accent-weak: rgba(232, 121, 249, 0.15);
-  --accent-mid: rgba(232, 121, 249, 0.35);
+  --accent: #65d6c6;
+  --accent-weak: rgba(101, 214, 198, 0.18);
+  --accent-mid: rgba(101, 214, 198, 0.42);
   --sage: #24322f;
   --peach: #48382f;
   --shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
