@@ -1,0 +1,1 @@
+before commiting always check if the change has been done and if it works

@@ -1,0 +1,1150 @@
+/*
+ * Cached Zen Minimalist light-mode variant.
+ * This file intentionally layers on top of the production stylesheet.
+ */
+:root,
+html[data-theme="dark"] {
+  color-scheme: light;
+  --ink: #121212;
+  --muted: #666666;
+  --soft: rgba(0, 0, 0, 0.02);
+  --paper: #ffffff;
+  --surface-page: #f9f9f9;
+  --surface-card: rgba(255, 255, 255, 0.8);
+  --surface-input: #ffffff;
+  --surface-raised: rgba(0, 0, 0, 0.02);
+  --surface-nav: rgba(255, 255, 255, 0.8);
+  --line: rgba(0, 0, 0, 0.08);
+  --nav: rgba(255, 255, 255, 0.8);
+  --nav-muted: #666666;
+  --accent: #d946ef;
+  --accent-weak: rgba(217, 70, 239, 0.08);
+  --accent-mid: rgba(217, 70, 239, 0.22);
+  --shadow: none;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 16px;
+  --radius-full: 12px;
+}
+
+* {
+  scrollbar-color: rgba(0, 0, 0, 0.14) transparent;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: "Hanken Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0.015em;
+}
+
+body,
+body.auth-locked,
+body.onboarding-locked,
+.app-shell,
+.main-panel,
+.board-view,
+.feature-module,
+.auth-screen,
+.onboarding-screen,
+.poc-gate {
+  background: #f9f9f9;
+}
+
+svg {
+  stroke-width: 1.5;
+}
+
+button:active {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.toolbar,
+.topbar,
+.inline-capture,
+.daily-summary,
+.card,
+.feature-panel,
+.feature-stat,
+.feature-hero,
+.finance-hero,
+.upcoming-expenses,
+.expense-summary-panel,
+.calendar-shell,
+.calendar-agenda,
+.slack-shell,
+.chat-panel,
+.message-composer,
+.card-dialog,
+.dialog-content,
+.dialog-header,
+.auth-phone,
+.onboarding-phone,
+.onboarding-card,
+.mini-stat,
+.feature-item,
+.inline-capture-host,
+.column,
+.column-header,
+.unified-card,
+.phone-tabbar,
+.sidebar {
+  border-color: rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: none;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.workspace,
+.feature-module {
+  padding: 24px;
+}
+
+.feature-module,
+.feature-layout,
+.feature-stat-grid,
+.board-view,
+.archive-grid,
+.shopping-board,
+.finance-grid,
+.settings-control-list {
+  gap: 16px;
+}
+
+.toolbar {
+  margin: 0;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.topbar {
+  min-height: 88px;
+  padding: 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.attention-strip {
+  gap: 16px;
+  padding: 16px 24px;
+  background: #f9f9f9;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.card,
+.column,
+.feature-panel,
+.feature-stat,
+.feature-hero,
+.finance-hero,
+.upcoming-expenses,
+.expense-summary-panel,
+.calendar-shell,
+.calendar-agenda,
+.slack-shell,
+.chat-panel,
+.message-composer,
+.auth-phone,
+.onboarding-phone,
+.onboarding-card,
+.daily-summary,
+.summary-tile,
+.unified-card,
+.attention-card,
+.list-row,
+.signal-card,
+.poc-gate-card {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.card,
+.feature-panel,
+.feature-stat,
+.feature-hero,
+.finance-hero,
+.upcoming-expenses,
+.auth-phone,
+.poc-gate-card {
+  padding: 24px;
+}
+
+.column-body {
+  gap: 16px;
+  padding: 16px;
+}
+
+.column-header {
+  min-height: 56px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.column-header span,
+.meta-chip,
+.archive-toggle span,
+.icon-button-sm,
+.auth-mode-option {
+  border-radius: 12px;
+}
+
+.search-wrap,
+.primary-button,
+.secondary-button,
+.ghost-button,
+.icon-button,
+.segmented,
+.segmented-button,
+.module-link,
+.topic,
+.archive-toggle,
+.inline-card-capture textarea,
+.inline-create-button,
+.toolbar-new-card,
+.summary-add-button,
+.mini-stat,
+.pill,
+.card-reminder,
+.card-sync,
+.settings-select-row select,
+.shopping-capture input,
+.auth-provider-button,
+.auth-continue-button,
+.auth-switch-button,
+.onboarding-card input,
+.onboarding-card select,
+.onboarding-inline-button,
+.settings-toggle-row,
+.settings-select-row,
+.settings-connection-row,
+input,
+select,
+textarea {
+  border-radius: 12px;
+}
+
+.mini-stat,
+.search-wrap,
+.icon-button,
+.secondary-button,
+.ghost-button,
+.archive-toggle,
+.settings-toggle-row,
+.settings-select-row,
+.settings-connection-row,
+.feature-item,
+.integration-row,
+.timeline div,
+.toggle-row,
+.shopping-row,
+.budget-row,
+input,
+select,
+textarea {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: none;
+}
+
+.primary-button,
+.toolbar-new-card,
+.summary-add-button,
+.phone-fab,
+.inline-card-capture {
+  background: #d946ef;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.secondary-button,
+.pill,
+.card-reminder,
+.onboarding-inline-button {
+  background: rgba(217, 70, 239, 0.08);
+  color: #a21caf;
+}
+
+.inline-capture-host {
+  margin-top: 0;
+  padding: 0 24px 16px;
+  background: #f9f9f9;
+}
+
+.inline-card-capture {
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.card-sync,
+.derived-tag,
+.card-tag,
+.topic-pill {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.auth-screen,
+.onboarding-screen,
+.poc-gate {
+  padding: 24px;
+}
+
+.auth-phone,
+.onboarding-phone {
+  border-radius: 16px;
+}
+
+.auth-confirm,
+.auth-steps span {
+  border-radius: 12px;
+}
+
+.phone-tabbar {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px 16px 0 0;
+}
+
+.phone-fab,
+.app-logo-placeholder,
+.auth-avatar,
+.onboarding-header img,
+.auth-provider-mark,
+.inline-mic-button {
+  box-shadow: none;
+}
+
+.sidebar {
+  border-right: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.module-link:hover,
+.module-link.active,
+.topic:hover,
+.topic.active {
+  background: rgba(0, 0, 0, 0.05);
+  color: #121212;
+}
+
+.primary-button:hover:not(:disabled),
+.toolbar-new-card:hover:not(:disabled),
+.summary-add-button:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+dialog::backdrop {
+  background: rgba(18, 18, 18, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+@media (min-width: 761px) {
+  .toolbar {
+    padding: 16px 24px;
+    background: #f9f9f9;
+  }
+
+  .attention-strip {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace,
+  .feature-module {
+    padding: 24px;
+  }
+
+  .toolbar {
+    padding: 16px 24px;
+  }
+
+  .inline-capture-host {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+}
+
+/* Dashboard preview keeps the real app controls and content. */
+body.zen-dashboard-mode {
+  min-height: 100vh;
+  background: #f4f4f2;
+}
+
+body.zen-dashboard-mode .app-shell {
+  min-height: 100vh;
+  background: #f8f8f7;
+}
+
+body.zen-dashboard-mode .topbar {
+  display: none;
+}
+
+body.zen-dashboard-mode .main-panel {
+  min-height: 100vh;
+  background: #f8f8f7;
+}
+
+body.zen-dashboard-mode .toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 12px;
+  margin: 0;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid rgba(23, 25, 24, 0.06);
+  background: #f8f8f7;
+}
+
+body.zen-dashboard-mode .app-logo-placeholder {
+  width: 42px;
+  height: 42px;
+  flex-basis: 42px;
+}
+
+body.zen-dashboard-mode .search-wrap {
+  min-height: 48px;
+  border-radius: 12px;
+  padding: 0 16px;
+  background: #ffffff;
+}
+
+body.zen-dashboard-mode .search-wrap input {
+  border: 0;
+  background: transparent;
+  color: #777977;
+  font-size: 14px;
+}
+
+body.zen-dashboard-mode .settings-mini-stat {
+  width: 42px;
+  min-height: 42px;
+}
+
+body.zen-dashboard-mode .toolbar-new-card {
+  min-height: 42px;
+  border-radius: 4px;
+  background: #171918;
+  color: #ffffff;
+}
+
+body.zen-dashboard-mode .top-mini-stats {
+  grid-column: 1 / -1;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+body.zen-dashboard-mode .mini-stat {
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 0 11px;
+  background: #f7f7f5;
+}
+
+body.zen-dashboard-mode .mini-stat span {
+  color: #8a8c89;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+body.zen-dashboard-mode .inline-capture-host {
+  margin: 0;
+  padding: 18px 24px 14px;
+  background: #f8f8f7;
+}
+
+body.zen-dashboard-mode .inline-card-capture {
+  position: relative;
+  display: block;
+  padding: 0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+body.zen-dashboard-mode .inline-card-input-wrap {
+  position: relative;
+}
+
+body.zen-dashboard-mode .inline-card-input-wrap::before {
+  content: "✧";
+  position: absolute;
+  top: 50%;
+  left: 24px;
+  z-index: 2;
+  color: #999b98;
+  font-size: 28px;
+  line-height: 1;
+  transform: translateY(-52%);
+  pointer-events: none;
+}
+
+body.zen-dashboard-mode .inline-card-capture textarea {
+  min-height: 88px;
+  padding: 27px 120px 24px 62px;
+  border-radius: 12px;
+  color: #555755;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+body.zen-dashboard-mode .inline-card-capture textarea::placeholder {
+  color: #afb1ae;
+}
+
+body.zen-dashboard-mode .inline-mic-button {
+  right: 62px;
+  bottom: 25px;
+  width: 38px;
+  height: 38px;
+  background: #f7f7f5;
+  color: #999b98;
+}
+
+body.zen-dashboard-mode .inline-card-actions {
+  position: absolute;
+  right: 16px;
+  bottom: 24px;
+  z-index: 3;
+}
+
+body.zen-dashboard-mode .inline-create-button {
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #777977;
+  padding: 0;
+  font-size: 0;
+}
+
+body.zen-dashboard-mode .inline-create-button::after {
+  content: "→";
+  color: #999b98;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+body.zen-dashboard-mode .daily-summary {
+  margin: 0 24px 24px;
+  border-radius: 12px;
+}
+
+body.zen-dashboard-mode .attention-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0 24px 30px;
+  border-bottom: 1px solid rgba(23, 25, 24, 0.06);
+  background: #f8f8f7;
+}
+
+body.zen-dashboard-mode .attention-card {
+  min-height: 240px;
+  display: grid;
+  align-content: space-between;
+  gap: 20px;
+  border: 1px solid rgba(23, 25, 24, 0.1);
+  border-left: 1px solid rgba(23, 25, 24, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+  background: #ffffff;
+}
+
+body.zen-dashboard-mode .workspace {
+  padding: 26px 24px 34px;
+  background: #f8f8f7;
+}
+
+body.zen-dashboard-mode .board-view,
+body.zen-dashboard-mode .archive-grid {
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+body.zen-dashboard-mode .column {
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+body.zen-dashboard-mode .column-header {
+  min-height: 58px;
+  padding: 16px 20px;
+  background: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+body.zen-dashboard-mode .column-body {
+  gap: 16px;
+  padding: 16px;
+}
+
+body.zen-dashboard-mode .card {
+  gap: 20px;
+  padding: 28px;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+body.zen-dashboard-mode .card-title {
+  color: #242624;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+body.zen-dashboard-mode .card-top {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 14px;
+}
+
+body.zen-dashboard-mode .card-title-actions {
+  order: -1;
+}
+
+body.zen-dashboard-mode .card-details {
+  color: #555755;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
+body.zen-dashboard-mode .card-state-row {
+  align-items: center;
+  gap: 8px;
+}
+
+body.zen-dashboard-mode .card-state-row span {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0;
+  background: transparent;
+  color: #777977;
+  padding: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+body.zen-dashboard-mode .card-state-row .needs-response-tag {
+  margin-left: auto;
+  background: transparent !important;
+  color: #d85b62 !important;
+}
+
+body.zen-dashboard-mode .card-state-row .card-money-tag {
+  margin-left: auto;
+  border-radius: 4px;
+  padding: 4px 7px;
+}
+
+body.zen-dashboard-mode .quick-complete,
+body.zen-dashboard-mode .quick-response,
+body.zen-dashboard-mode .quick-message {
+  min-height: 38px;
+  border-radius: 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+body.zen-dashboard-mode .quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.zen-dashboard-mode .quick-complete,
+body.zen-dashboard-mode .quick-response,
+body.zen-dashboard-mode .quick-message {
+  width: 100%;
+}
+
+body.zen-dashboard-mode .quick-message {
+  grid-column: span 2;
+  border-color: transparent;
+}
+
+html[data-theme="dark"] body.zen-dashboard-mode .search-wrap input {
+  border: 0;
+  background: transparent;
+  color: #777977;
+}
+
+html[data-theme="dark"] body.zen-dashboard-mode .quick-response,
+html[data-theme="dark"] body.zen-dashboard-mode .quick-message {
+  border-color: rgba(23, 25, 24, 0.14);
+  background: #ffffff;
+  color: #555755;
+}
+
+html[data-theme="dark"] body.zen-dashboard-mode .quick-message {
+  border-color: transparent;
+}
+
+html[data-theme="dark"] body.zen-dashboard-mode .card-state-row span {
+  background: transparent;
+  color: #777977;
+}
+
+html[data-theme="dark"] body.zen-dashboard-mode .card-state-row .needs-response-tag {
+  background: transparent !important;
+  color: #d85b62 !important;
+}
+
+body.zen-dashboard-mode .phone-tabbar {
+  display: none;
+  border: 1px solid rgba(23, 25, 24, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+body.zen-dashboard-mode .phone-tab,
+body.zen-dashboard-mode .phone-fab {
+  color: #777977;
+}
+
+body.zen-dashboard-mode .phone-tab.active {
+  color: #d85b62;
+}
+
+body.zen-dashboard-mode .phone-fab {
+  background: #171918;
+  color: #ffffff;
+}
+
+@media (max-width: 560px) {
+  body.zen-dashboard-mode .toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 18px 18px 14px;
+  }
+
+  body.zen-dashboard-mode .app-logo-placeholder {
+    display: none;
+  }
+
+  body.zen-dashboard-mode .toolbar-new-card {
+    display: none;
+  }
+
+  body.zen-dashboard-mode .inline-card-capture {
+    display: block;
+  }
+
+  body.zen-dashboard-mode .inline-capture-host {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  body.zen-dashboard-mode .daily-summary {
+    margin-right: 18px;
+    margin-left: 18px;
+  }
+
+  body.zen-dashboard-mode .attention-strip,
+  body.zen-dashboard-mode .workspace {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  body.zen-dashboard-mode .attention-strip,
+  body.zen-dashboard-mode .board-view,
+  body.zen-dashboard-mode .archive-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.zen-dashboard-mode .main-panel {
+    padding-bottom: 88px;
+  }
+
+  body.zen-dashboard-mode .phone-tabbar {
+    width: calc(100% - 32px);
+    right: auto;
+    bottom: 14px;
+    left: 50%;
+    display: flex;
+    transform: translateX(-50%);
+  }
+
+  body.zen-dashboard-mode .card {
+    padding: 24px;
+  }
+}
+
+/*
+ * The cached variant is deliberately light-only. Keep the preview stable even
+ * when a returning browser has the production app's dark preference stored.
+ */
+html[data-theme="dark"] body,
+html[data-theme="dark"] .app-shell,
+html[data-theme="dark"] .main-panel,
+html[data-theme="dark"] .board-view,
+html[data-theme="dark"] .feature-module,
+html[data-theme="dark"] .auth-screen,
+html[data-theme="dark"] .onboarding-screen,
+html[data-theme="dark"] .poc-gate {
+  background: #f9f9f9;
+}
+
+html[data-theme="dark"] .auth-screen,
+html[data-theme="dark"] .onboarding-screen {
+  background: #f9f9f9;
+}
+
+html[data-theme="dark"] .auth-phone,
+html[data-theme="dark"] .onboarding-phone,
+html[data-theme="dark"] .auth-confirm,
+html[data-theme="dark"] .onboarding-card,
+html[data-theme="dark"] .auth-provider-button,
+html[data-theme="dark"] .auth-provider-button.apple,
+html[data-theme="dark"] .auth-confirm input,
+html[data-theme="dark"] .onboarding-card input,
+html[data-theme="dark"] .onboarding-card select {
+  background: rgba(255, 255, 255, 0.8);
+  color: #121212;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .auth-steps span {
+  background: rgba(0, 0, 0, 0.02);
+  color: #666666;
+}
+
+html[data-theme="dark"] .auth-steps span.active,
+html[data-theme="dark"] .auth-continue-button {
+  background: #d946ef;
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .auth-confirm label,
+html[data-theme="dark"] .auth-confirm-label,
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: #666666;
+}
+
+html[data-theme="dark"] .auth-switch-button,
+html[data-theme="dark"] .onboarding-inline-button {
+  color: #a21caf;
+}
+
+/*
+ * Reference refinement: warm paper, crisp panels, editorial monochrome
+ * controls, and more generous breathing room. Visual styling only.
+ */
+:root,
+html[data-theme="dark"] {
+  --ink: #171918;
+  --muted: #777977;
+  --soft: #f6f6f4;
+  --paper: #ffffff;
+  --surface-page: #f5f5f3;
+  --surface-card: rgba(255, 255, 255, 0.94);
+  --surface-input: rgba(255, 255, 255, 0.96);
+  --surface-raised: #f7f7f5;
+  --surface-nav: rgba(255, 255, 255, 0.94);
+  --line: rgba(23, 25, 24, 0.1);
+  --nav: rgba(255, 255, 255, 0.94);
+  --nav-muted: #8a8c89;
+  --accent: #d85b62;
+  --accent-weak: rgba(216, 91, 98, 0.08);
+  --accent-mid: rgba(216, 91, 98, 0.22);
+}
+
+body,
+body.auth-locked,
+body.onboarding-locked,
+.app-shell,
+.main-panel,
+.board-view,
+.feature-module,
+.auth-screen,
+.onboarding-screen,
+.poc-gate,
+html[data-theme="dark"] body,
+html[data-theme="dark"] .app-shell,
+html[data-theme="dark"] .main-panel,
+html[data-theme="dark"] .board-view,
+html[data-theme="dark"] .feature-module,
+html[data-theme="dark"] .auth-screen,
+html[data-theme="dark"] .onboarding-screen,
+html[data-theme="dark"] .poc-gate {
+  background: #f5f5f3;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  color: #171918;
+  letter-spacing: 0.01em;
+}
+
+svg {
+  stroke-width: 1.5;
+}
+
+.toolbar,
+.topbar,
+.daily-summary,
+.card,
+.feature-panel,
+.feature-stat,
+.feature-hero,
+.finance-hero,
+.upcoming-expenses,
+.expense-summary-panel,
+.calendar-shell,
+.calendar-agenda,
+.slack-shell,
+.chat-panel,
+.message-composer,
+.dialog-content,
+.dialog-header,
+.auth-phone,
+.onboarding-phone,
+.onboarding-card,
+.mini-stat,
+.column,
+.column-header,
+.unified-card,
+.phone-tabbar,
+.sidebar {
+  border-color: rgba(23, 25, 24, 0.1);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: none;
+}
+
+.workspace,
+.feature-module {
+  padding: 32px 24px;
+}
+
+.toolbar {
+  padding: 24px;
+  border-bottom-color: rgba(23, 25, 24, 0.06);
+}
+
+.topbar {
+  padding: 24px;
+  border-bottom-color: rgba(23, 25, 24, 0.06);
+}
+
+.inline-capture-host {
+  padding: 0 24px 24px;
+  background: #f5f5f3;
+}
+
+.attention-strip {
+  padding: 24px;
+  background: #f5f5f3;
+  border-bottom-color: rgba(23, 25, 24, 0.06);
+}
+
+.card,
+.feature-panel,
+.feature-stat,
+.feature-hero,
+.finance-hero,
+.upcoming-expenses,
+.auth-phone,
+.poc-gate-card {
+  padding: 24px;
+}
+
+.column-body {
+  gap: 16px;
+  padding: 16px;
+}
+
+.column-header {
+  padding: 16px 20px;
+  border-bottom-color: rgba(23, 25, 24, 0.06);
+}
+
+.search-wrap,
+.mini-stat,
+.icon-button,
+.secondary-button,
+.ghost-button,
+.archive-toggle,
+.settings-toggle-row,
+.settings-select-row,
+.settings-connection-row,
+.feature-item,
+.integration-row,
+.timeline div,
+.toggle-row,
+.shopping-row,
+.budget-row,
+input,
+select,
+textarea {
+  border-color: rgba(23, 25, 24, 0.1);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: none;
+}
+
+.primary-button,
+.toolbar-new-card,
+.summary-add-button,
+.phone-fab,
+.inline-create-button,
+.auth-submit,
+.quick-complete,
+.auth-provider-button,
+.auth-provider-button.apple,
+html[data-theme="dark"] .auth-provider-button,
+html[data-theme="dark"] .auth-provider-button.apple {
+  border-color: #171918;
+  background: #171918;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.auth-submit,
+.quick-complete {
+  border: 1px solid #171918;
+  background: #171918;
+  color: #ffffff;
+  padding: 0 16px;
+}
+
+.quick-response,
+.quick-message {
+  border: 1px solid rgba(23, 25, 24, 0.14);
+  background: #ffffff;
+  color: #555755;
+  box-shadow: none;
+}
+
+.inline-card-capture {
+  border: 1px solid rgba(23, 25, 24, 0.1);
+  background: rgba(255, 255, 255, 0.94);
+  color: #171918;
+  padding: 16px;
+}
+
+.inline-card-capture textarea,
+html[data-theme="dark"] .inline-card-capture textarea {
+  border: 1px solid rgba(23, 25, 24, 0.1);
+  background: #ffffff;
+  color: #171918;
+}
+
+.inline-mic-button,
+.message-mic-button,
+.voice-button {
+  color: #8a8c89;
+}
+
+.secondary-button,
+.ghost-button,
+.archive-toggle,
+.pill,
+.card-reminder,
+.card-sync,
+.derived-tag,
+.card-tag,
+.topic-pill,
+.meta-chip {
+  border-color: rgba(23, 25, 24, 0.1);
+  background: #f7f7f5;
+  color: #555755;
+  box-shadow: none;
+}
+
+.eyebrow,
+.mini-stat span,
+.daily-summary span,
+.feature-stat span,
+.card-meta,
+.card-footer,
+.card-details,
+.column-empty {
+  color: #8a8c89;
+  letter-spacing: 0.08em;
+}
+
+.card-details {
+  letter-spacing: 0.01em;
+}
+
+.card:hover,
+.attention-card:hover {
+  border-color: rgba(23, 25, 24, 0.2);
+}
+
+.module-link:hover,
+.module-link.active,
+.topic:hover,
+.topic.active {
+  background: rgba(23, 25, 24, 0.05);
+  color: #171918;
+}
+
+button:active {
+  background-color: rgba(23, 25, 24, 0.08);
+}
+
+html[data-theme="dark"] .toolbar,
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .daily-summary,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .feature-panel,
+html[data-theme="dark"] .feature-stat,
+html[data-theme="dark"] .feature-hero,
+html[data-theme="dark"] .column,
+html[data-theme="dark"] .column-header,
+html[data-theme="dark"] .auth-phone,
+html[data-theme="dark"] .onboarding-phone,
+html[data-theme="dark"] .onboarding-card,
+html[data-theme="dark"] .mini-stat,
+html[data-theme="dark"] .phone-tabbar {
+  border-color: rgba(23, 25, 24, 0.1);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: none;
+}
+
+.workspace,
+html[data-theme="dark"] .workspace,
+html[data-theme="dark"] .inline-capture-host {
+  background: #f5f5f3;
+}
+
+@media (min-width: 761px) {
+  .toolbar {
+    padding: 24px;
+    background: #f5f5f3;
+  }
+
+  .attention-strip {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace,
+  .feature-module {
+    padding: 32px 24px;
+  }
+
+  .toolbar {
+    padding: 24px;
+  }
+
+  .inline-capture-host {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+}
