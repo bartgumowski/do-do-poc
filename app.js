@@ -438,30 +438,30 @@ function bindEvents() {
   });
   elements.exportButton?.addEventListener("click", exportCards);
   elements.cardForm.addEventListener("submit", saveCard);
-  elements.voiceButton.addEventListener("click", startVoiceCapture);
+  elements.voiceButton?.addEventListener("click", startVoiceCapture);
   elements.llmVoiceButton?.addEventListener("click", startVoiceCapture);
   elements.llmInterpretButton?.addEventListener("click", () => syncLlmCardPrompt({ announce: true }));
   elements.llmCardPromptInput?.addEventListener("input", () => syncLlmCardPrompt({ announce: false }));
-  elements.autofillButton.addEventListener("click", () => autofillFromVoice(elements.voiceTranscriptInput.value));
-  elements.deleteButton.addEventListener("click", deleteCurrentCard);
-  elements.ackButton.addEventListener("click", deleteCurrentCard);
-  elements.editCardMenuButton.addEventListener("click", () => setCardDialogEditMode(true));
-  elements.sendCardMessageButton.addEventListener("click", addCardDialogMessage);
+  elements.autofillButton?.addEventListener("click", () => autofillFromVoice(elements.voiceTranscriptInput?.value));
+  elements.deleteButton?.addEventListener("click", deleteCurrentCard);
+  elements.ackButton?.addEventListener("click", deleteCurrentCard);
+  elements.editCardMenuButton?.addEventListener("click", () => setCardDialogEditMode(true));
+  elements.sendCardMessageButton?.addEventListener("click", addCardDialogMessage);
   elements.commentMicButton?.addEventListener("click", () => startDictationForField(elements.commentInput, {
     button: elements.commentMicButton,
     success: "Message dictated",
     fallback: "Voice dictation is not available here. Type the short message instead.",
   }));
-  elements.cardReminderPresetInput.addEventListener("change", updateCardDialogReminderTime);
-  elements.saveCardReminderButton.addEventListener("click", saveCardDialogReminder);
-  elements.clearCardReminderButton.addEventListener("click", clearCardDialogReminder);
-  elements.detailsInput.addEventListener("input", () => deriveFieldsFromShortInfo(elements.detailsInput.value, { silent: true }));
-  elements.dialogCompleteButton.addEventListener("click", () => quickCompleteCardFromDialog());
-  elements.dialogDoButton.addEventListener("click", () => quickRespondCardFromDialog("do"));
-  elements.dialogPleaseButton.addEventListener("click", () => quickRespondCardFromDialog("will"));
-  elements.dialogCannotButton.addEventListener("click", () => quickRespondCardFromDialog("cannot"));
-  elements.closeDialogButton.addEventListener("click", () => elements.cardDialog.close());
-  elements.messageForm.addEventListener("submit", saveCardMessage);
+  elements.cardReminderPresetInput?.addEventListener("change", updateCardDialogReminderTime);
+  elements.saveCardReminderButton?.addEventListener("click", saveCardDialogReminder);
+  elements.clearCardReminderButton?.addEventListener("click", clearCardDialogReminder);
+  elements.detailsInput?.addEventListener("input", () => deriveFieldsFromShortInfo(elements.detailsInput.value, { silent: true }));
+  elements.dialogCompleteButton?.addEventListener("click", () => quickCompleteCardFromDialog());
+  elements.dialogDoButton?.addEventListener("click", () => quickRespondCardFromDialog("do"));
+  elements.dialogPleaseButton?.addEventListener("click", () => quickRespondCardFromDialog("will"));
+  elements.dialogCannotButton?.addEventListener("click", () => quickRespondCardFromDialog("cannot"));
+  elements.closeDialogButton?.addEventListener("click", () => elements.cardDialog?.close());
+  elements.messageForm?.addEventListener("submit", saveCardMessage);
   elements.cardMessageMicButton?.addEventListener("click", () => startDictationForField(elements.cardMessageInput, {
     button: elements.cardMessageMicButton,
     success: "Message dictated",
@@ -1375,7 +1375,7 @@ function createCardFromInlineCapture(input) {
 function openCardDialog(id = "", focusSection = "info") {
   const card = state.cards.find((item) => item.id === id);
   elements.cardForm.reset();
-  elements.voiceStatus.textContent = "Record what has to be done";
+  if (elements.voiceStatus) elements.voiceStatus.textContent = "Record what has to be done";
   elements.cardId.value = card?.id || "";
   elements.dialogTitle.textContent = card ? card.title : "New Do";
   elements.dialogMode.textContent = card ? "Information and thread" : "New Do";
@@ -1511,7 +1511,7 @@ function setCardDialogEditMode(isEditing) {
     field.disabled = !isEditing;
   });
 
-  elements.voiceButton.disabled = !isEditing;
+  if (elements.voiceButton) elements.voiceButton.disabled = !isEditing;
   if (elements.llmVoiceButton) elements.llmVoiceButton.disabled = !isEditing;
   if (elements.llmCardPromptInput) elements.llmCardPromptInput.disabled = !isEditing;
   elements.autofillButton.disabled = !isEditing;
@@ -1670,9 +1670,9 @@ function startVoiceCapture() {
   recognition.lang = "en-US";
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
-  elements.voiceButton.classList.add("recording");
+  elements.voiceButton?.classList.add("recording");
   elements.llmVoiceButton?.classList.add("recording");
-  elements.voiceStatus.textContent = "Listening...";
+  if (elements.voiceStatus) elements.voiceStatus.textContent = "Listening...";
 
   recognition.addEventListener("result", (event) => {
     const transcript = event.results[0][0].transcript;
@@ -1686,15 +1686,15 @@ function startVoiceCapture() {
   });
 
   recognition.addEventListener("end", () => {
-    elements.voiceButton.classList.remove("recording");
+    elements.voiceButton?.classList.remove("recording");
     elements.llmVoiceButton?.classList.remove("recording");
-    elements.voiceStatus.textContent = "Record what has to be done";
+    if (elements.voiceStatus) elements.voiceStatus.textContent = "Record what has to be done";
   });
 
   recognition.addEventListener("error", () => {
-    elements.voiceButton.classList.remove("recording");
+    elements.voiceButton?.classList.remove("recording");
     elements.llmVoiceButton?.classList.remove("recording");
-    elements.voiceStatus.textContent = "Record what has to be done";
+    if (elements.voiceStatus) elements.voiceStatus.textContent = "Record what has to be done";
     (chatFlowActive ? elements.llmCardPromptInput : elements.voiceTranscriptInput).focus();
     showToast("Could not access voice recording. Type the request instead.");
   });
@@ -1702,8 +1702,8 @@ function startVoiceCapture() {
   try {
     recognition.start();
   } catch {
-    elements.voiceButton.classList.remove("recording");
-    elements.voiceStatus.textContent = "Record what has to be done";
+    elements.voiceButton?.classList.remove("recording");
+    if (elements.voiceStatus) elements.voiceStatus.textContent = "Record what has to be done";
     elements.voiceTranscriptInput.focus();
     showToast("Could not start voice recording. Type the request and tap Autofill fields.");
   }
@@ -1766,8 +1766,8 @@ function startMobileVoiceCapture() {
   mobileVoice.active = true;
   elements.mobileNewCardButton.classList.add("recording");
   elements.mobileNewCardButton.setAttribute("aria-label", "Listening. Release to stop.");
-  elements.voiceButton.classList.add("recording");
-  elements.voiceStatus.textContent = "Listening from bottom mic...";
+  elements.voiceButton?.classList.add("recording");
+  if (elements.voiceStatus) elements.voiceStatus.textContent = "Listening from bottom mic...";
   elements.voiceTranscriptInput.value = "";
 
   recognition.lang = "en-US";
@@ -1815,8 +1815,8 @@ function resetMobileVoiceCapture() {
   mobileVoice.recognition = null;
   elements.mobileNewCardButton?.classList.remove("recording");
   elements.mobileNewCardButton?.setAttribute("aria-label", "Create new Do. Hold to dictate.");
-  elements.voiceButton.classList.remove("recording");
-  elements.voiceStatus.textContent = "Record what has to be done";
+  elements.voiceButton?.classList.remove("recording");
+  if (elements.voiceStatus) elements.voiceStatus.textContent = "Record what has to be done";
 }
 
 function autofillFromVoice(rawText) {
