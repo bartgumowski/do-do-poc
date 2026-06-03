@@ -2328,7 +2328,9 @@ function saveCardSilent() {
   }
   if (!elements.titleInput?.value.trim()) return; // nothing to save
   const syntheticEvent = { preventDefault: () => {} };
+  saveCard._silent = true;
   saveCard(syntheticEvent);
+  saveCard._silent = false;
 }
 
 function saveCard(event) {
@@ -2425,7 +2427,7 @@ function saveCard(event) {
   }
 
   persist();
-  elements.cardDialog.close();
+  if (!saveCard._silent) elements.cardDialog.close();
   showToast(existing ? "Do updated" : buildCreateToast(card));
   render();
   // Sync to Supabase, then push to Google Calendar if card has a date
