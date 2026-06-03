@@ -29,7 +29,7 @@ const defaultAutomationSettings = {
   workCalendarVisibility: "busy-only",
   workCalendarConnections: [],
   syncGoogleCalendar: false,
-  defaultReminderPreset: "60",
+  defaultReminderPreset: "120",
   reminderDelivery: "calendar-and-app",
   everyoneCanEdit: true,
 };
@@ -1530,7 +1530,7 @@ function renderDialogMeta(card) {
 }
 
 function presetLabel(preset) {
-  const map = { "15": "15 min before", "60": "1 hr before", "1440": "1 day before", "10080": "1 week before", "at-due": "at event time" };
+  const map = { "15": "15 min before", "60": "1 hr before", "120": "2 hrs before", "1440": "1 day before", "10080": "1 week before", "at-due": "at event time" };
   return map[preset] || preset;
 }
 
@@ -2009,6 +2009,15 @@ function inferChild(lower) {
   return family.children[0]?.name || "Ava";
 }
 
+// Returns the current user's real name (from onboarding or auth), never "Parent A"
+function getMyName() {
+  const setup = getOnboardingState() || {};
+  return setup.parents?.primary
+    || currentAuthSession?.user?.user_metadata?.full_name
+    || currentAuthSession?.user?.email?.split("@")[0]
+    || "Parent A";
+}
+
 function getFamilyPeople() {
   const setup = getOnboardingState() || {};
   const primaryName = setup.parents?.primary || "Parent A";
@@ -2110,9 +2119,10 @@ function renderComments(card) {
   elements.commentList.innerHTML = card.comments.length
     ? card.comments.map((comment) => {
         const isMine = comment.author === myName || comment.author === "Parent A";
+        const authorDisplay = displayPersonName(comment.author);
         return `
           <div class="chat-bubble ${isMine ? "chat-mine" : "chat-theirs"}">
-            <div class="chat-meta">${escapeHtml(comment.author)} · ${escapeHtml(comment.time)}</div>
+            <div class="chat-meta">${escapeHtml(authorDisplay)} · ${escapeHtml(comment.time)}</div>
             <div class="chat-text">${escapeHtml(comment.text)}</div>
           </div>
         `;
@@ -2155,7 +2165,7 @@ function addCardDialogMessage() {
     item.id === id
       ? applyMessageUpdatesToCard(item, text, {
           acknowledged: false,
-          comments: [...item.comments, { author: (getOnboardingState()?.parents?.primary || "Parent A"), text, time: "Just now", tags: extractMessageTags(text, item) }],
+          comments: [...item.comments, { author: getMyName(), text, time: "Just now", tags: extractMessageTags(text, item) }],
         })
       : item
   ));
@@ -2212,7 +2222,7 @@ function saveCardDialogReminder() {
       ? {
           ...item,
           reminder,
-          comments: [...item.comments, { author: "Parent A", text: reminderText, time: "Just now" }],
+          comments: [...item.comments, { author: getMyName(), text: reminderText, time: "Just now" }],
         }
       : item
   ));
@@ -2234,7 +2244,7 @@ function clearCardDialogReminder() {
       ? {
           ...item,
           reminder: null,
-          comments: [...item.comments, { author: "Parent A", text: "Reminder cleared", time: "Just now" }],
+          comments: [...item.comments, { author: getMyName(), text: "Reminder cleared", time: "Just now" }],
         }
       : item
   ));
@@ -2283,7 +2293,7 @@ function saveCard(event) {
   const comments = existing ? [...existing.comments] : [];
 
   if (newComment) {
-    comments.push({ author: "Parent A", text: newComment, time: "Just now" });
+    comments.push({ author: getMyName(), text: newComment, time: "Just now" });
   }
 
   const due = elements.dueInput.value ? new Date(elements.dueInput.value).toISOString() : "";
@@ -2398,7 +2408,7 @@ function acknowledgeCurrentCard() {
           ...card,
           acknowledged: true,
           status: card.status === "Important" || card.status === "Waiting" ? "Done" : card.status,
-          comments: [...card.comments, { author: "Parent A", text: "Acknowledged", time: "Just now" }],
+          comments: [...card.comments, { author: getMyName(), text: "Acknowledged", time: "Just now" }],
         }
       : card
   ));
@@ -2420,7 +2430,7 @@ function quickCompleteCard(id) {
           ...item,
           status: "Done",
           acknowledged: true,
-          comments: [...item.comments, { author: "Parent A", text: label, time: "Just now" }],
+          comments: [...item.comments, { author: getMyName(), text: label, time: "Just now" }],
         }
       : item
   ));
@@ -2520,7 +2530,7 @@ function saveCardMessage(event) {
     item.id === id
       ? applyMessageUpdatesToCard(item, text, {
           acknowledged: false,
-          comments: [...item.comments, { author: (getOnboardingState()?.parents?.primary || "Parent A"), text, time: "Just now", tags: extractMessageTags(text, item) }],
+          comments: [...item.comments, { author: getMyName(), text, time: "Just now", tags: extractMessageTags(text, item) }],
         })
       : item
   ));
@@ -2588,7 +2598,7 @@ function saveReminder(event) {
       ? {
           ...item,
           reminder,
-          comments: [...item.comments, { author: "Parent A", text: reminderText, time: "Just now" }],
+          comments: [...item.comments, { author: getMyName(), text: reminderText, time: "Just now" }],
         }
       : item
   ));
@@ -2606,7 +2616,7 @@ function clearReminder() {
       ? {
           ...item,
           reminder: null,
-          comments: [...item.comments, { author: "Parent A", text: "Reminder cleared", time: "Just now" }],
+          comments: [...item.comments, { author: getMyName(), text: "Reminder cleared", time: "Just now" }],
         }
       : item
   ));

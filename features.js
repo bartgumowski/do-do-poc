@@ -1472,6 +1472,7 @@ function renderSpecialPanel(moduleName, part = "all") {
     const leadTimes = [
       ["15", "15 minutes before"],
       ["60", "1 hour before"],
+      ["120", "2 hours before"],
       ["1440", "1 day before"],
       ["10080", "1 week before"],
       ["at-due", "At due time"],
