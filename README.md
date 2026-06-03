@@ -1,36 +1,54 @@
-# Do-Do Production Export
+# Do-Do
 
-Static production bundle for the Do-Do web app.
+Family coordination app. Live at **https://do-do.app**
 
-## Publish with Git
-
-```bash
-git init
-git add .
-git commit -m "Publish Do-Do static app"
-git branch -M main
-git remote add origin <your-repository-url>
-git push -u origin main
-```
-
-## Publish with Vercel
-
-From this folder:
+## Deploy
 
 ```bash
-npx vercel --prod
+git add -A
+git commit -m "your message"
+git push origin main
 ```
 
-The app is static. No build command or output directory is required.
+Vercel auto-deploys from `main`. No build step required.
 
-## Public Files
+If push fails with auth error, update the remote token:
+```bash
+git remote set-url origin https://YOUR_TOKEN@github.com/bartgumowski/do-do-poc.git
+```
 
-- `index.html`: app entry point
-- `styles.css`: application styles
-- `app.js`: application and Supabase authentication logic
-- `features.js`: prototype feature logic
-- `legal.html`: public legal clauses
-- `manifest.webmanifest`, `sw.js`: PWA files
-- `assets/`: public app artwork
+Generate tokens at: GitHub → Settings → Developer settings → Personal access tokens (classic) → scope: `repo`
 
-Only the public Supabase anonymous key is included in frontend code. Do not add service-role keys, private environment files, internal reviews, or roadmap documents to this folder.
+## File overview
+
+| File | Purpose |
+|---|---|
+| `index.html` | App shell and dialog HTML |
+| `app.js` | All app logic, state, card dialog, auth, Supabase |
+| `features.js` | Calendar, shopping, expenses, messages, settings modules |
+| `styles.css` | All styles |
+| `supabase-data.js` | Supabase data layer |
+| `sw.js` | Service worker (PWA offline cache) |
+| `legal.html` | Public legal page |
+
+## URL routes
+
+| URL | View |
+|---|---|
+| `/#board` | Coordination board |
+| `/#calendar` | Shared family calendar |
+| `/#messages` | Topic threads |
+| `/#shopping` | Shopping list |
+| `/#expenses` | Expenses tracker |
+| `/#settings` | Settings and integrations |
+
+## Tech stack
+
+- Vanilla JS, no framework, no build step
+- Supabase for auth and data (env vars set in Vercel dashboard)
+- Google Calendar integration via automation settings
+- PWA with offline read cache
+
+## Security
+
+Only the public Supabase anonymous key is in frontend code. Never commit service-role keys, `.env.local`, or GitHub tokens to the repo.

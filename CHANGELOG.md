@@ -1,5 +1,42 @@
 # Do-Do Changelog
 
+## 2026-06-03 - Session: Parent names, NLP reminders, card dialog overhaul
+
+### Parent names and tagging
+- **Real names everywhere** - `getMyName()` helper reads from onboarding/auth and replaces all hardcoded "Parent A" strings in comment authors, acknowledgements, reminders, and activity entries.
+- **Comment display** - stored "Parent A"/"Parent B" in comment author field now shown as real names via `displayPersonName()`.
+- **Auto-tagging from text** - `peopleForCard()` scans title, details, and all comments for parent name mentions; matching parents show as people icons automatically without needing an explicit assignee field.
+- **Tagging from comments** - sending a message that mentions a parent name sets them as assignee and refreshes people icons live.
+- **"for me" detection** - phrases like "for me", "I'll do it" in text auto-assign the current user.
+- **Avatar initials fixed** - `personInitial` and `personClass` now use real name initials (B/A from Bart/Art) instead of broken `.includes("B")` check.
+
+### NLP reminder extraction
+- **Text-to-reminder** - typing "remind me 2 hours before", "reminder at 3pm", "alert 30 minutes before", "1 day before" etc. in the card text auto-sets the reminder preset and time field.
+- **2 hours before** option added to all reminder dropdowns (onboarding, card dialog, settings, reminder dialog).
+
+### Card dialog overhaul
+- **Unified New Do popup** - both `+` button and Calendar "Add Do" open the same direct edit form. LLM two-step removed entirely. Calendar pre-fills the selected date.
+- **Custom reminder** - datetime-local input only appears when "Custom time" is selected in the reminder dropdown.
+- **Autosave** - 1.5s debounce fires on any field change while the dialog is open.
+- **Button layout** - Save is primary on the right. Cancel + Delete are secondary on the left. Delete hidden for new cards.
+- **Last edited** - cards store `lastEditedAt` and `lastEditedBy` on every save; shown in the dialog meta bar next to "Added on".
+- **Assignee from explicit mention only** - auto-derive no longer defaults to Parent A; only sets assignee when a name is explicitly mentioned in the text.
+
+### Calendar
+- **Parent color on busy blocks** - work/personal calendar busy blocks render in the parent's color (dark for Parent A, amber for Parent B).
+- **Cards clickable from calendar** - day/agenda view cards open the card dialog via `data-card-id`.
+
+### URL routing
+- **Hash-based routes** - every module navigation updates the URL hash. Back/forward works. Deep-linking supported.
+- Routes: `/#board` `/#calendar` `/#messages` `/#shopping` `/#expenses` `/#settings`
+
+### Repo / deployment
+- **Repo made private** on GitHub.
+- **Token removed from history** - `Git token.md.rtf` stripped from commit and added to `.gitignore`.
+- **`.gitignore`** updated to exclude token files.
+
+---
+
 ## 2026-06-03 - Session: Calendar, New Do dialog, URL routing
 
 ### Calendar

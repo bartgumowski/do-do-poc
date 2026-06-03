@@ -1451,10 +1451,18 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     elements.dueInput.value = card.due ? card.due.slice(0, 16) : "";
     elements.amountInput.value = card.amount || "";
     elements.detailsInput.value = card.details;
-    elements.cardReminderPresetInput.value = card.reminder?.preset || state.automationSettings.defaultReminderPreset;
-    elements.cardReminderTimeInput.value = card.reminder?.time
-      ? toDateTimeInputValue(new Date(card.reminder.time))
-      : buildReminderTime(card, elements.cardReminderPresetInput.value);
+    // Check if the card text mentions a specific reminder - use that over the stored preset
+    const textReminder = inferReminderFromText((card.title + " " + card.details).toLowerCase());
+    const resolvedPreset = textReminder?.preset || card.reminder?.preset || state.automationSettings.defaultReminderPreset;
+    elements.cardReminderPresetInput.value = resolvedPreset;
+    if (textReminder?.isoTime) {
+      elements.cardReminderTimeInput.value = toDateTimeInputValue(new Date(textReminder.isoTime));
+    } else if (card.due) {
+      elements.cardReminderTimeInput.value = buildReminderTime(card, resolvedPreset);
+    } else {
+      elements.cardReminderTimeInput.value = card.reminder?.time
+        ? toDateTimeInputValue(new Date(card.reminder.time)) : "";
+    }
     renderDialogMeta(card);
     updateDialogQuickActions(card);
     renderComments(card);
