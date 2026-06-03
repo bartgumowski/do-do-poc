@@ -1515,13 +1515,13 @@ function setCardDialogEditMode(isEditing) {
   ];
 
   editableFields.forEach((field) => {
-    field.disabled = !isEditing;
+    if (field) field.disabled = !isEditing;
   });
 
   if (elements.voiceButton) elements.voiceButton.disabled = !isEditing;
   if (elements.llmVoiceButton) elements.llmVoiceButton.disabled = !isEditing;
   if (elements.llmCardPromptInput) elements.llmCardPromptInput.disabled = !isEditing;
-  elements.autofillButton.disabled = !isEditing;
+  if (elements.autofillButton) elements.autofillButton.disabled = !isEditing;
   const useChatFlow = isEditing && !isExistingCard;
   elements.cardForm.classList.toggle("llm-new-card-mode", useChatFlow);
   elements.llmCardChat?.classList.toggle("hidden", !useChatFlow);
