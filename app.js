@@ -31,6 +31,7 @@ const defaultAutomationSettings = {
   syncGoogleCalendar: false,
   defaultReminderPreset: "60",
   reminderDelivery: "calendar-and-app",
+  everyoneCanEdit: true,
 };
 window.appStorage = window.appStorage || createStorage();
 const storage = window.appStorage;
@@ -1438,7 +1439,8 @@ function openCardDialog(id = "", focusSection = "info") {
     renderDerivedTags();
   }
 
-  setCardDialogEditMode(!card);
+  const canEdit = !card || state.automationSettings.everyoneCanEdit;
+  setCardDialogEditMode(canEdit);
   elements.cardDialog.showModal();
   focusCardDialogSection(focusSection);
 }
@@ -2049,15 +2051,19 @@ function setSelectValue(select, value) {
 }
 
 function renderComments(card) {
+  const family = getFamilyPeople();
+  const myName = family.primary.name || "Parent A";
   elements.commentList.innerHTML = card.comments.length
-    ? card.comments.map((comment) => `
-      <div class="comment">
-        <strong>${escapeHtml(comment.author)} · ${escapeHtml(comment.time)}</strong>
-        <span>${escapeHtml(comment.text)}</span>
-        ${renderMessageTags(comment.tags || extractMessageTags(comment.text, card), "comment-tags")}
-      </div>
-    `).join("")
-    : `<div class="comment"><span>No messages yet</span></div>`;
+    ? card.comments.map((comment) => {
+        const isMine = comment.author === myName || comment.author === "Parent A";
+        return `
+          <div class="chat-bubble ${isMine ? "chat-mine" : "chat-theirs"}">
+            <div class="chat-meta">${escapeHtml(comment.author)} · ${escapeHtml(comment.time)}</div>
+            <div class="chat-text">${escapeHtml(comment.text)}</div>
+          </div>
+        `;
+      }).join("")
+    : `<div class="chat-empty">No messages yet</div>`;
 }
 
 function renderActivity(card) {
@@ -3016,13 +3022,12 @@ function isPetName(name) {
 }
 
 function peopleForCard(card) {
-  const assignee = card.assignee || "Parent A";
-  const adults = assignee === "Both parents"
-    ? ["Parent A", "Parent B"]
-    : assignee === "Child"
-      ? []
-      : [assignee];
-  const children = splitPeople(card.child || "Ava");
+  const assignee = card.assignee;
+  const adults = !assignee ? []
+    : assignee === "Both parents" ? ["Parent A", "Parent B"]
+    : assignee === "Child" ? []
+    : [assignee];
+  const children = card.child ? splitPeople(card.child) : [];
   const people = [...adults, ...children];
   const label = people.join(" and ");
   return { adults, children, people, label };
