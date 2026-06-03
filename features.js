@@ -401,7 +401,7 @@ document.body.dataset.featuresReady = "true";
 
 moduleLinks.forEach((button) => {
   button.addEventListener("click", () => {
-    switchModule(button.dataset.module);
+    window.switchModule(button.dataset.module);
     document.body.classList.remove("show-mobile-menu");
   });
 });
@@ -435,6 +435,30 @@ function switchModule(moduleName) {
 }
 
 window.switchModule = switchModule;
+
+// --- Hash-based routing ---
+const VALID_MODULES = ["board", "calendar", "messages", "shopping", "expenses", "settings"];
+
+const _origSwitchModule = switchModule;
+window.switchModule = function(moduleName) {
+  _origSwitchModule(moduleName);
+  const hash = "#" + moduleName;
+  if (location.hash !== hash) history.pushState(null, "", hash);
+};
+
+function routeFromHash() {
+  const module = location.hash.replace("#", "").toLowerCase();
+  if (VALID_MODULES.includes(module)) {
+    _origSwitchModule(module);
+  }
+}
+
+window.addEventListener("popstate", routeFromHash);
+
+// Apply hash on first load once the app is ready
+document.addEventListener("DOMContentLoaded", () => {
+  if (location.hash) routeFromHash();
+});
 
 function renderFeature(moduleName, data) {
   if (moduleName === "calendar") {
@@ -539,7 +563,7 @@ function bindAutomationSettings() {
       reminderDelivery: reminderDelivery?.value || "calendar-and-app",
     });
     showFeatureToast("Automation settings updated");
-    switchModule("settings");
+    window.switchModule("settings");
   };
   autoRemindersToggle?.addEventListener("change", save);
   familyCalendarToggle?.addEventListener("change", save);
@@ -563,7 +587,7 @@ function bindAutomationSettings() {
         workCalendarVisibility: "busy-only",
       });
       showFeatureToast(`${provider === "outlook" ? "Microsoft Outlook" : "Google"} work calendar ${connected.includes(provider) ? "disconnected" : "connected"}`);
-      switchModule("settings");
+      window.switchModule("settings");
     });
   });
   themePreference?.addEventListener("change", () => {
@@ -1155,38 +1179,54 @@ function renderDayView() {
 
 function renderDaySchedule(key) {
   const events = eventsForDate(key);
+  if (!events.length) {
+    return `<div class="day-schedule"><article class="agenda-empty">No events on this day.</article></div>`;
+  }
+  // Group by time, sorted
+  const byTime = {};
+  events.forEach((item) => {
+    const t = item.time === "All day" ? "00:00" : item.time;
+    (byTime[t] = byTime[t] || []).push(item);
+  });
+  const sortedTimes = Object.keys(byTime).sort();
   return `
     <div class="day-schedule">
-      ${["08:00", "10:00", "12:00", "15:00", "17:00"].map((slot) => {
-        const slotEvents = events.filter((item) => item.time.startsWith(slot.slice(0, 2)));
-        return `
-          <div class="day-slot">
-            <span>${slot}</span>
-            <div>
-              ${slotEvents.length
-                ? slotEvents.map(renderAgendaCard).join("")
-                : `<em>Available</em>`}
-            </div>
-          </div>
-        `;
-      }).join("")}
+      ${sortedTimes.map((slot) => `
+        <div class="day-slot">
+          <span>${slot === "00:00" ? "All day" : slot}</span>
+          <div>${byTime[slot].map(renderAgendaCard).join("")}</div>
+        </div>
+      `).join("")}
     </div>
   `;
 }
 
 function renderAgendaCard(item) {
-  if (item.privateBlock) {
+  if (item.privateBlock || item.kind === "busy") {
+    const personClass = item.person
+      ? (item.person === "Parent B" ? "busy-parent-b" : "busy-parent-a")
+      : "";
+    const label = item.person || "Busy";
     return `
-      <article class="calendar-busy-card">
-        <span>${item.time}</span>
-        <strong>Busy</strong>
-        <em>Private work calendar · details hidden</em>
+      <article class="calendar-busy-card ${personClass}">
+        <strong>${label}</strong>
+        <span>${item.time} · Private calendar</span>
       </article>
     `;
   }
   const sourceCard = typeof state !== "undefined" ? state.cards.find((card) => card.id === item.cardId) : null;
   if (!sourceCard) return "";
-  return renderUniversalFeatureCard(sourceCard, `calendar-card ${item.kind}`);
+  // Render as a compact clickable row
+  return `
+    <article class="agenda-card" data-card-id="${sourceCard.id}" role="button" tabindex="0">
+      <div class="agenda-card-time">${item.time}</div>
+      <div class="agenda-card-body">
+        <strong>${escapeHtml(sourceCard.title)}</strong>
+        ${sourceCard.details ? `<span>${escapeHtml(sourceCard.details.slice(0, 60))}${sourceCard.details.length > 60 ? "..." : ""}</span>` : ""}
+      </div>
+      <div class="agenda-card-status ${item.kind}">${sourceCard.status}</div>
+    </article>
+  `;
 }
 
 function renderUniversalFeatureCard(card, className = "", showActions = true) {
@@ -1320,16 +1360,16 @@ function buildCalendarEvents(baseDate) {
   // Merge Google Calendar events (both levels)
   const gcalEvents = (window.getGoogleCalendarEvents?.() || []).map((item) => {
     const date = new Date(item.start);
-    const isWorkBusy = item.source === "work";
+    const isWorkBusy = item.source === "work" || item.source === "personal";
     return {
       cardId: item.id,
       date: toCalendarKey(date),
       time: item.allDay ? "All day" : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
-      // Level 1 (work): show "Busy" only - no private details
       title: isWorkBusy ? "Busy" : item.title,
-      detail: isWorkBusy ? "Work calendar · details private" : (item.description || "Do-Do Family calendar"),
+      detail: isWorkBusy ? "Private calendar · details hidden" : (item.description || "Family calendar"),
       kind: isWorkBusy ? "busy" : "event",
       badge: isWorkBusy ? "Busy" : "GCal",
+      person: item.person || null, // "Parent A" or "Parent B"
       googleLink: item.htmlLink || null,
       privateBlock: isWorkBusy,
     };
@@ -1341,6 +1381,7 @@ function buildCalendarEvents(baseDate) {
 function buildPrivateWorkBlocks(baseDate) {
   const automation = window.getAutomationSettings?.() || {};
   if (!automation.syncWorkCalendar) return [];
+  const parentName = automation.workCalendarPerson || "Parent A";
   return [
     [1, "09:00"], [1, "15:00"], [2, "10:00"], [3, "08:00"], [4, "15:00"],
   ].map(([offset, time], index) => {
@@ -1354,6 +1395,7 @@ function buildPrivateWorkBlocks(baseDate) {
       kind: "busy",
       badge: "Busy",
       privateBlock: true,
+      person: parentName,
     };
   });
 }
@@ -1871,7 +1913,7 @@ async function promptAddChild() {
   const updated = { ...setup, children: [...(setup.children || []), { name: name.trim() }] };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
   showFeatureToast(`${name.trim()} added`);
-  switchModule("settings");
+  window.switchModule("settings");
 }
 
 async function promptEditChild(index) {
@@ -1884,7 +1926,7 @@ async function promptEditChild(index) {
   const updated = { ...setup, children };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
   showFeatureToast(`Updated to ${name.trim()}`);
-  switchModule("settings");
+  window.switchModule("settings");
 }
 
 function confirmDeleteChild(index) {
@@ -1896,7 +1938,7 @@ function confirmDeleteChild(index) {
   const updated = { ...setup, children };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
   showFeatureToast(`${name} removed`);
-  switchModule("settings");
+  window.switchModule("settings");
 }
 
 // ─── Pets CRUD ─────────────────────────────────────────────────────────────────
@@ -1908,7 +1950,7 @@ function promptAddPet() {
   const updated = { ...setup, pets: [...(setup.pets || []), { name: name.trim() }] };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
   showFeatureToast(`${name.trim()} added`);
-  switchModule("settings");
+  window.switchModule("settings");
 }
 
 function promptEditPet(index) {
@@ -1921,7 +1963,7 @@ function promptEditPet(index) {
   const updated = { ...setup, pets };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
   showFeatureToast(`Updated to ${name.trim()}`);
-  switchModule("settings");
+  window.switchModule("settings");
 }
 
 function confirmDeletePet(index) {
@@ -1933,7 +1975,7 @@ function confirmDeletePet(index) {
   const updated = { ...setup, pets };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
   showFeatureToast(`${name} removed`);
-  switchModule("settings");
+  window.switchModule("settings");
 }
 
 // Refresh calendar when Google Calendar events load

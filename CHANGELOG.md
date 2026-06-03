@@ -1,5 +1,30 @@
 # Do-Do Changelog
 
+## 2026-06-03 - Session: Calendar, New Do dialog, URL routing
+
+### Calendar
+
+- **Parent color on busy blocks** - work/personal calendar busy blocks now render in the parent's color (dark for Parent A, amber for Parent B) instead of generic grey. GCal events with a `person` field and private work blocks both use the correct color.
+- **No-person fallback** - busy blocks with no attributed parent show plain grey to avoid misleading attribution.
+- **Cards clickable from calendar** - `window.bindUnifiedCardInteractions` already called on the calendar container; `data-card-id` elements in the day/agenda view open the card dialog correctly.
+
+### New Do dialog
+
+- **Removed duplicate form** - the dialog was showing two text inputs simultaneously for new Dos: the LLM "What happened?" textarea (with Preview Do) and the direct "What needs to be done?" textarea. Root cause: `.llm-new-card-mode .dialog-info-column > .card-info-section` used a direct-child selector that didn't match the actual DOM depth (`.card-info-section` is inside `.dialog-two-col > .dialog-main-col`). Fixed to a descendant selector and hidden `.dialog-two-col` entirely in new-card mode.
+
+### URL routing
+
+- **Hash-based routes** - every module navigation updates the URL hash. Back/forward works. Deep-linking supported: a URL with a valid hash loads directly into that view on open.
+- **Available routes:**
+  - `/#board` - coordination board
+  - `/#calendar` - shared family calendar
+  - `/#messages` - topic threads
+  - `/#shopping` - shopping list
+  - `/#expenses` - expenses tracker
+  - `/#settings` - settings and integrations
+
+---
+
 ## 2026-06-02 - Session: UX, design system, auth, board
 
 ### Board

@@ -2913,7 +2913,8 @@ svg {
 }
 
 .llm-new-card-mode .dialog-thread-column,
-.llm-new-card-mode .dialog-info-column > .card-info-section {
+.llm-new-card-mode .dialog-info-column .card-info-section,
+.llm-new-card-mode .dialog-two-col {
   display: none;
 }
 
@@ -4763,6 +4764,26 @@ textarea {
   font-size: 11px;
   font-style: normal;
   font-weight: 700;
+}
+
+.calendar-busy-card.busy-parent-a {
+  background: #1e1d22;
+  color: #fff;
+}
+
+.calendar-busy-card.busy-parent-a span,
+.calendar-busy-card.busy-parent-a strong {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.calendar-busy-card.busy-parent-b {
+  background: #d99c22;
+  color: #fff;
+}
+
+.calendar-busy-card.busy-parent-b span,
+.calendar-busy-card.busy-parent-b strong {
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .agenda-heading span,
