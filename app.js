@@ -457,6 +457,13 @@ function bindEvents() {
   elements.saveCardReminderButton?.addEventListener("click", saveCardDialogReminder);
   elements.clearCardReminderButton?.addEventListener("click", clearCardDialogReminder);
   elements.detailsInput?.addEventListener("input", () => deriveFieldsFromShortInfo(elements.detailsInput.value, { silent: true }));
+  elements.detailsInput?.addEventListener("blur", () => {
+    if (elements.detailsInput.value.trim()) {
+      deriveFieldsFromShortInfo(elements.detailsInput.value, { silent: true });
+    }
+  });
+  // Cancel button - close without saving
+  elements.cardSaveButton?.addEventListener("click", () => elements.cardDialog?.close());
   elements.dialogCompleteButton?.addEventListener("click", () => quickCompleteCardFromDialog());
   elements.dialogDoButton?.addEventListener("click", () => quickRespondCardFromDialog("do"));
   elements.dialogPleaseButton?.addEventListener("click", () => quickRespondCardFromDialog("will"));
@@ -1558,11 +1565,10 @@ function setCardDialogEditMode(isEditing) {
       voiceToggle.title = isOpen ? "Hide voice input" : "Voice input";
     });
   }
-  elements.deleteButton.classList.toggle("hidden", !isEditing || !isExistingCard);
-  elements.cardForm.querySelector(".dialog-actions .primary-button")?.classList.toggle("hidden", !isEditing);
-  elements.cardSaveButton.textContent = useChatFlow ? "Create Do" : "Save";
-  elements.ackButton?.classList.toggle("hidden", isEditing || !isExistingCard);
-  elements.editCardMenuButton?.classList.toggle("hidden", isEditing || !isExistingCard);
+  elements.deleteButton?.classList.toggle("hidden", !isExistingCard);
+  // cardSaveButton is now "Cancel" - always visible
+  elements.ackButton?.classList.toggle("hidden", true);
+  elements.editCardMenuButton?.classList.toggle("hidden", true);
   // Hide the view-only hint when editing starts
   const viewHint = document.querySelector("#dialogViewHint");
   if (viewHint && isEditing) viewHint.hidden = true;
@@ -1726,9 +1732,8 @@ function startVoiceCapture() {
     recognition.start();
   } catch {
     elements.voiceButton?.classList.remove("recording");
-    if (elements.voiceStatus) elements.voiceStatus.textContent = "Record what has to be done";
-    elements.voiceTranscriptInput.focus();
-    showToast("Could not start voice recording. Type the request and tap Autofill fields.");
+    elements.detailsInput?.focus();
+    showToast("Could not start voice recording. Type the request instead.");
   }
 }
 

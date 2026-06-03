@@ -3024,6 +3024,56 @@ svg {
   line-height: 1.45;
 }
 
+/* Details field with inline mic */
+.details-field-wrap {
+  position: relative;
+}
+
+.details-field-wrap #detailsInput {
+  width: 100%;
+  padding-right: 44px;
+  min-height: 132px;
+  font-size: 16px;
+  line-height: 1.45;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 44px 12px 14px;
+  resize: none;
+  outline: none;
+  background: var(--surface-input);
+  color: var(--ink);
+}
+
+.inline-mic-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.inline-mic-btn:hover {
+  color: var(--accent);
+}
+
+.inline-mic-btn.recording {
+  color: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.inline-mic-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 .derived-tags {
   display: none;
 }
