@@ -1162,18 +1162,24 @@ function renderInlineCaptureHost() {
 function renderInlineCardCapture() {
   return `
     <form class="inline-card-capture" data-inline-card-capture aria-label="Create Do-Do from a short message">
-      <div class="inline-card-input-wrap">
-        <textarea data-inline-card-input rows="2" maxlength="420" placeholder="Write or say what needs to be done"></textarea>
-        <button class="inline-mic-button" type="button" data-inline-card-mic aria-label="Dictate new Do-Do" title="Dictate">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z" />
-            <path d="M19 10a7 7 0 0 1-14 0M12 17v4M8 21h8" />
-          </svg>
-        </button>
-      </div>
-      <div class="inline-card-actions">
-        <button class="inline-create-button" type="submit">Create Do</button>
-      </div>
+      <span class="inline-capture-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M16.9 16.9l1.5 1.5M5.6 18.4l1.4-1.4M16.9 7.1l1.5-1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </span>
+      <textarea class="inline-capture-input" data-inline-card-input rows="1" maxlength="420" placeholder="Write or say anything"></textarea>
+      <button class="inline-mic-button" type="button" data-inline-card-mic aria-label="Dictate" title="Dictate">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="2"/>
+          <path d="M19 10a7 7 0 0 1-14 0M12 17v4M8 21h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="inline-create-button" type="submit" aria-label="Create Do" title="Create Do">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </form>
   `;
 }

@@ -1634,80 +1634,100 @@ svg {
 
 .inline-card-capture {
   width: 100%;
-  max-width: 100%;
-  margin: 0;
+  max-width: 600px;
+  margin: 0 auto;
   border: 0;
-  border-radius: 0 0 20px 20px;
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  background: var(--accent);
-  color: var(--ink);
-  box-shadow: 0 12px 32px rgba(217, 70, 239, 0.18);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 6px 6px 16px;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
 }
 
 .inline-card-input-wrap {
   position: relative;
 }
 
+.inline-capture-icon {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  margin-right: 4px;
+}
+
+.inline-capture-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.inline-capture-input,
 .inline-card-capture textarea {
-  width: 100%;
-  min-height: 54px;
+  flex: 1;
+  min-width: 0;
   border: 0;
   resize: none;
   outline: 0;
-  border-radius: 16px;
-  padding: 12px 52px 12px 14px;
-  background: var(--paper);
+  background: transparent;
   color: var(--ink);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.35;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 6px 0;
+  min-height: unset;
+  height: 32px;
+  overflow: hidden;
 }
 
+.inline-capture-input::placeholder,
 .inline-card-capture textarea::placeholder {
-  color: rgba(30, 29, 34, 0.48);
+  color: var(--muted);
+  font-weight: 400;
 }
 
 .inline-card-actions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
+  display: none;
 }
 
 .inline-mic-button {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 38px;
-  height: 38px;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
   border: 0;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: var(--ink);
+  background: transparent;
+  color: var(--accent);
 }
 
-.inline-mic-button {
-  background: var(--ink);
-  color: #ffffff;
+.inline-mic-button svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
 }
 
 .inline-create-button {
-  min-height: 38px;
-  min-width: 148px;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
   border: 0;
-  border-radius: 999px;
-  background: var(--ink);
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 22px;
-  font-size: 13px;
-  font-weight: 900;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  padding: 0;
   cursor: pointer;
+}
+
+.inline-create-button svg {
+  width: 18px;
+  height: 18px;
 }
 
 .inline-mic-button svg {
@@ -5784,9 +5804,9 @@ html[data-theme="dark"] .inline-card-capture textarea::placeholder {
 }
 
 html[data-theme="dark"] .inline-create-button {
-  background: #17312d;
-  color: #f4f7f6;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  background: var(--accent);
+  color: var(--ink);
+  box-shadow: none;
 }
 
 html[data-theme="dark"] .slack-sidebar,
