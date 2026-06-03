@@ -2358,19 +2358,28 @@ function saveCard(event) {
   }
 
   const due = elements.dueInput.value ? new Date(elements.dueInput.value).toISOString() : "";
-  const shouldAutoReminder = !existing && due && shouldCreateAppReminder();
-  const autoReminder = shouldAutoReminder
+
+  // Use reminder preset from the card dialog panel if set, otherwise fall back to global default
+  const dialogPreset = elements.cardReminderPresetInput?.value;
+  const dialogReminderTime = elements.cardReminderTimeInput?.value;
+  const effectivePreset = dialogPreset || state.automationSettings.defaultReminderPreset;
+  const effectiveReminderTime = dialogPreset === "custom" && dialogReminderTime
+    ? new Date(dialogReminderTime).toISOString()
+    : due ? reminderIsoFromDue(due, effectivePreset) : null;
+
+  const shouldAutoReminder = due && shouldCreateAppReminder();
+  const autoReminder = shouldAutoReminder && effectiveReminderTime
     ? {
-        preset: state.automationSettings.defaultReminderPreset,
-        time: reminderIsoFromDue(due, state.automationSettings.defaultReminderPreset),
-        automated: true,
+        preset: effectivePreset,
+        time: effectiveReminderTime,
+        automated: !dialogPreset || dialogPreset === state.automationSettings.defaultReminderPreset,
       }
     : null;
   const googleCalendar = due && state.automationSettings.syncFamilyCalendar
     ? {
         synced: true,
         provider: state.automationSettings.familyCalendarProvider,
-        reminderPreset: state.automationSettings.defaultReminderPreset,
+        reminderPreset: effectivePreset,
         updatedAt: new Date().toISOString(),
       }
     : existing?.googleCalendar || null;
@@ -2423,7 +2432,7 @@ function saveCard(event) {
   const syncCard = async () => {
     let savedCard = { ...card };
     if (card.due && window.pushCardToFamilyCalendar) {
-      const reminderMinutes = presetToMinutes(state.automationSettings.defaultReminderPreset);
+      const reminderMinutes = presetToMinutes(card.googleCalendar?.reminderPreset || state.automationSettings.defaultReminderPreset);
       const gcal = await window.pushCardToFamilyCalendar(card, reminderMinutes).catch(() => null);
       if (gcal) {
         savedCard = { ...card, googleCalendar: gcal };
