@@ -1380,8 +1380,8 @@ function createCardFromInlineCapture(input) {
     topic: elements.topicInput.value,
     type: elements.typeInput.value,
     status: elements.statusInput.value,
-    assignee: elements.assigneeInput.value,
-    child: elements.childInput.value,
+    assignee: elements.assigneeInput.value || null,
+    child: elements.childInput.value || null,
     due,
     amount: elements.amountInput.value.trim(),
     details: text,
@@ -1449,8 +1449,8 @@ function openCardDialog(id = "", focusSection = "info") {
     elements.topicInput.value = state.topic === "All" ? "Schedule" : state.topic;
     elements.typeInput.value = "Task";
     elements.statusInput.value = "To Do";
-    setSelectValue(elements.assigneeInput, "Parent A");
-    setSelectValue(elements.childInput, getFamilyPeople().children[0]?.name || "Ava");
+    setSelectValue(elements.assigneeInput, ""); // no auto-assignee - only set when someone clicks "I'll do it"
+    setSelectValue(elements.childInput, ""); // no auto-child - only set when detected in text
     elements.amountInput.value = "";
     elements.dueInput.value = "";
     elements.llmCardPromptInput.value = "";
@@ -2121,7 +2121,7 @@ function addCardDialogMessage() {
     item.id === id
       ? applyMessageUpdatesToCard(item, text, {
           acknowledged: false,
-          comments: [...item.comments, { author: "Parent A", text, time: "Just now", tags: extractMessageTags(text, item) }],
+          comments: [...item.comments, { author: (getOnboardingState()?.parents?.primary || "Parent A"), text, time: "Just now", tags: extractMessageTags(text, item) }],
         })
       : item
   ));
@@ -2267,8 +2267,8 @@ function saveCard(event) {
     topic: elements.topicInput.value,
     type: elements.typeInput.value,
     status: elements.statusInput.value,
-    assignee: elements.assigneeInput.value,
-    child: elements.childInput.value,
+    assignee: elements.assigneeInput.value || null,
+    child: elements.childInput.value || null,
     due,
     amount: elements.amountInput.value.trim(),
     details: elements.detailsInput.value.trim(),
@@ -2383,6 +2383,8 @@ function quickCompleteCardFromDialog() {
 function quickRespondCard(id, response) {
   const card = state.cards.find((item) => item.id === id);
   if (!card || card.status === "Done") return;
+  const setup = getOnboardingState() || {};
+  const myName = setup.parents?.primary || "Parent A";
   const text = response === "do" ? "I'll do it" : response === "will" ? "Please do it" : "Can't do this";
   const nextStatus = response === "cannot" ? "Disputed" : response === "do" ? "To Do" : "Waiting";
   state.cards = state.cards.map((item) => (
@@ -2390,9 +2392,9 @@ function quickRespondCard(id, response) {
       ? {
           ...item,
           status: nextStatus,
-          assignee: response === "do" ? "Parent A" : item.assignee,
+          assignee: response === "do" ? myName : item.assignee,
           acknowledged: true,
-          comments: [...item.comments, { author: "Parent A", text, time: "Just now" }],
+          comments: [...item.comments, { author: myName, text, time: "Just now" }],
         }
       : item
   ));
@@ -2460,7 +2462,7 @@ function saveCardMessage(event) {
     item.id === id
       ? applyMessageUpdatesToCard(item, text, {
           acknowledged: false,
-          comments: [...item.comments, { author: "Parent A", text, time: "Just now", tags: extractMessageTags(text, item) }],
+          comments: [...item.comments, { author: (getOnboardingState()?.parents?.primary || "Parent A"), text, time: "Just now", tags: extractMessageTags(text, item) }],
         })
       : item
   ));
