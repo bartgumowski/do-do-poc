@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="assets/dodo-icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="assets/dodo-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=20260603-dialog-v2" />
+    <link rel="stylesheet" href="styles.css?v=20260603-dialog-v3" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body class="auth-locked">
@@ -430,11 +430,6 @@
         </div>
 
         <input type="hidden" id="cardId" />
-        <p class="dialog-view-hint" id="dialogViewHint" hidden>
-          Read only - tap
-          <button type="button" id="dialogViewHintEdit">Edit</button>
-          to make changes
-        </p>
         <div class="dialog-card-meta hidden" id="dialogCardMeta">
           <div class="dialog-meta-row"></div>
           <div class="card-people" id="dialogCardPeople"></div>
@@ -585,10 +580,8 @@
 
         <div class="dialog-actions">
           <button class="ghost-button" type="button" id="deleteButton">Delete</button>
-          <div>
-            <button class="secondary-button" type="button" id="ackButton">Got it</button>
-            <button class="primary-button" type="submit" id="cardSaveButton">Save</button>
-          </div>
+          <button class="primary-button" type="submit" id="cardSaveButton">Save</button>
+          <button class="secondary-button" type="button" id="ackButton" hidden>Got it</button>
         </div>
       </form>
     </dialog>
@@ -671,7 +664,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="supabase-data.js?v=20260601"></script>
-    <script src="app.js?v=20260603-dialog-v2"></script>
+    <script src="app.js?v=20260603-dialog-v3"></script>
     <script src="features.js?v=20260531-shopping-buyer"></script>
   </body>
 </html>
