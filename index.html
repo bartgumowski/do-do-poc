@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="assets/dodo-icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="assets/dodo-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=20260603-dialog-v5" />
+    <link rel="stylesheet" href="styles.css?v=20260603-dialog-v6" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body class="auth-locked">
@@ -463,9 +463,9 @@
                     <path d="M19 10a7 7 0 0 1-14 0M12 17v4M8 21h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   </svg>
                 </button>
-                <span id="voiceStatus" class="voice-hint">Tap mic to record, then autofill fields</span>
+                <span id="voiceStatus" class="voice-hint">Tap mic - fields fill automatically</span>
               </div>
-              <textarea id="voiceTranscriptInput" class="voice-transcript-input" rows="2" placeholder="Transcript appears here..."></textarea>
+              <textarea id="voiceTranscriptInput" hidden aria-hidden="true" tabindex="-1"></textarea>
             </div>
 
             <section class="card-info-section">
@@ -481,7 +481,7 @@
                 <span class="visually-hidden">Short info</span>
                 <textarea id="detailsInput" rows="5" maxlength="420" placeholder="Parent-teacher meeting for Ava tomorrow at 14:00. Both parents should respond."></textarea>
               </label>
-              <button class="secondary-button autofill-button" type="button" id="autofillButton" style="margin-top:8px;">Autofill fields from voice</button>
+              <button class="secondary-button autofill-button" type="button" id="autofillButton" style="display:none">Autofill fields from voice</button>
               <div class="quick-actions dialog-quick-actions hidden" id="dialogQuickActions">
                 <button class="quick-complete" type="button" id="dialogCompleteButton">Done</button>
                 <button class="quick-response" type="button" id="dialogDoButton">I’ll do it</button>
@@ -664,7 +664,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="supabase-data.js?v=20260601"></script>
-    <script src="app.js?v=20260603-dialog-v5"></script>
+    <script src="app.js?v=20260603-dialog-v6"></script>
     <script src="features.js?v=20260531-shopping-buyer"></script>
   </body>
 </html>

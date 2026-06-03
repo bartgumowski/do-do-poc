@@ -461,7 +461,19 @@ function bindEvents() {
   elements.dialogDoButton?.addEventListener("click", () => quickRespondCardFromDialog("do"));
   elements.dialogPleaseButton?.addEventListener("click", () => quickRespondCardFromDialog("will"));
   elements.dialogCannotButton?.addEventListener("click", () => quickRespondCardFromDialog("cannot"));
-  elements.closeDialogButton?.addEventListener("click", () => elements.cardDialog?.close());
+  elements.closeDialogButton?.addEventListener("click", () => {
+    if (elements.cardId.value || elements.detailsInput?.value.trim()) {
+      saveCardSilent();
+    }
+    elements.cardDialog?.close();
+  });
+  elements.cardDialog?.addEventListener("cancel", (e) => {
+    e.preventDefault();
+    if (elements.cardId.value || elements.detailsInput?.value.trim()) {
+      saveCardSilent();
+    }
+    elements.cardDialog?.close();
+  });
   elements.messageForm?.addEventListener("submit", saveCardMessage);
   elements.cardMessageMicButton?.addEventListener("click", () => startDictationForField(elements.cardMessageInput, {
     button: elements.cardMessageMicButton,
@@ -1689,7 +1701,9 @@ function startVoiceCapture() {
       elements.llmCardPromptInput.value = transcript;
       syncLlmCardPrompt({ announce: true });
     } else {
-      elements.voiceTranscriptInput.value = transcript;
+      // Put transcript directly into details field and auto-autofill
+      if (elements.detailsInput) elements.detailsInput.value = transcript;
+      if (elements.voiceTranscriptInput) elements.voiceTranscriptInput.value = transcript;
       autofillFromVoice(transcript);
     }
   });
@@ -2172,6 +2186,16 @@ function clearCardDialogReminder() {
   }
   showToast("Reminder cleared");
   render();
+}
+
+function saveCardSilent() {
+  // Auto-save without requiring a title - derive from details if needed
+  if (!elements.titleInput?.value.trim()) {
+    deriveFieldsFromShortInfo(elements.detailsInput?.value || "", { silent: true });
+  }
+  if (!elements.titleInput?.value.trim()) return; // nothing to save
+  const syntheticEvent = { preventDefault: () => {} };
+  saveCard(syntheticEvent);
 }
 
 function saveCard(event) {
