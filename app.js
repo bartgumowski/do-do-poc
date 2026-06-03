@@ -29,7 +29,7 @@ const defaultAutomationSettings = {
   workCalendarVisibility: "busy-only",
   workCalendarConnections: [],
   syncGoogleCalendar: false,
-  defaultReminderPreset: "120",
+  defaultReminderPreset: "60",
   reminderDelivery: "calendar-and-app",
   everyoneCanEdit: true,
 };
@@ -1898,6 +1898,19 @@ function deriveFieldsFromShortInfo(rawText, options = {}) {
   elements.amountInput.value = inferAmount(text);
   const dueValue = inferDueDate(lower);
   elements.dueInput.value = dueValue || "";
+
+  // Auto-set reminder from text if mentioned
+  const inferredReminder = inferReminderFromText(lower);
+  if (inferredReminder && elements.cardReminderPresetInput) {
+    setSelectValue(elements.cardReminderPresetInput, inferredReminder.preset);
+    if (inferredReminder.isoTime) {
+      elements.cardReminderTimeInput.value = toDateTimeInputValue(new Date(inferredReminder.isoTime));
+    } else if (dueValue && inferredReminder.preset !== "custom") {
+      elements.cardReminderTimeInput.value = buildReminderTime({ due: new Date(dueValue).toISOString() }, inferredReminder.preset);
+    }
+    updateReminderCustomVisibility();
+  }
+
   renderDerivedTags();
   if (!options.silent) showToast("Do tags derived from info");
   return true;
@@ -2104,6 +2117,49 @@ function extractPrimaryTime(lower) {
   return null;
 }
 
+// Infer reminder from natural language text.
+// Returns { preset, isoTime } or null if nothing found.
+function inferReminderFromText(text) {
+  const lower = text.toLowerCase();
+
+  // "remind me in 2 hours" / "alert 30 minutes before"
+  const minutesBefore = lower.match(/\b(?:remind(?:er)?|alert|notify)\s+(?:me\s+)?(\d+)\s*(?:hour|hr)s?\s*before\b/);
+  if (minutesBefore) {
+    const mins = Number(minutesBefore[1]) * 60;
+    return { preset: String(mins), isoTime: null };
+  }
+  const minBefore = lower.match(/\b(?:remind(?:er)?|alert|notify)\s+(?:me\s+)?(\d+)\s*min(?:ute)?s?\s*before\b/);
+  if (minBefore) return { preset: String(minBefore[1]), isoTime: null };
+
+  // "reminder 2h before" / "2h reminder"
+  const shortHr = lower.match(/\b(\d+)\s*h(?:r|ours?)?\s*(?:before|reminder|alert)\b|\b(?:reminder|alert)\s*(\d+)\s*h\b/);
+  if (shortHr) {
+    const hrs = Number(shortHr[1] || shortHr[2]);
+    return { preset: String(hrs * 60), isoTime: null };
+  }
+
+  // "remind me at 3pm" / "reminder at 09:00"
+  const atTime = lower.match(/\b(?:remind(?:er)?|alert|notify)\s+(?:me\s+)?at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+  if (atTime) {
+    let h = Number(atTime[1]);
+    const m = Number(atTime[2] || 0);
+    if (atTime[3] === "pm" && h < 12) h += 12;
+    if (atTime[3] === "am" && h === 12) h = 0;
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return { preset: "custom", isoTime: d.toISOString() };
+  }
+
+  // "remind me 1 day before" / "1 week before"
+  if (/\b(?:remind|alert|reminder).{0,20}1\s*day\s*before\b/.test(lower)) return { preset: "1440", isoTime: null };
+  if (/\b(?:remind|alert|reminder).{0,20}1\s*week\s*before\b/.test(lower)) return { preset: "10080", isoTime: null };
+
+  // just "reminder" or "remind me" with no time qualifier -> use 1 day before
+  if (/\b(?:remind me|reminder)\b/.test(lower)) return { preset: "1440", isoTime: null };
+
+  return null;
+}
+
 function setSelectValue(select, value) {
   if (!select) return;
   const stringValue = String(value || "");
@@ -2161,20 +2217,25 @@ function addCardDialogMessage() {
   const id = elements.cardId.value;
   const text = elements.commentInput.value.trim();
   if (!id || !text) return;
-  state.cards = state.cards.map((item) => (
-    item.id === id
-      ? applyMessageUpdatesToCard(item, text, {
-          acknowledged: false,
-          comments: [...item.comments, { author: getMyName(), text, time: "Just now", tags: extractMessageTags(text, item) }],
-        })
-      : item
-  ));
+  const mentionedParent = detectParentMention(text);
+  state.cards = state.cards.map((item) => {
+    if (item.id !== id) return item;
+    const updates = {
+      acknowledged: false,
+      comments: [...item.comments, { author: getMyName(), text, time: "Just now", tags: extractMessageTags(text, item) }],
+    };
+    // Tag the mentioned parent as assignee if not already set
+    if (mentionedParent && !item.assignee) updates.assignee = mentionedParent;
+    return applyMessageUpdatesToCard(item, text, updates);
+  });
   persist();
   const card = state.cards.find((item) => item.id === id);
   elements.commentInput.value = "";
   if (card) {
     renderComments(card);
     renderActivity(card);
+    renderDialogMeta(card); // refresh people icons if assignee changed
+    if (mentionedParent) setSelectValue(elements.assigneeInput, card.assignee);
   }
   showToast("Message added to card");
   render();
@@ -3139,15 +3200,47 @@ function isPetName(name) {
 }
 
 function peopleForCard(card) {
+  const family = getFamilyPeople();
   const assignee = card.assignee;
-  const adults = !assignee ? []
+
+  // Base adults from explicit assignee field
+  let adults = !assignee ? []
     : assignee === "Both parents" ? ["Parent A", "Parent B"]
     : assignee === "Child" ? []
     : [assignee];
+
+  // Also scan title, details, and all comment text for parent name mentions
+  const textToScan = [
+    card.title || "",
+    card.details || "",
+    ...(card.comments || []).map((c) => c.text || ""),
+  ].join(" ").toLowerCase();
+
+  const mentionsPrimary = family.primary.aliases.some((a) => textToScan.includes(a.toLowerCase()))
+    || /\bfor me\b|\bi('ll| will)\b/.test(textToScan);
+  const mentionsCoparent = family.coparent.aliases.some((a) => textToScan.includes(a.toLowerCase()));
+
+  if (mentionsPrimary && !adults.includes("Parent A")) adults = [...adults, "Parent A"];
+  if (mentionsCoparent && !adults.includes("Parent B")) adults = [...adults, "Parent B"];
+
+  // Deduplicate
+  adults = [...new Set(adults)];
+
   const children = card.child ? splitPeople(card.child) : [];
   const people = [...adults, ...children];
-  const label = people.join(" and ");
+  const label = people.map(displayPersonName).join(" and ");
   return { adults, children, people, label };
+}
+
+// Detect parent mention in text and return role string or null
+function detectParentMention(text) {
+  const lower = text.toLowerCase();
+  const family = getFamilyPeople();
+  const myName = getMyName().toLowerCase();
+  if (/\bfor me\b|\bi('ll| will| can)\b/.test(lower) || lower.includes(myName)) return "Parent A";
+  if (family.coparent.aliases.some((a) => lower.includes(a.toLowerCase()))) return "Parent B";
+  if (family.primary.aliases.some((a) => lower.includes(a.toLowerCase()))) return "Parent A";
+  return null;
 }
 
 function splitPeople(value) {
@@ -3165,11 +3258,15 @@ function normalizeChild(value) {
 
 function personInitial(value) {
   if (value === "Child") return "C";
-  return value.includes("B") ? "B" : "A";
+  const family = getFamilyPeople();
+  const name = displayPersonName(value); // resolve real name
+  if (value === "Parent B" || name === family.coparent.name) return name.slice(0, 1).toUpperCase();
+  return name.slice(0, 1).toUpperCase();
 }
 
 function personClass(value) {
-  if (value === "Parent B") return "parent-b-mini";
+  const family = getFamilyPeople();
+  if (value === "Parent B" || value === family.coparent.name) return "parent-b-mini";
   if (value === "Child") return "child-assignee-mini";
   return "parent-a-mini";
 }
