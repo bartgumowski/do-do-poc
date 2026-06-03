@@ -1388,14 +1388,14 @@ function openCardDialog(id = "", focusSection = "info") {
   elements.dialogTitle.textContent = card ? card.title : "New Do";
   elements.dialogMode.textContent = card ? "Information and thread" : "New Do";
   elements.llmCardChat?.classList.toggle("hidden", Boolean(card));
-  elements.commentPanel.classList.toggle("hidden", !card);
+  elements.commentPanel?.classList.toggle("hidden", !card);
   // Hide reminder panel when GCal is connected - alert is set on the calendar event instead
   const gcalActive = Boolean(state.automationSettings?.syncFamilyCalendar);
-  elements.cardReminderPanel.classList.toggle("hidden", !card || gcalActive);
-  elements.activityPanel.classList.toggle("hidden", !card);
-  elements.editCardMenuButton.classList.toggle("hidden", !card);
-  elements.dialogCardMeta.classList.toggle("hidden", !card);
-  elements.dialogQuickActions.classList.toggle("hidden", !card);
+  elements.cardReminderPanel?.classList.toggle("hidden", !card || gcalActive);
+  elements.activityPanel?.classList.toggle("hidden", !card);
+  elements.editCardMenuButton?.classList.toggle("hidden", !card);
+  elements.dialogCardMeta?.classList.toggle("hidden", !card);
+  elements.dialogQuickActions?.classList.toggle("hidden", !card);
 
   // View-only hint for existing cards
   const viewHint = document.querySelector("#dialogViewHint");
@@ -1547,10 +1547,10 @@ function setCardDialogEditMode(isEditing) {
     });
   }
   elements.deleteButton.classList.toggle("hidden", !isEditing || !isExistingCard);
-  elements.cardForm.querySelector(".dialog-actions .primary-button").classList.toggle("hidden", !isEditing);
+  elements.cardForm.querySelector(".dialog-actions .primary-button")?.classList.toggle("hidden", !isEditing);
   elements.cardSaveButton.textContent = useChatFlow ? "Create Do" : "Save";
-  elements.ackButton.classList.toggle("hidden", isEditing || !isExistingCard);
-  elements.editCardMenuButton.classList.toggle("hidden", isEditing || !isExistingCard);
+  elements.ackButton?.classList.toggle("hidden", isEditing || !isExistingCard);
+  elements.editCardMenuButton?.classList.toggle("hidden", isEditing || !isExistingCard);
   // Hide the view-only hint when editing starts
   const viewHint = document.querySelector("#dialogViewHint");
   if (viewHint && isEditing) viewHint.hidden = true;
