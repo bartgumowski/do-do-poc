@@ -2807,10 +2807,10 @@ function loadCards() {
 
   const schemaKey = `${cardsStorageKey()}:schema`;
   if (storage.getItem(schemaKey) !== cardSchemaVersion) {
-    // Schema changed - clear stale data and start fresh (Supabase is source of truth)
-    storage.removeItem(cardsStorageKey());
+    // Schema changed - update schema key but KEEP local cards so they are visible
+    // until Supabase loads. Supabase will replace them when auth completes.
     storage.setItem(schemaKey, cardSchemaVersion);
-    return [];
+    // Do NOT clear cards here - falling through will load and normalize them
   }
 
   const stored = storage.getItem(cardsStorageKey());
