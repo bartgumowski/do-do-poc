@@ -1,5 +1,32 @@
 before commiting always check if the change has been done and if it works
 
+## CRITICAL: Curly quote bug - check before every commit
+
+**This has happened repeatedly and breaks the entire app silently.**
+
+When Claude edits `index.html` using the Edit tool, curly/smart quotes (`"` `"`, U+201C/U+201D) can get inserted in place of straight double quotes in HTML attribute values. This breaks `document.querySelector('#someId')` because the browser parses the attribute value as `"someId"` (with literal quote characters) instead of `someId`.
+
+**Symptom:** Card popup won't open, clicking cards does nothing, console shows `Cannot set properties of null`.
+
+**After every edit to `index.html`, run this check before committing:**
+```bash
+python3 -c "
+with open('index.html', 'rb') as f: c = f.read()
+n = c.count('“'.encode('utf-8')) + c.count('”'.encode('utf-8'))
+print(f'Curly quotes found: {n} - ', 'PROBLEM - fix before committing!' if n else 'OK')
+"
+```
+
+**Fix if found:**
+```bash
+python3 -c "
+with open('index.html', 'rb') as f: c = f.read()
+c = c.replace('“'.encode('utf-8'), b'\"').replace('”'.encode('utf-8'), b'\"')
+with open('index.html', 'wb') as f: f.write(c)
+print('Fixed')
+"
+```
+
 ## Deployment setup
 
 **Live app:** https://do-do.app
