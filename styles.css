@@ -1625,8 +1625,8 @@ svg {
 
 .inline-capture-host {
   margin-top: 0;
-  padding: 0 16px 14px;
-  background: var(--paper);
+  padding: 10px 16px 14px;
+  background: var(--surface-page);
   position: relative;
   z-index: 2;
   border-bottom: 1px solid var(--line);
@@ -3728,12 +3728,10 @@ textarea {
 }
 
 body {
-  background: #dfdfdd;
+  background: var(--surface-page);
 }
 
 .app-shell {
-  max-width: 1180px;
-  margin: 0 auto;
   background: var(--nav);
 }
 
@@ -3880,8 +3878,14 @@ body {
 }
 
 .inline-card-capture {
-  width: 100%;
-  margin: 0;
+  width: calc(100% - 32px);
+  max-width: 600px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  padding: 6px 6px 6px 16px;
+  gap: 4px;
 }
 
 .card,
