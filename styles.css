@@ -2866,6 +2866,48 @@ svg {
   align-content: start;
 }
 
+/* Two-col layout inside dialog: main content + reminder sidebar */
+.dialog-two-col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.dialog-main-col {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.dialog-side-col {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+@media (min-width: 580px) {
+  .dialog-two-col {
+    grid-template-columns: 1fr 200px;
+    align-items: start;
+  }
+}
+
+/* Compact thread */
+.comment-panel {
+  display: grid;
+  gap: 0;
+}
+
+.chat-list {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.chat-input-row textarea {
+  min-height: 32px;
+  font-size: 13px;
+}
+
 .llm-new-card-mode .dialog-lower-grid {
   grid-template-columns: minmax(0, 1fr);
 }

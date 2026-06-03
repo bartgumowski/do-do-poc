@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="assets/dodo-icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="assets/dodo-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=20260603-dialog-v6" />
+    <link rel="stylesheet" href="styles.css?v=20260603-dialog-v7" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body class="auth-locked">
@@ -455,6 +455,8 @@
               </div>
             </section>
 
+            <div class="dialog-two-col">
+            <div class="dialog-main-col">
             <div class="voice-panel" id="voicePanel">
               <div class="voice-row">
                 <button class="voice-button-sm" type="button" id="voiceButton" aria-label="Record Do details">
@@ -549,32 +551,35 @@
               </div>
             </section>
 
-            <section class="card-info-section" id="cardReminderPanel">
-              <div class="section-heading">Reminder</div>
-              <label class="clean-field">
-                <span class="visually-hidden">Remind me</span>
-                <select id="cardReminderPresetInput">
-                  <option value="at-due">At due time</option>
-                  <option value="15">15 minutes before</option>
-                  <option value="60">1 hour before</option>
-                  <option value="1440">1 day before</option>
-                  <option value="custom">Custom time</option>
-                </select>
-              </label>
-              <label>
-                Time
-                <input id="cardReminderTimeInput" type="datetime-local" />
-              </label>
-              <div class="section-actions">
-                <button class="ghost-button" type="button" id="clearCardReminderButton">Clear</button>
-                <button class="secondary-button" type="button" id="saveCardReminderButton">Save</button>
-              </div>
-            </section>
-
             <!-- activity panel removed - thread serves the same purpose -->
             <div id="activityPanel" hidden>
               <div id="activityList"></div>
             </div>
+
+            </div><!-- /dialog-main-col -->
+            <div class="dialog-side-col">
+              <section class="card-info-section" id="cardReminderPanel">
+                <div class="section-heading">Reminder</div>
+                <label class="clean-field">
+                  <select id="cardReminderPresetInput">
+                    <option value="at-due">At due time</option>
+                    <option value="15">15 minutes before</option>
+                    <option value="60">1 hour before</option>
+                    <option value="1440">1 day before</option>
+                    <option value="custom">Custom time</option>
+                  </select>
+                </label>
+                <label>
+                  Time
+                  <input id="cardReminderTimeInput" type="datetime-local" />
+                </label>
+                <div class="section-actions">
+                  <button class="ghost-button" type="button" id="clearCardReminderButton">Clear</button>
+                  <button class="secondary-button" type="button" id="saveCardReminderButton">Save</button>
+                </div>
+              </section>
+            </div><!-- /dialog-side-col -->
+          </div><!-- /dialog-two-col -->
           </div>
         </div>
 
@@ -664,7 +669,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="supabase-data.js?v=20260601"></script>
-    <script src="app.js?v=20260603-dialog-v6"></script>
+    <script src="app.js?v=20260603-dialog-v7"></script>
     <script src="features.js?v=20260531-shopping-buyer"></script>
   </body>
 </html>

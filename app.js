@@ -1918,11 +1918,12 @@ function formatDueTag(value) {
 }
 
 function makeTitleFromText(text) {
-  return text
+  const raw = text
     .replace(/^(please|can you|could you|remind me to|we need to)\s+/i, "")
     .split(/[.!?]/)[0]
     .trim()
     .slice(0, 72) || "New Do";
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
 function inferTopic(lower) {
@@ -2211,9 +2212,13 @@ function saveCard(event) {
     elements.detailsInput.focus();
     return;
   }
+  // Auto-capitalize title first letter
+  if (elements.titleInput?.value) {
+    elements.titleInput.value = elements.titleInput.value.charAt(0).toUpperCase() + elements.titleInput.value.slice(1);
+  }
   const id = elements.cardId.value || makeId();
   const existing = state.cards.find((card) => card.id === id);
-  const newComment = elements.commentInput.value.trim();
+  const newComment = elements.commentInput?.value.trim() || "";
   const comments = existing ? [...existing.comments] : [];
 
   if (newComment) {
