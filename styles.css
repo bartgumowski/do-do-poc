@@ -933,6 +933,13 @@ button {
   border-right: 1px solid var(--line);
 }
 
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
 .brand-mark {
   width: 42px;
   height: 42px;
@@ -2041,8 +2048,14 @@ svg {
 }
 
 .settings-layout {
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  align-items: start;
+  display: block;
+  columns: 3;
+  column-gap: 14px;
+}
+
+.settings-layout > * {
+  break-inside: avoid;
+  margin-bottom: 14px;
 }
 
 .feature-panel {
@@ -3303,6 +3316,10 @@ textarea:focus {
   .feature-layout,
   .upcoming-expense-list {
     grid-template-columns: 1fr;
+  }
+
+  .settings-layout {
+    columns: 1;
   }
 
   .feature-actions {
