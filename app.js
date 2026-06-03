@@ -1164,8 +1164,9 @@ function renderInlineCardCapture() {
     <form class="inline-card-capture" data-inline-card-capture aria-label="Create Do-Do from a short message">
       <span class="inline-capture-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none">
-          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M16.9 16.9l1.5 1.5M5.6 18.4l1.4-1.4M16.9 7.1l1.5-1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z" fill="currentColor"/>
+          <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z" fill="currentColor"/>
+          <path d="M5 3l.6 1.4L7 5l-1.4.6L5 7l-.6-1.4L3 5l1.4-.6L5 3Z" fill="currentColor"/>
         </svg>
       </span>
       <textarea class="inline-capture-input" data-inline-card-input rows="1" maxlength="420" placeholder="Write or say anything"></textarea>
@@ -1177,7 +1178,7 @@ function renderInlineCardCapture() {
       </button>
       <button class="inline-create-button" type="submit" aria-label="Create Do" title="Create Do">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
         </svg>
       </button>
     </form>
