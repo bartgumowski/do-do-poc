@@ -445,7 +445,7 @@ function bindEvents() {
   elements.llmCardPromptInput?.addEventListener("input", () => syncLlmCardPrompt({ announce: false }));
   elements.autofillButton?.addEventListener("click", () => autofillFromVoice(elements.voiceTranscriptInput?.value));
   elements.deleteButton?.addEventListener("click", deleteCurrentCard);
-  elements.ackButton?.addEventListener("click", deleteCurrentCard);
+  elements.ackButton?.addEventListener("click", acknowledgeCurrentCard);
   elements.editCardMenuButton?.addEventListener("click", () => setCardDialogEditMode(true));
   elements.sendCardMessageButton?.addEventListener("click", addCardDialogMessage);
   elements.commentMicButton?.addEventListener("click", () => startDictationForField(elements.commentInput, {
@@ -2271,6 +2271,19 @@ function saveCard(event) {
     if (window.saveCardToSupabase) await window.saveCardToSupabase(savedCard).catch(() => {});
   };
   syncCard();
+}
+
+function acknowledgeCurrentCard() {
+  const id = elements.cardId.value;
+  if (!id) return;
+  state.cards = state.cards.map((card) =>
+    card.id === id ? { ...card, acknowledged: true } : card
+  );
+  persist();
+  elements.cardDialog.close();
+  showToast("Marked as seen");
+  render();
+  if (window.updateCardInSupabase) window.updateCardInSupabase(id, { acknowledged: true }).catch(() => {});
 }
 
 function deleteCurrentCard() {

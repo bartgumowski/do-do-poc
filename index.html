@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="assets/dodo-icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="assets/dodo-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=20260603-dialog-rework" />
+    <link rel="stylesheet" href="styles.css?v=20260603-dialog-v2" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body class="auth-locked">
@@ -461,22 +461,16 @@
             </section>
 
             <div class=”voice-panel” id=”voicePanel”>
-              <section class=”voice-card”>
-                <button class=”voice-button” type=”button” id=”voiceButton” aria-label=”Record Do details”>
-                  <svg viewBox=”0 0 24 24” aria-hidden=”true”>
-                    <path d=”M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z” />
-                    <path d=”M19 10a7 7 0 0 1-14 0M12 17v4M8 21h8” />
+              <div class=”voice-row”>
+                <button class=”voice-button-sm” type=”button” id=”voiceButton” aria-label=”Record Do details”>
+                  <svg viewBox=”0 0 24 24” fill=”none” aria-hidden=”true”>
+                    <path d=”M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z” stroke=”currentColor” stroke-width=”2”/>
+                    <path d=”M19 10a7 7 0 0 1-14 0M12 17v4M8 21h8” stroke=”currentColor” stroke-width=”2” stroke-linecap=”round”/>
                   </svg>
                 </button>
-                <div>
-                  <strong id=”voiceStatus”>Record what has to be done</strong>
-                  <span>Speak naturally. Example: “Please pay Leo’s school trip CHF 45 tomorrow, assign Parent B.”</span>
-                </div>
-              </section>
-              <label class=”voice-transcript”>
-                Voice transcript
-                <textarea id=”voiceTranscriptInput” rows=”3” placeholder=”Transcript appears here, or type/paste the request and autofill.”></textarea>
-              </label>
+                <span id=”voiceStatus” class=”voice-hint”>Tap mic to record, then autofill fields</span>
+              </div>
+              <textarea id=”voiceTranscriptInput” class=”voice-transcript-input” rows=”2” placeholder=”Transcript appears here...”></textarea>
             </div>
 
             <section class=”card-info-section”>
@@ -592,7 +586,7 @@
         <div class="dialog-actions">
           <button class="ghost-button" type="button" id="deleteButton">Delete</button>
           <div>
-            <button class="secondary-button" type="button" id="ackButton">Delete</button>
+            <button class="secondary-button" type="button" id="ackButton">Got it</button>
             <button class="primary-button" type="submit" id="cardSaveButton">Save</button>
           </div>
         </div>
@@ -677,7 +671,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="supabase-data.js?v=20260601"></script>
-    <script src="app.js?v=20260603-dialog-rework"></script>
+    <script src="app.js?v=20260603-dialog-v2"></script>
     <script src="features.js?v=20260531-shopping-buyer"></script>
   </body>
 </html>

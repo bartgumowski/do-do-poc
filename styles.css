@@ -2854,7 +2854,7 @@ svg {
 
 .dialog-lower-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.12fr) minmax(280px, 0.88fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
@@ -2983,10 +2983,7 @@ svg {
 }
 
 .derived-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  min-height: 22px;
+  display: none;
 }
 
 .derived-tag {
@@ -3078,13 +3075,55 @@ svg {
 }
 
 .voice-panel {
-  display: none;
-  grid-template-rows: 1fr;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.voice-row {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-.voice-panel.open {
+.voice-button-sm {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  color: var(--accent);
   display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.voice-button-sm svg {
+  width: 18px;
+  height: 18px;
+}
+
+.voice-button-sm.recording {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.voice-hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.voice-transcript-input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  resize: none;
+  background: var(--surface-input);
+  color: var(--ink);
 }
 
 .card-info-section-header {
