@@ -2747,6 +2747,25 @@ svg {
   gap: 14px;
 }
 
+.dialog-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#cardReminderCustomLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+#cardReminderCustomLabel[hidden] {
+  display: none;
+}
+
 .dialog-header-actions {
   position: static;
   display: inline-flex;

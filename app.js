@@ -275,6 +275,8 @@ const elements = {
   deleteButton: document.querySelector("#deleteButton"),
   ackButton: document.querySelector("#ackButton"),
   cardSaveButton: document.querySelector("#cardSaveButton"),
+  cardCancelButton: document.querySelector("#cardCancelButton"),
+  cardReminderCustomLabel: document.querySelector("#cardReminderCustomLabel"),
   editCardMenuButton: document.querySelector("#editCardMenuButton"),
   closeDialogButton: document.querySelector("#closeDialogButton"),
   sendCardMessageButton: document.querySelector("#sendCardMessageButton"),
@@ -453,17 +455,28 @@ function bindEvents() {
     success: "Message dictated",
     fallback: "Voice dictation is not available here. Type the short message instead.",
   }));
-  elements.cardReminderPresetInput?.addEventListener("change", updateCardDialogReminderTime);
+  elements.cardReminderPresetInput?.addEventListener("change", () => {
+    updateCardDialogReminderTime();
+    updateReminderCustomVisibility();
+  });
   elements.saveCardReminderButton?.addEventListener("click", saveCardDialogReminder);
   elements.clearCardReminderButton?.addEventListener("click", clearCardDialogReminder);
-  elements.detailsInput?.addEventListener("input", () => deriveFieldsFromShortInfo(elements.detailsInput.value, { silent: true }));
+  elements.detailsInput?.addEventListener("input", () => {
+    deriveFieldsFromShortInfo(elements.detailsInput.value, { silent: true });
+    scheduleAutosave();
+  });
   elements.detailsInput?.addEventListener("blur", () => {
     if (elements.detailsInput.value.trim()) {
       deriveFieldsFromShortInfo(elements.detailsInput.value, { silent: true });
     }
   });
+  // Autosave on any field change
+  [elements.titleInput, elements.topicInput, elements.typeInput, elements.statusInput,
+   elements.assigneeInput, elements.childInput, elements.dueInput, elements.amountInput].forEach((el) => {
+    el?.addEventListener("change", scheduleAutosave);
+  });
   // Cancel button - close without saving
-  elements.cardSaveButton?.addEventListener("click", () => elements.cardDialog?.close());
+  elements.cardCancelButton?.addEventListener("click", () => elements.cardDialog?.close());
   elements.dialogCompleteButton?.addEventListener("click", () => quickCompleteCardFromDialog());
   elements.dialogDoButton?.addEventListener("click", () => quickRespondCardFromDialog("do"));
   elements.dialogPleaseButton?.addEventListener("click", () => quickRespondCardFromDialog("will"));
@@ -1399,22 +1412,24 @@ function createCardFromInlineCapture(input) {
   render();
 }
 
-function openCardDialog(id = "", focusSection = "info") {
+function openCardDialog(id = "", focusSection = "info", prefill = {}) {
   const card = state.cards.find((item) => item.id === id);
   elements.cardForm.reset();
   if (elements.voiceStatus) elements.voiceStatus.textContent = "Record what has to be done";
   elements.cardId.value = card?.id || "";
   elements.dialogTitle.textContent = card ? card.title : "New Do";
   elements.dialogMode.textContent = card ? "Information and thread" : "New Do";
-  elements.llmCardChat?.classList.toggle("hidden", Boolean(card));
+  elements.llmCardChat?.classList.add("hidden"); // never shown - direct form always used
   elements.commentPanel?.classList.toggle("hidden", !card);
-  // Hide reminder panel when GCal is connected - alert is set on the calendar event instead
+  // Show reminder panel for both new and existing cards (hide only when GCal connected)
   const gcalActive = Boolean(state.automationSettings?.syncFamilyCalendar);
-  elements.cardReminderPanel?.classList.toggle("hidden", !card || gcalActive);
+  elements.cardReminderPanel?.classList.toggle("hidden", gcalActive);
   elements.activityPanel?.classList.toggle("hidden", !card);
   elements.editCardMenuButton?.classList.toggle("hidden", !card);
   elements.dialogCardMeta?.classList.toggle("hidden", !card);
   elements.dialogQuickActions?.classList.toggle("hidden", !card);
+  // Delete button only shown for existing cards
+  elements.deleteButton?.classList.toggle("hidden", !card);
 
   // View-only hint for existing cards
   const viewHint = document.querySelector("#dialogViewHint");
@@ -1446,18 +1461,23 @@ function openCardDialog(id = "", focusSection = "info") {
     renderActivity(card);
     renderDerivedTags();
   } else {
-    elements.topicInput.value = state.topic === "All" ? "Schedule" : state.topic;
-    elements.typeInput.value = "Task";
+    elements.topicInput.value = prefill.topic || (state.topic === "All" ? "Schedule" : state.topic);
+    elements.typeInput.value = prefill.type || "Task";
     elements.statusInput.value = "To Do";
-    setSelectValue(elements.assigneeInput, ""); // no auto-assignee - only set when someone clicks "I'll do it"
-    setSelectValue(elements.childInput, ""); // no auto-child - only set when detected in text
+    setSelectValue(elements.assigneeInput, "");
+    setSelectValue(elements.childInput, "");
     elements.amountInput.value = "";
-    elements.dueInput.value = "";
-    elements.llmCardPromptInput.value = "";
+    // Pre-fill due date from calendar selection or passed-in prefill
+    elements.dueInput.value = prefill.due ? prefill.due.slice(0, 16) : "";
+    elements.detailsInput.value = prefill.details || "";
+    elements.cardReminderPresetInput.value = state.automationSettings.defaultReminderPreset || "60";
+    elements.cardReminderTimeInput.value = "";
+    if (elements.llmCardPromptInput) elements.llmCardPromptInput.value = "";
     renderLlmInterpretation("");
     renderDerivedTags();
   }
 
+  updateReminderCustomVisibility();
   const canEdit = !card || state.automationSettings.everyoneCanEdit;
   setCardDialogEditMode(canEdit);
   elements.cardDialog.showModal();
@@ -1480,10 +1500,18 @@ function renderDialogMeta(card) {
   const reminderPreset = card.googleCalendar?.reminderPreset || card.reminder?.preset;
   const reminderLabel = reminderPreset ? presetLabel(reminderPreset) : null;
 
+  const lastEditedDate = card.lastEditedAt
+    ? new Date(card.lastEditedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+      + " " + new Date(card.lastEditedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    : null;
+  const showEdited = lastEditedDate && (card.lastEditedAt !== card.createdAt);
+
   meta.innerHTML = `
     <div class="dialog-meta-row">
       ${card.author ? `<span class="dialog-meta-item"><span class="dialog-meta-label">Added by</span>${escapeHtml(card.author)}</span>` : ""}
       ${createdDate ? `<span class="dialog-meta-item"><span class="dialog-meta-label">Added on</span>${createdDate}</span>` : ""}
+      ${showEdited ? `<span class="dialog-meta-item"><span class="dialog-meta-label">Edited by</span>${escapeHtml(card.lastEditedBy || card.author || "")}</span>` : ""}
+      ${showEdited ? `<span class="dialog-meta-item"><span class="dialog-meta-label">Edited on</span>${lastEditedDate}</span>` : ""}
       ${gcalLinked
         ? `<a class="dialog-meta-item dialog-meta-cal" href="${card.googleCalendar.htmlLink}" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4M16 2v4M4 9h16M5 5h14v16H5z"/></svg>
@@ -1540,22 +1568,16 @@ function setCardDialogEditMode(isEditing) {
   });
 
   if (elements.voiceButton) elements.voiceButton.disabled = !isEditing;
-  if (elements.llmVoiceButton) elements.llmVoiceButton.disabled = !isEditing;
-  if (elements.llmCardPromptInput) elements.llmCardPromptInput.disabled = !isEditing;
   if (elements.autofillButton) elements.autofillButton.disabled = !isEditing;
-  const useChatFlow = isEditing && !isExistingCard;
-  elements.cardForm.classList.toggle("llm-new-card-mode", useChatFlow);
-  elements.llmCardChat?.classList.toggle("hidden", !useChatFlow);
-  // Voice panel: hidden in view mode and new-card (LLM) mode; accessible via toggle in edit mode
+  // LLM mode removed - always use direct form
+  elements.cardForm.classList.remove("llm-new-card-mode");
+  elements.llmCardChat?.classList.add("hidden");
+  // Voice panel: hidden in view mode; accessible via toggle in edit mode
   const voicePanel = document.querySelector("#voicePanel");
   const voiceToggle = document.querySelector("#detailsVoiceToggle");
   const detailsHeader = document.querySelector("#detailsSectionHeader");
-  if (voicePanel) {
-    if (!isEditing || useChatFlow) {
-      voicePanel.classList.remove("open");
-    }
-  }
-  if (detailsHeader) detailsHeader.style.display = isEditing && !useChatFlow ? "flex" : "none";
+  if (voicePanel && !isEditing) voicePanel.classList.remove("open");
+  if (detailsHeader) detailsHeader.style.display = isEditing ? "flex" : "none";
   if (voiceToggle && !voiceToggle._bound) {
     voiceToggle._bound = true;
     voiceToggle.addEventListener("click", () => {
@@ -1565,8 +1587,7 @@ function setCardDialogEditMode(isEditing) {
       voiceToggle.title = isOpen ? "Hide voice input" : "Voice input";
     });
   }
-  elements.deleteButton?.classList.toggle("hidden", !isExistingCard);
-  // cardSaveButton is now "Cancel" - always visible
+  // Delete button visibility managed by openCardDialog (only for existing cards)
   elements.ackButton?.classList.toggle("hidden", true);
   elements.editCardMenuButton?.classList.toggle("hidden", true);
   // Hide the view-only hint when editing starts
@@ -1870,7 +1891,9 @@ function deriveFieldsFromShortInfo(rawText, options = {}) {
   elements.topicInput.value = inferTopic(lower);
   elements.typeInput.value = inferType(lower);
   elements.statusInput.value = inferStatus(lower);
-  setSelectValue(elements.assigneeInput, inferAssignee(lower));
+  // Only set assignee if a name is explicitly mentioned - no default fallback
+  const explicitAssignee = inferAssigneeFromMention(lower);
+  if (explicitAssignee) setSelectValue(elements.assigneeInput, explicitAssignee);
   setSelectValue(elements.childInput, inferChild(lower));
   elements.amountInput.value = inferAmount(text);
   const dueValue = inferDueDate(lower);
@@ -1962,6 +1985,17 @@ function inferAssignee(lower) {
   if (/(both|together|parents|parent-teacher|parent teacher)/.test(lower)) return "Both parents";
   if (lower.includes("child")) return "Child";
   return "Parent A";
+}
+
+// Like inferAssignee but returns null if no explicit name mention - no "Parent A" default
+function inferAssigneeFromMention(lower) {
+  const family = getFamilyPeople();
+  if (family.coparent.aliases.some((name) => textMentionsName(lower, name))) return "Parent B";
+  if (family.primary.aliases.some((name) => textMentionsName(lower, name))) return "Parent A";
+  if (lower.includes("parent b") || lower.includes("other parent")) return "Parent B";
+  if (lower.includes("parent a") || lower.includes("my task") || lower.includes("i will") || lower.includes("i'll")) return "Parent A";
+  if (/(both|together|parents|parent-teacher|parent teacher)/.test(lower)) return "Both parents";
+  return null; // no explicit mention - don't auto-assign
 }
 
 function inferChild(lower) {
@@ -2136,10 +2170,32 @@ function addCardDialogMessage() {
   render();
 }
 
+function updateReminderCustomVisibility() {
+  const isCustom = elements.cardReminderPresetInput?.value === "custom";
+  if (elements.cardReminderCustomLabel) {
+    elements.cardReminderCustomLabel.hidden = !isCustom;
+  }
+}
+
 function updateCardDialogReminderTime() {
+  const preset = elements.cardReminderPresetInput?.value;
+  if (preset === "custom") return; // user sets their own time
   const card = state.cards.find((item) => item.id === elements.cardId.value);
-  if (!card || elements.cardReminderPresetInput.value === "custom") return;
-  elements.cardReminderTimeInput.value = buildReminderTime(card, elements.cardReminderPresetInput.value);
+  // For new cards with a due date, compute from dueInput
+  const dueSource = card?.due || (elements.dueInput?.value ? new Date(elements.dueInput.value).toISOString() : null);
+  if (!dueSource) return;
+  const tempCard = { due: dueSource };
+  elements.cardReminderTimeInput.value = buildReminderTime(tempCard, preset);
+}
+
+let _autosaveTimer = null;
+function scheduleAutosave() {
+  clearTimeout(_autosaveTimer);
+  _autosaveTimer = setTimeout(() => {
+    if (!elements.cardDialog?.open) return;
+    if (!elements.titleInput?.value.trim() && !elements.detailsInput?.value.trim()) return;
+    saveCardSilent();
+  }, 1500);
 }
 
 function saveCardDialogReminder() {
@@ -2278,6 +2334,8 @@ function saveCard(event) {
     googleCalendar,
     author: existing?.author || authorName,
     createdAt: existing?.createdAt || Date.now(),
+    lastEditedAt: Date.now(),
+    lastEditedBy: authorName,
   };
 
   if (existing) {

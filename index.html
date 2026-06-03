@@ -436,23 +436,12 @@
         </div>
         <div class="dialog-lower-grid">
           <div class="dialog-info-column">
-            <section class="llm-card-chat hidden" id="llmCardChat" aria-label="Do-Do assistant">
-              <label class="new-card-message-field">
-                <span>What happened or what needs to be done?</span>
-                <div class="new-card-input-wrap">
-                  <textarea id="llmCardPromptInput" rows="8" maxlength="420" placeholder="Write normally. Do-Do will extract the date, people, status, reminder, and expense tags."></textarea>
-                  <button class="voice-button llm-mic-button" type="button" id="llmVoiceButton" aria-label="Dictate new Do" title="Dictate new Do">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z" />
-                      <path d="M19 10a7 7 0 0 1-14 0M12 17v4M8 21h8" />
-                    </svg>
-                  </button>
-                </div>
-              </label>
+            <!-- llmCardChat kept for JS compat but never shown -->
+            <section class="llm-card-chat hidden" id="llmCardChat" aria-label="Do-Do assistant" hidden>
               <div class="interpretation-message hidden" id="llmInterpretation"></div>
-              <div class="llm-chat-actions">
-                <button class="secondary-button" type="button" id="llmInterpretButton">Preview Do</button>
-              </div>
+              <textarea id="llmCardPromptInput" hidden tabindex="-1"></textarea>
+              <button id="llmInterpretButton" hidden tabindex="-1"></button>
+              <button id="llmVoiceButton" hidden tabindex="-1"></button>
             </section>
 
             <div class="dialog-two-col">
@@ -556,8 +545,8 @@
                     <option value="custom">Custom time</option>
                   </select>
                 </label>
-                <label>
-                  Time
+                <label id="cardReminderCustomLabel">
+                  Custom time
                   <input id="cardReminderTimeInput" type="datetime-local" />
                 </label>
                 <div class="section-actions">
@@ -571,9 +560,12 @@
         </div>
 
         <div class="dialog-actions">
-          <button class="ghost-button" type="button" id="deleteButton">Delete</button>
-          <button class="secondary-button" type="button" id="cardSaveButton">Cancel</button>
-          <button class="secondary-button" type="button" id="ackButton" hidden>Got it</button>
+          <div class="dialog-actions-left">
+            <button class="secondary-button" type="button" id="deleteButton" hidden>Delete</button>
+            <button class="secondary-button" type="button" id="cardCancelButton">Cancel</button>
+            <button class="secondary-button" type="button" id="ackButton" hidden>Got it</button>
+          </div>
+          <button class="primary-button" type="submit" id="cardSaveButton">Save</button>
         </div>
       </form>
     </dialog>

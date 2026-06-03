@@ -1269,48 +1269,14 @@ function featureDateFromLabel(label) {
 }
 
 function addCalendarEvent() {
-  const eventNumber = eventsForDate(calendarState.selected).length + 1;
   const selected = parseCalendarKey(calendarState.selected);
   selected.setHours(17, 0, 0, 0);
-  const automation = window.getAutomationSettings?.() || {};
-  const preset = automation.defaultReminderPreset || "60";
-  const reminder = automation.automateReminders && automation.reminderDelivery !== "calendar-only"
-    ? {
-        preset,
-        time: reminderIsoFromDate(selected, preset),
-        automated: true,
-      }
-    : null;
-  const googleCalendar = automation.syncFamilyCalendar
-    ? {
-        synced: true,
-        provider: automation.familyCalendarProvider || "google",
-        reminderPreset: preset,
-        updatedAt: new Date().toISOString(),
-      }
-    : null;
-  const card = {
-    id: `calendar-${Date.now()}`,
-    title: `New Do ${eventNumber}`,
+  // Open the unified New Do dialog with the selected calendar date pre-filled
+  window.openCardDialog("", "info", {
+    due: selected.toISOString(),
     topic: "Schedule",
     type: "Event",
-    status: "To Do",
-    assignee: "Parent A",
-    child: "Ava",
-    due: selected.toISOString(),
-    amount: "",
-    details: "Created with a date from the calendar. Add the details, people, expense, reminder, or message thread.",
-    comments: [{ author: "Parent A", text: "Created from calendar with a date", time: "Just now" }],
-    acknowledged: false,
-    reminder,
-    googleCalendar,
-    createdAt: Date.now(),
-  };
-  state.cards.unshift(card);
-  persist();
-  syncCalendarEventsFromCards();
-  renderCalendarFeature(featureData.calendar);
-  window.setTimeout(() => openCardDialog(card.id), 0);
+  });
 }
 
 function reminderIsoFromDate(date, preset) {
