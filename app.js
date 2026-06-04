@@ -1776,6 +1776,39 @@ async function callAiInterpret(text) {
     if (fields.child !== undefined) setSelectValue(elements.childInput, fields.child);
     if (fields.details) elements.detailsInput.value = fields.details;
 
+    // Apply AI-extracted reminder
+    if (fields.reminderMinutes != null && elements.cardReminderPresetInput) {
+      setSelectValue(elements.cardReminderPresetInput, String(fields.reminderMinutes));
+      const dueVal = elements.dueInput.value;
+      if (dueVal) {
+        elements.cardReminderTimeInput.value = buildReminderTime(
+          { due: new Date(dueVal).toISOString() }, String(fields.reminderMinutes)
+        );
+      }
+      updateReminderCustomVisibility();
+    }
+    if (fields.reminderAbsolute && elements.cardReminderPresetInput) {
+      elements.cardReminderPresetInput.value = "custom";
+      elements.cardReminderTimeInput.value = toDateTimeInputValue(new Date(fields.reminderAbsolute));
+      updateReminderCustomVisibility();
+    }
+
+    // Apply AI-extracted recurrence
+    if (fields.recurrence) {
+      const recInput = document.querySelector("#recurrenceInput");
+      const recDaysRow = document.querySelector("#recurrenceDaysRow");
+      if (recInput) {
+        recInput.value = fields.recurrence.freq?.toLowerCase() || "none";
+        const showDays = ["weekly", "biweekly"].includes(recInput.value);
+        recDaysRow?.classList.toggle("hidden", !showDays);
+        if (showDays && fields.recurrence.days?.length) {
+          recDaysRow?.querySelectorAll(".recurrence-day").forEach((cb) => {
+            cb.checked = fields.recurrence.days.includes(cb.value);
+          });
+        }
+      }
+    }
+
     renderDerivedTags();
     renderLlmInterpretation(fields.title || text);
     showToast("Do filled in by AI");
@@ -2028,8 +2061,17 @@ function deriveFieldsFromShortInfo(rawText, options = {}) {
 
   renderDerivedTags();
   if (!options.silent) showToast("Do tags derived from info");
+
+  // Schedule AI interpretation - fires after typing pauses, overrides regex results
+  if (!options.noAI && !options.silent && text.length > 8) {
+    clearTimeout(_interpretTimer);
+    _interpretTimer = setTimeout(() => callAiInterpret(text), 800);
+  }
+
   return true;
 }
+
+let _interpretTimer = null;
 
 function renderDerivedTags() {
   if (!elements.derivedTags) return;

@@ -1,5 +1,34 @@
 const today = new Date();
 const shoppingStorageKey = "do-do-shopping-lists-v1";
+
+// Cache for AI conflict suggestions keyed by "cardAId|cardBId"
+const _conflictSuggestionCache = {};
+
+async function _fetchConflictSuggestion(idA, idB) {
+  const key = `${idA}|${idB}`;
+  if (_conflictSuggestionCache[key] !== undefined) return; // already fetched or in flight
+  _conflictSuggestionCache[key] = null; // mark as in-flight to prevent duplicate calls
+  try {
+    const cardA = typeof state !== "undefined" ? state.cards.find((c) => c.id === idA) : null;
+    const cardB = typeof state !== "undefined" ? state.cards.find((c) => c.id === idB) : null;
+    if (!cardA || !cardB) return;
+    const res = await fetch("/api/suggest-resolution", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cardA, cardB }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.suggestion) {
+      _conflictSuggestionCache[key] = data.suggestion;
+      // Update the suggestion span in the DOM without full re-render
+      const el = document.getElementById(`conflict-suggestion-${idA}-${idB}`);
+      if (el) el.textContent = data.suggestion;
+    }
+  } catch {
+    // Silently fail - conflict banner still works without AI suggestion
+  }
+}
 const defaultShoppingLists = {
   groceries: [
     { id: "grocery-milk", label: "Milk", bought: false },
@@ -1279,15 +1308,22 @@ function renderDaySchedule(key) {
     ? `<div class="conflict-banner">
         <span class="conflict-icon">⚠</span>
         <div>
-          ${conflicts.map((c) => `
-            <strong>${escapeHtml(c.aTitle)}</strong> overlaps with
-            <strong>${escapeHtml(c.bTitle)}</strong>
-            <span class="conflict-reason">${escapeHtml(c.reason)}</span>
-            <div class="conflict-suggestions">
-              <button class="ghost-button conflict-action" data-conflict-a="${c.a}" data-conflict-b="${c.b}" data-resolution="swap">Swap times</button>
-              <button class="ghost-button conflict-action" data-conflict-a="${c.a}" data-conflict-b="${c.b}" data-resolution="open">Open cards</button>
-            </div>
-          `).join("")}
+          ${conflicts.map((c) => {
+            const suggestionId = `conflict-suggestion-${c.a}-${c.b}`;
+            const cached = _conflictSuggestionCache[`${c.a}|${c.b}`];
+            // Fetch suggestion in background if not cached
+            if (!cached) _fetchConflictSuggestion(c.a, c.b);
+            return `
+              <strong>${escapeHtml(c.aTitle)}</strong> overlaps with
+              <strong>${escapeHtml(c.bTitle)}</strong>
+              <span class="conflict-reason">${escapeHtml(c.reason)}</span>
+              <span class="conflict-ai-suggestion" id="${suggestionId}">${cached ? escapeHtml(cached) : ""}</span>
+              <div class="conflict-suggestions">
+                <button class="ghost-button conflict-action" data-conflict-a="${c.a}" data-conflict-b="${c.b}" data-resolution="swap">Swap times</button>
+                <button class="ghost-button conflict-action" data-conflict-a="${c.a}" data-conflict-b="${c.b}" data-resolution="open">Open cards</button>
+              </div>
+            `;
+          }).join("")}
         </div>
        </div>`
     : "";
