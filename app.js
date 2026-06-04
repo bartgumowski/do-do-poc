@@ -1513,9 +1513,8 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
   elements.dialogMode.textContent = card ? "Information and thread" : "New Do";
   elements.llmCardChat?.classList.add("hidden"); // never shown - direct form always used
   elements.commentPanel?.classList.toggle("hidden", !card);
-  // Show reminder panel for both new and existing cards (hide only when GCal connected)
-  const gcalActive = Boolean(state.automationSettings?.syncFamilyCalendar);
-  elements.cardReminderPanel?.classList.toggle("hidden", gcalActive);
+  // Always show reminder panel - manual reminder is useful even when GCal is connected
+  elements.cardReminderPanel?.classList.remove("hidden");
   elements.activityPanel?.classList.toggle("hidden", !card);
   elements.editCardMenuButton?.classList.toggle("hidden", !card);
   elements.dialogCardMeta?.classList.toggle("hidden", !card);
@@ -2508,6 +2507,8 @@ async function saveCard(event) {
     elements.titleInput.value = elements.titleInput.value.charAt(0).toUpperCase() + elements.titleInput.value.slice(1);
   }
   const id = elements.cardId.value || makeId();
+  // Write id back immediately so repeated autosaves and the manual Save all target the same card
+  if (!elements.cardId.value) elements.cardId.value = id;
   const existing = state.cards.find((card) => card.id === id);
   const newComment = elements.commentInput?.value.trim() || "";
   const comments = existing ? [...existing.comments] : [];
@@ -2682,13 +2683,22 @@ function acknowledgeCurrentCard() {
 function deleteCurrentCard() {
   const id = elements.cardId.value;
   if (!id) return;
-  state.cards = state.cards.filter((card) => card.id !== id);
+  const card = state.cards.find((c) => c.id === id);
+  state.cards = state.cards.filter((c) => c.id !== id);
   persist();
   elements.cardDialog.close();
   showToast("Do deleted");
   render();
   // Soft-delete in Supabase
   if (window.deleteCardFromSupabase) window.deleteCardFromSupabase(id).catch(() => {});
+  // Remove from Google Calendar if synced
+  if (card?.googleCalendar?.eventId && window.deleteCardFromFamilyCalendar) {
+    window.deleteCardFromFamilyCalendar(card).catch(() => {});
+  }
+  // Remove from Apple Calendar if synced
+  if (card?.appleCalendar?.eventId && window.deleteCardFromAppleCalendar) {
+    window.deleteCardFromAppleCalendar(card).catch(() => {});
+  }
 }
 
 function acknowledgeCurrentCard() {
