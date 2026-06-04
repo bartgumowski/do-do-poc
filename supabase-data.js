@@ -400,20 +400,114 @@ const FAMILY_CALENDAR_NAME = "Do-Do Family";
 const CAL_STORAGE_KEY = "do-do-gcal-id-v1";
 
 let googleAccessToken = null;
+let googleTokenExpiresAt = 0;  // unix ms - 0 means unknown/expired
 let familyCalendarId = null;
-let workBusySlots = [];      // Level 1: busy blocks from work calendar
-let familyCalEvents = [];    // Level 2: events from Do-Do Family calendar
+let workBusySlots = [];       // Level 1: busy blocks from current user's work calendar
+let coParentBusySlots = [];   // Level 1b: co-parent's busy blocks (from their Supabase profile)
+let appleCalBusySlots = [];   // CalDAV busy blocks (iCloud Calendar)
+let familyCalEvents = [];     // Level 2: events from Do-Do Family calendar
+
+// ─── Persist refresh token on sign-in ────────────────────────────────────────
+// Called from initGoogleCalendar whenever a fresh provider_refresh_token is
+// present in the session (i.e. immediately after OAuth sign-in).
+
+async function _storeRefreshToken(userId, refreshToken) {
+  if (!userId || !refreshToken || !window.supabaseClient) return;
+  await window.supabaseClient
+    .from("profiles")
+    .update({ provider_refresh_token: refreshToken })
+    .eq("id", userId);
+}
+
+// ─── Retrieve a valid Google access token ────────────────────────────────────
+// If the session already has a fresh provider_token, use it.
+// Otherwise call the /api/refresh-token serverless function to get a new one.
+
+async function _getGoogleAccessToken(session) {
+  // Prefer the token baked into the session (only present right after OAuth)
+  if (session?.provider_token) {
+    // Tokens from a fresh OAuth flow are valid ~1 hour
+    googleTokenExpiresAt = Date.now() + 55 * 60 * 1000;
+    return session.provider_token;
+  }
+
+  // No in-session token - call the server-side refresh endpoint
+  if (!currentUserId) return null;
+  try {
+    const { data: { session: liveSession } } = await window.supabaseClient.auth.getSession();
+    const jwt = liveSession?.access_token;
+    if (!jwt) return null;
+
+    const res = await fetch("/api/refresh-token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${jwt}`,
+      },
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      console.warn("Token refresh failed:", body.error || res.status);
+      return null;
+    }
+
+    const { access_token, expires_in } = await res.json();
+    if (access_token) {
+      googleTokenExpiresAt = Date.now() + ((expires_in || 3599) - 60) * 1000;
+      return access_token;
+    }
+    return null;
+  } catch (err) {
+    console.warn("Token refresh request failed:", err.message);
+    return null;
+  }
+}
+
+// ─── Ensure the in-memory googleAccessToken is fresh ─────────────────────────
+// Called before every GCal API call. Refreshes proactively if within 5 minutes
+// of expiry, and retries once on a 401 response.
+
+async function _ensureFreshGoogleToken() {
+  const buffer = 5 * 60 * 1000; // refresh 5 min before expiry
+  if (googleAccessToken && googleTokenExpiresAt > Date.now() + buffer) {
+    return googleAccessToken;
+  }
+  // Token missing or about to expire - get a fresh one
+  const liveSession = (await window.supabaseClient?.auth?.getSession())?.data?.session ?? {};
+  const freshToken = await _getGoogleAccessToken(liveSession);
+  if (freshToken) googleAccessToken = freshToken;
+  return googleAccessToken;
+}
+
+// ─── Retry a GCal fetch once on 401 (stale token race condition) ─────────────
+
+async function _gcalFetch(url, options) {
+  let res = await fetch(url, options);
+  if (res.status === 401) {
+    // Force refresh
+    googleTokenExpiresAt = 0;
+    const freshToken = await _ensureFreshGoogleToken();
+    if (!freshToken) return res; // give up
+    const newOpts = { ...options, headers: { ...options.headers, Authorization: `Bearer ${freshToken}` } };
+    res = await fetch(url, newOpts);
+  }
+  return res;
+}
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 async function initGoogleCalendar(session) {
-  // provider_token is the Google OAuth access token.
-  // It is ONLY present in the session immediately after OAuth sign-in.
-  // On subsequent page loads it may be null - users need to sign in again
-  // for calendar sync to work (or we refresh via provider_refresh_token).
-  const token = session?.provider_token;
+  // Store refresh token whenever it's present (fresh OAuth sign-in)
+  if (session?.provider_refresh_token && session?.user?.id) {
+    await _storeRefreshToken(session.user.id, session.provider_refresh_token);
+  }
+
+  // Get a valid access token - either from session or via refresh
+  const token = await _getGoogleAccessToken(session);
+
   if (!token) {
-    // Try to restore family calendar events from last session
+    // No token available - restore cached calendar events from last session
     const cached = localStorage.getItem("do-do-gcal-events-v1");
     if (cached) {
       try {
@@ -427,24 +521,32 @@ async function initGoogleCalendar(session) {
   googleAccessToken = token;
   familyCalendarId = localStorage.getItem(CAL_STORAGE_KEY) || null;
 
-  // Run both levels in parallel
+  // Run all three in parallel: own busy, family calendar, and co-parent busy
   await Promise.allSettled([
     _fetchWorkBusy(token),
     _initFamilyCalendar(token),
+    _loadCoParentBusySlots(),
   ]);
 }
 
 // ─── Level 1: Work calendar busy blocks ───────────────────────────────────────
 
 async function _fetchWorkBusy(token) {
+  // Ensure token is fresh before calling Google
+  const freshToken = await _ensureFreshGoogleToken() || token;
   try {
     const now = new Date();
     const fourWeeksOut = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
 
-    const res = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+    // Determine the person label for this user's busy blocks
+    const setup = (() => { try { return JSON.parse(localStorage.getItem("ido-you-do-onboarding-v1") || "null"); } catch { return null; } })();
+    const myRole = setup?.role || "parent_a";
+    const myName = setup?.parents?.primary || (myRole === "parent_a" ? "Parent A" : "Parent B");
+
+    const res = await _gcalFetch("https://www.googleapis.com/calendar/v3/freeBusy", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${freshToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -465,12 +567,69 @@ async function _fetchWorkBusy(token) {
       end: slot.end,
       allDay: false,
       source: "work",
-      private: true, // no details shown
+      person: myName,
+      role: myRole,
+      private: true,
     }));
+
+    // Persist our own busy slots to Supabase so the co-parent can see them
+    _saveMyBusySlotsToSupabase(workBusySlots).catch(() => {});
 
     _emitCalendarUpdate();
   } catch (err) {
     console.warn("Work calendar busy fetch failed:", err.message);
+  }
+}
+
+// ─── Save this user's busy slots to their Supabase profile ────────────────────
+
+async function _saveMyBusySlotsToSupabase(slots) {
+  if (!currentUserId || !window.supabaseClient) return;
+  // The work_busy_slots column may not exist yet - errors are silently ignored.
+  // If the column is missing the upsert will fail; the feature degrades gracefully.
+  await window.supabaseClient
+    .from("profiles")
+    .update({ work_busy_slots: JSON.stringify(slots) })
+    .eq("id", currentUserId)
+    .then(({ error }) => {
+      if (error && !error.message?.includes("column")) {
+        console.warn("Could not persist busy slots:", error.message);
+      }
+    });
+}
+
+// ─── Load the co-parent's busy slots from their Supabase profile ───────────────
+// RLS allows reading profiles for family members (see supabase-rls-audit.sql).
+
+async function _loadCoParentBusySlots() {
+  if (!currentUserId || !window.supabaseClient) return;
+  try {
+    // Get both profiles in this family; the other one is the co-parent
+    const { data: profiles, error } = await window.supabaseClient
+      .from("profiles")
+      .select("id, role, display_name, work_busy_slots")
+      .neq("id", currentUserId);
+
+    if (error || !profiles?.length) return;
+
+    const merged = [];
+    for (const profile of profiles) {
+      if (!profile.work_busy_slots) continue;
+      let slots;
+      try { slots = JSON.parse(profile.work_busy_slots); } catch { continue; }
+      if (!Array.isArray(slots)) continue;
+      const role = profile.role || "parent_b";
+      const name = profile.display_name || (role === "parent_a" ? "Parent A" : "Parent B");
+      // Re-stamp with co-parent identity (source data may use a different name)
+      merged.push(...slots.map((s) => ({ ...s, person: name, role, source: "coparent-work" })));
+    }
+
+    if (merged.length) {
+      coParentBusySlots = merged;
+      _emitCalendarUpdate();
+    }
+  } catch (err) {
+    console.warn("Co-parent busy slots load failed:", err.message);
   }
 }
 
@@ -524,7 +683,8 @@ async function _initFamilyCalendar(token) {
 // ─── Level 2: Read events from family calendar ────────────────────────────────
 
 async function _fetchFamilyCalendarEvents(token, calId) {
-  if (!token || !calId) return;
+  if (!calId) return;
+  const freshToken = await _ensureFreshGoogleToken() || token;
   try {
     const now = new Date();
     const sixtyDaysOut = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
@@ -535,8 +695,8 @@ async function _fetchFamilyCalendarEvents(token, calId) {
     url.searchParams.set("singleEvents", "true");
     url.searchParams.set("orderBy", "startTime");
 
-    const res = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await _gcalFetch(url.toString(), {
+      headers: { Authorization: `Bearer ${freshToken}` },
     });
     if (!res.ok) return;
 
@@ -567,13 +727,17 @@ async function _fetchFamilyCalendarEvents(token, calId) {
 // ─── Level 2: Push a card as a Google Calendar event ──────────────────────────
 
 async function pushCardToFamilyCalendar(card, reminderMinutes) {
-  if (!googleAccessToken || !familyCalendarId || !card.due) return null;
+  if (!familyCalendarId || !card.due) return null;
+
+  // Ensure token is fresh before writing
+  const token = await _ensureFreshGoogleToken();
+  if (!token) return null;
 
   try {
     const start = new Date(card.due);
     const end = new Date(start.getTime() + 60 * 60 * 1000); // 1 hour default
 
-    // Build reminders block - use calendar popup alert at the configured offset
+    // Build reminders block
     const mins = typeof reminderMinutes === "number" && reminderMinutes >= 0 ? reminderMinutes : null;
     const remindersBlock = mins !== null
       ? { useDefault: false, overrides: [{ method: "popup", minutes: mins }] }
@@ -585,51 +749,45 @@ async function pushCardToFamilyCalendar(card, reminderMinutes) {
         card.details,
         card.child ? `Child: ${card.child}` : "",
         card.amount ? `Amount: ${card.amount}` : "",
-        `\n— Created in Do-Do app`,
+        card.recurrence?.freq && card.recurrence.freq !== "none" ? `Recurring: ${_recurrenceLabel(card.recurrence)}` : "",
+        `\n- Created in Do-Do app`,
       ].filter(Boolean).join("\n"),
       start: { dateTime: start.toISOString() },
       end: { dateTime: end.toISOString() },
       reminders: remindersBlock,
       extendedProperties: {
-        private: { doDoCardId: card.id },
+        private: {
+          doDoCardId: card.id,
+          recurrenceFreq: card.recurrence?.freq || "none",
+        },
       },
     };
 
+    // Add RRULE if this is a recurring card
+    const rrule = card.recurrence ? _buildRRule(card.recurrence) : null;
+    if (rrule) eventBody.recurrence = [rrule];
+
     const existingEventId = card.googleCalendar?.eventId;
+    const calUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(familyCalendarId)}/events`;
 
     let res;
     if (existingEventId) {
-      // Update existing event
-      res = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(familyCalendarId)}/events/${existingEventId}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${googleAccessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(eventBody),
-        }
-      );
+      res = await _gcalFetch(`${calUrl}/${existingEventId}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(eventBody),
+      });
     } else {
-      // Create new event
-      res = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(familyCalendarId)}/events`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${googleAccessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(eventBody),
-        }
-      );
+      res = await _gcalFetch(calUrl, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(eventBody),
+      });
     }
 
     if (!res.ok) return null;
     const created = await res.json();
 
-    // Return the event ID so it can be stored on the card
     return {
       eventId: created.id,
       calendarId: familyCalendarId,
@@ -643,14 +801,51 @@ async function pushCardToFamilyCalendar(card, reminderMinutes) {
   }
 }
 
+// ─── RRULE builder for recurring events ──────────────────────────────────────
+
+function _buildRRule(rec) {
+  if (!rec || !rec.freq || rec.freq === "none") return null;
+  switch (rec.freq) {
+    case "daily":
+      return "RRULE:FREQ=DAILY";
+    case "weekly": {
+      const byday = (rec.days || []).map((d) => d.slice(0, 2).toUpperCase()).join(",");
+      return byday ? `RRULE:FREQ=WEEKLY;BYDAY=${byday}` : "RRULE:FREQ=WEEKLY";
+    }
+    case "biweekly": {
+      const byday2 = (rec.days || []).map((d) => d.slice(0, 2).toUpperCase()).join(",");
+      return byday2 ? `RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=${byday2}` : "RRULE:FREQ=WEEKLY;INTERVAL=2";
+    }
+    case "monthly":
+      return "RRULE:FREQ=MONTHLY";
+    case "custom-223":
+      // 2-2-3 custody pattern: approximated as alternating days; documented as manual
+      return "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU;INTERVAL=1";
+    case "custom-wowo":
+      return "RRULE:FREQ=WEEKLY;INTERVAL=2";
+    default:
+      return null;
+  }
+}
+
+function _recurrenceLabel(rec) {
+  const labels = {
+    daily: "Daily", weekly: "Weekly", biweekly: "Every two weeks",
+    monthly: "Monthly", "custom-223": "2-2-3 pattern", "custom-wowo": "Week-on/week-off",
+  };
+  return labels[rec?.freq] || rec?.freq || "Recurring";
+}
+
 // ─── Level 2: Delete a calendar event when card is deleted ────────────────────
 
 async function deleteCardFromFamilyCalendar(card) {
   const eventId = card?.googleCalendar?.eventId;
-  if (!googleAccessToken || !familyCalendarId || !eventId) return;
+  if (!familyCalendarId || !eventId) return;
+  const token = await _ensureFreshGoogleToken();
+  if (!token) return;
 
   try {
-    await fetch(
+    await _gcalFetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(familyCalendarId)}/events/${eventId}`,
       {
         method: "DELETE",
@@ -665,9 +860,102 @@ async function deleteCardFromFamilyCalendar(card) {
 // ─── Merge events for the calendar view ───────────────────────────────────────
 
 function getGoogleCalendarEvents() {
-  // Level 1: work busy slots (grey, no details)
+  // Level 1: own work busy + co-parent work busy + Apple CalDAV busy
   // Level 2: family calendar events (full details)
-  return [...workBusySlots, ...familyCalEvents];
+  return [...workBusySlots, ...coParentBusySlots, ...appleCalBusySlots, ...familyCalEvents];
+}
+
+// ─── Apple Calendar / CalDAV integration ──────────────────────────────────────
+// Credentials are stored in localStorage (POC) and sent to the /api/apple-calendar
+// proxy which makes the server-side CalDAV calls (CORS prevents direct browser access).
+
+const APPLE_CAL_KEY = "do-do-apple-cal-v1";
+
+async function initAppleCalendar() {
+  const creds = _getAppleCalCredentials();
+  if (!creds) return; // not connected
+  try {
+    const res = await fetch("/api/apple-calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...creds, action: "fetchBusy" }),
+    });
+    if (!res.ok) return;
+    const { slots } = await res.json();
+    if (!Array.isArray(slots)) return;
+
+    const setup = (() => { try { return JSON.parse(localStorage.getItem("ido-you-do-onboarding-v1") || "null"); } catch { return null; } })();
+    const myRole = setup?.role || "parent_a";
+    const myName = setup?.parents?.primary || (myRole === "parent_a" ? "Parent A" : "Parent B");
+
+    appleCalBusySlots = slots.map((slot, i) => ({
+      id: `apple-busy-${i}-${slot.start}`,
+      title: "Busy",
+      start: slot.start,
+      end: slot.end,
+      allDay: false,
+      source: "apple-work",
+      person: myName,
+      role: myRole,
+      private: true,
+    }));
+    _emitCalendarUpdate();
+  } catch (err) {
+    console.warn("Apple Calendar busy fetch failed:", err.message);
+  }
+}
+
+async function pushCardToAppleCalendar(card) {
+  const creds = _getAppleCalCredentials();
+  if (!creds || !card.due) return null;
+  try {
+    const res = await fetch("/api/apple-calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...creds,
+        action: "createEvent",
+        event: {
+          uid: card.id,
+          summary: card.title,
+          description: [card.details, card.child ? `Child: ${card.child}` : ""].filter(Boolean).join("\n"),
+          dtstart: new Date(card.due).toISOString(),
+          dtend: new Date(new Date(card.due).getTime() + 60 * 60 * 1000).toISOString(),
+          rrule: card.recurrence ? _buildRRule(card.recurrence) : null,
+        },
+      }),
+    });
+    if (!res.ok) return null;
+    const { uid, htmlLink } = await res.json();
+    return { uid, htmlLink, synced: true, provider: "apple", syncedAt: new Date().toISOString() };
+  } catch (err) {
+    console.warn("Push to Apple Calendar failed:", err.message);
+    return null;
+  }
+}
+
+function saveAppleCalCredentials(email, appPassword) {
+  localStorage.setItem(APPLE_CAL_KEY, JSON.stringify({ email, appPassword }));
+}
+
+function clearAppleCalCredentials() {
+  localStorage.removeItem(APPLE_CAL_KEY);
+  appleCalBusySlots = [];
+  _emitCalendarUpdate();
+}
+
+function getAppleCalConnectionStatus() {
+  const creds = _getAppleCalCredentials();
+  return creds ? { connected: true, email: creds.email } : { connected: false };
+}
+
+function _getAppleCalCredentials() {
+  try {
+    const raw = localStorage.getItem(APPLE_CAL_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
 
 function _emitCalendarUpdate() {
@@ -856,6 +1144,11 @@ window.initGoogleCalendar = initGoogleCalendar;
 window.getGoogleCalendarEvents = getGoogleCalendarEvents;
 window.pushCardToFamilyCalendar = pushCardToFamilyCalendar;
 window.deleteCardFromFamilyCalendar = deleteCardFromFamilyCalendar;
+window.initAppleCalendar = initAppleCalendar;
+window.pushCardToAppleCalendar = pushCardToAppleCalendar;
+window.saveAppleCalCredentials = saveAppleCalCredentials;
+window.clearAppleCalCredentials = clearAppleCalCredentials;
+window.getAppleCalConnectionStatus = getAppleCalConnectionStatus;
 window.getCurrentPairId = () => currentPairId;
 window.getCurrentUserId = () => currentUserId;
 window.loadMessages = loadMessages;

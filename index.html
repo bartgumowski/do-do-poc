@@ -68,6 +68,29 @@
         <p class="auth-error" id="inviteError" hidden></p>
       </div>
     </section>
+
+    <!-- Email verification gate - shown when account created but email not yet confirmed -->
+    <section class="auth-screen" id="verifyEmailScreen" aria-label="Verify your email" hidden>
+      <div class="auth-phone">
+        <div class="auth-brand-row">
+          <div class="auth-avatar"><img src="assets/dodo-icon.png" alt="Do-Do" /></div>
+          <div>
+            <span>Do-Do</span>
+            <strong>Family board</strong>
+          </div>
+        </div>
+        <div class="auth-hero">
+          <h1>Check your email</h1>
+          <p id="verifyEmailHint">We sent a confirmation link to your email address. Click it to finish signing in.</p>
+        </div>
+        <div style="padding: 0 24px 24px;">
+          <button class="auth-submit" type="button" id="verifyResendButton">Resend email</button>
+          <button class="auth-switch-button" type="button" id="verifySignOutButton" style="margin-top:12px;width:100%;">Use a different account</button>
+        </div>
+        <p class="auth-error" id="verifyError" hidden></p>
+      </div>
+    </section>
+
     <section class="auth-screen" id="authScreen" aria-label="Sign in">
       <div class="auth-phone">
         <div class="auth-brand-row">
@@ -506,6 +529,24 @@
                   <option>Ava + Leo</option>
                 </select>
                 <input id="dueInput" type="datetime-local" tabindex="-1" />
+                <select id="recurrenceInput" tabindex="-1" title="Repeat">
+                  <option value="none">Does not repeat</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Every 2 weeks</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="custom-223">2-2-3 custody</option>
+                  <option value="custom-wowo">Week-on / week-off</option>
+                </select>
+                <div id="recurrenceDaysRow" class="recurrence-days-row hidden">
+                  <label><input type="checkbox" value="MO" class="recurrence-day" />Mo</label>
+                  <label><input type="checkbox" value="TU" class="recurrence-day" />Tu</label>
+                  <label><input type="checkbox" value="WE" class="recurrence-day" />We</label>
+                  <label><input type="checkbox" value="TH" class="recurrence-day" />Th</label>
+                  <label><input type="checkbox" value="FR" class="recurrence-day" />Fr</label>
+                  <label><input type="checkbox" value="SA" class="recurrence-day" />Sa</label>
+                  <label><input type="checkbox" value="SU" class="recurrence-day" />Su</label>
+                </div>
                 <input id="amountInput" tabindex="-1" />
               </div>
             </section>

@@ -206,6 +206,11 @@ const elements = {
   inviteEmailInput: document.querySelector("#inviteEmailInput"),
   invitePasswordInput: document.querySelector("#invitePasswordInput"),
   inviteError: document.querySelector("#inviteError"),
+  verifyEmailScreen: document.querySelector("#verifyEmailScreen"),
+  verifyEmailHint: document.querySelector("#verifyEmailHint"),
+  verifyResendButton: document.querySelector("#verifyResendButton"),
+  verifySignOutButton: document.querySelector("#verifySignOutButton"),
+  verifyError: document.querySelector("#verifyError"),
   onboardingForm: document.querySelector("#onboardingForm"),
   onboardingParentA: document.querySelector("#onboardingParentA"),
   onboardingParentB: document.querySelector("#onboardingParentB"),
@@ -328,6 +333,7 @@ window.applyCardTagFilter = (tag) => {
 render();
 
 function bindEvents() {
+  initVerifyEmailScreen();
   elements.authProviderButtons.forEach((button) => {
     button.addEventListener("click", () => chooseAuthProvider(button.dataset.authProvider));
   });
@@ -557,15 +563,21 @@ async function handleAuthCallback() {
     return;
   }
 
-  supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
+  supabaseClient.auth.onAuthStateChange((event, nextSession) => {
     if (nextSession) {
       if (pendingInviteToken) {
         finishInviteAcceptance(nextSession);
       } else {
+        // EMAIL_CONFIRMED fires when the user clicks the link in their inbox.
+        // showApp re-evaluates the verification gate and opens the app.
         showApp(nextSession);
       }
     } else {
-      showAuthScreen();
+      // USER_UPDATED can fire with null session during email confirmation flow -
+      // don't sign the user out in that case.
+      if (event !== "USER_UPDATED") {
+        showAuthScreen();
+      }
     }
   });
 }
@@ -759,14 +771,92 @@ async function signOut() {
   showToast("Signed out");
 }
 
+function _isEmailVerified(session) {
+  // Google/Apple OAuth users are always considered verified.
+  // Email/password users must have confirmed their email.
+  const user = session?.user;
+  if (!user) return false;
+  const provider = user.app_metadata?.provider;
+  if (provider && provider !== "email") return true;
+  // email_confirmed_at is set by Supabase when the user clicks the link
+  return Boolean(user.email_confirmed_at || user.confirmed_at);
+}
+
+function showVerifyEmailScreen(session) {
+  currentAuthSession = session;
+  document.body.classList.add("auth-locked");
+  if (elements.authScreen) elements.authScreen.hidden = true;
+  if (elements.verifyEmailScreen) elements.verifyEmailScreen.hidden = false;
+  if (elements.verifyEmailHint) {
+    const email = session?.user?.email;
+    elements.verifyEmailHint.textContent = email
+      ? `We sent a confirmation link to ${email}. Click it to finish signing in.`
+      : "We sent a confirmation link to your email address. Click it to finish signing in.";
+  }
+  if (elements.verifyError) elements.verifyError.hidden = true;
+}
+
+// ─── Verify screen button wiring (called once on DOMContentLoaded) ────────────
+function initVerifyEmailScreen() {
+  elements.verifyResendButton?.addEventListener("click", async () => {
+    if (!supabaseClient || !currentAuthSession?.user?.email) return;
+    elements.verifyResendButton.disabled = true;
+    elements.verifyResendButton.textContent = "Sending...";
+    try {
+      const { error } = await supabaseClient.auth.resend({
+        type: "signup",
+        email: currentAuthSession.user.email,
+      });
+      if (error) {
+        if (elements.verifyError) {
+          elements.verifyError.textContent = error.message;
+          elements.verifyError.hidden = false;
+        }
+      } else {
+        elements.verifyResendButton.textContent = "Email sent";
+        setTimeout(() => {
+          if (elements.verifyResendButton) {
+            elements.verifyResendButton.textContent = "Resend email";
+            elements.verifyResendButton.disabled = false;
+          }
+        }, 5000);
+      }
+    } catch (err) {
+      if (elements.verifyError) {
+        elements.verifyError.textContent = err.message || "Could not resend. Try again.";
+        elements.verifyError.hidden = false;
+      }
+      elements.verifyResendButton.textContent = "Resend email";
+      elements.verifyResendButton.disabled = false;
+    }
+  });
+
+  elements.verifySignOutButton?.addEventListener("click", async () => {
+    if (elements.verifyEmailScreen) elements.verifyEmailScreen.hidden = true;
+    if (supabaseClient) await supabaseClient.auth.signOut().catch(() => {});
+    currentAuthSession = null;
+    showAuthScreen();
+  });
+}
+
 function showApp(session) {
   if (!session && !currentAuthSession) {
     showAuthScreen();
     return;
   }
   currentAuthSession = session || currentAuthSession;
+
+  // ─── 1.3 Email verification gate ─────────────────────────────────────────
+  // Block access to the family board until the email address is confirmed.
+  // OAuth users (Google/Apple) are implicitly verified.
+  if (!_isEmailVerified(currentAuthSession)) {
+    showVerifyEmailScreen(currentAuthSession);
+    return;
+  }
+
   clearAuthError();
   document.body.classList.remove("auth-locked");
+  if (elements.verifyEmailScreen) elements.verifyEmailScreen.hidden = true;
   initializeOnboarding();
   // Load real data from Supabase in the background
   if (window.initSupabaseData) {
@@ -787,6 +877,7 @@ function showAuthScreen() {
   document.body.classList.remove("onboarding-locked");
   elements.authProviderList?.classList.remove("hidden");
   elements.authConfirm?.classList.add("hidden");
+  if (elements.verifyEmailScreen) elements.verifyEmailScreen.hidden = true;
 }
 
 function resetAuthChoice() {
@@ -1401,6 +1492,7 @@ function createCardFromInlineCapture(input) {
     comments: [],
     acknowledged: false,
     reminder,
+    recurrence: null, // inline capture doesn't set recurrence
     googleCalendar: calendarSync,
     createdAt: Date.now(),
   };
@@ -1449,6 +1541,20 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     setSelectValue(elements.assigneeInput, card.assignee);
     setSelectValue(elements.childInput, card.child);
     elements.dueInput.value = card.due ? card.due.slice(0, 16) : "";
+    // Recurrence
+    const recInput = document.querySelector("#recurrenceInput");
+    const recDaysRow = document.querySelector("#recurrenceDaysRow");
+    if (recInput) {
+      recInput.value = card.recurrence?.freq || "none";
+      const showDays = ["weekly", "biweekly"].includes(card.recurrence?.freq);
+      recDaysRow?.classList.toggle("hidden", !showDays);
+      if (showDays) {
+        const days = card.recurrence?.days || [];
+        recDaysRow?.querySelectorAll(".recurrence-day").forEach((cb) => {
+          cb.checked = days.includes(cb.value);
+        });
+      }
+    }
     elements.amountInput.value = card.amount || "";
     elements.detailsInput.value = card.details;
     // Check if the card text mentions a specific reminder - use that over the stored preset
@@ -1486,6 +1592,7 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
   }
 
   updateReminderCustomVisibility();
+  _bindRecurrenceDaysToggle();
   const canEdit = !card || state.automationSettings.everyoneCanEdit;
   setCardDialogEditMode(canEdit);
   elements.cardDialog.showModal();
@@ -2341,7 +2448,7 @@ function saveCardSilent() {
   saveCard._silent = false;
 }
 
-function saveCard(event) {
+async function saveCard(event) {
   event.preventDefault();
   if (!elements.cardId.value && elements.llmCardPromptInput?.value.trim()) {
     syncLlmCardPrompt({ announce: false });
@@ -2407,6 +2514,15 @@ function saveCard(event) {
     ? null  // GCal event alert handles delivery
     : (existing?.reminder || autoReminder);
 
+  // Read recurrence from the picker
+  const recurrenceFreq = document.querySelector("#recurrenceInput")?.value || "none";
+  const recurrenceDays = recurrenceFreq === "weekly" || recurrenceFreq === "biweekly"
+    ? Array.from(document.querySelectorAll(".recurrence-day:checked")).map((cb) => cb.value)
+    : [];
+  const recurrence = recurrenceFreq !== "none"
+    ? { freq: recurrenceFreq, days: recurrenceDays }
+    : null;
+
   const card = {
     id,
     title: elements.titleInput.value.trim(),
@@ -2422,11 +2538,19 @@ function saveCard(event) {
     acknowledged: existing?.acknowledged || false,
     reminder,
     googleCalendar,
+    recurrence,
     author: existing?.author || authorName,
     createdAt: existing?.createdAt || Date.now(),
     lastEditedAt: Date.now(),
     lastEditedBy: authorName,
   };
+
+  // If editing a recurring card and recurrence changed, ask scope
+  if (existing?.recurrence && recurrenceFreq !== (existing.recurrence?.freq || "none")) {
+    const scope = await _askRecurrenceEditScope();
+    if (scope === "cancel") return;
+    card._recurrenceEditScope = scope; // "this" or "all"
+  }
 
   if (existing) {
     state.cards = state.cards.map((item) => (item.id === id ? card : item));
@@ -2438,7 +2562,7 @@ function saveCard(event) {
   if (!saveCard._silent) elements.cardDialog.close();
   showToast(existing ? "Do updated" : buildCreateToast(card));
   render();
-  // Sync to Supabase, then push to Google Calendar if card has a date
+  // Sync to Supabase, then push to calendars if card has a date
   const syncCard = async () => {
     let savedCard = { ...card };
     if (card.due && window.pushCardToFamilyCalendar) {
@@ -2450,9 +2574,54 @@ function saveCard(event) {
         persist();
       }
     }
+    // Also push to Apple Calendar if connected
+    if (card.due && window.pushCardToAppleCalendar) {
+      window.pushCardToAppleCalendar(savedCard).catch(() => {});
+    }
     if (window.saveCardToSupabase) await window.saveCardToSupabase(savedCard).catch(() => {});
   };
   syncCard();
+
+  // Wire recurrence-days visibility toggle
+  _bindRecurrenceDaysToggle();
+}
+
+// ─── Bind recurrence days row show/hide ───────────────────────────────────────
+
+function _bindRecurrenceDaysToggle() {
+  const recInput = document.querySelector("#recurrenceInput");
+  const daysRow = document.querySelector("#recurrenceDaysRow");
+  if (!recInput || !daysRow) return;
+  recInput.onchange = () => {
+    const showDays = ["weekly", "biweekly"].includes(recInput.value);
+    daysRow.classList.toggle("hidden", !showDays);
+  };
+}
+
+// ─── Recurrence scope dialog (this event / all future) ───────────────────────
+
+function _askRecurrenceEditScope() {
+  return new Promise((resolve) => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "recurrence-scope-dialog";
+    dialog.innerHTML = `
+      <p>This is a recurring event. Which events do you want to update?</p>
+      <div class="recurrence-scope-actions">
+        <button class="secondary-button" data-scope="this">This event only</button>
+        <button class="secondary-button" data-scope="all">All future events</button>
+        <button class="ghost-button" data-scope="cancel">Cancel</button>
+      </div>
+    `;
+    document.body.appendChild(dialog);
+    dialog.showModal();
+    dialog.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-scope]");
+      if (!btn) return;
+      dialog.close();
+      dialog.remove();
+      resolve(btn.dataset.scope);
+    });
+  });
 }
 
 function acknowledgeCurrentCard() {

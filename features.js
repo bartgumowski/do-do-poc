@@ -590,6 +590,56 @@ function bindAutomationSettings() {
       window.switchModule("settings");
     });
   });
+
+  // Apple Calendar connect
+  featureModule.querySelector("#connectAppleCalButton")?.addEventListener("click", async () => {
+    const email = featureModule.querySelector("#appleCalEmail")?.value.trim();
+    const password = featureModule.querySelector("#appleCalPassword")?.value.trim();
+    if (!email || !password) {
+      showFeatureToast("Enter your iCloud email and app-specific password");
+      return;
+    }
+    const btn = featureModule.querySelector("#connectAppleCalButton");
+    if (btn) { btn.disabled = true; btn.textContent = "Connecting..."; }
+    try {
+      const res = await fetch("/api/apple-calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, appPassword: password, action: "fetchBusy" }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        showFeatureToast(body.error || "Could not connect. Check your credentials.");
+        if (btn) { btn.disabled = false; btn.textContent = "Connect iCloud Calendar"; }
+        return;
+      }
+      window.saveAppleCalCredentials?.(email, password);
+      window.initAppleCalendar?.();
+      showFeatureToast("Apple Calendar connected");
+      window.switchModule("settings");
+    } catch (err) {
+      showFeatureToast("Connection failed. Try again.");
+      if (btn) { btn.disabled = false; btn.textContent = "Connect iCloud Calendar"; }
+    }
+  });
+
+  // Apple Calendar disconnect
+  featureModule.querySelector("#disconnectAppleCalButton")?.addEventListener("click", () => {
+    window.clearAppleCalCredentials?.();
+    showFeatureToast("Apple Calendar disconnected");
+    window.switchModule("settings");
+  });
+
+  // Co-parent calendar status - async update
+  const coParentStatusEl = featureModule.querySelector("#coParentCalStatus");
+  if (coParentStatusEl) {
+    // Check if any co-parent busy slots are currently loaded
+    const gcalEvents = window.getGoogleCalendarEvents?.() || [];
+    const hasCoParentSlots = gcalEvents.some((e) => e.source === "coparent-work");
+    coParentStatusEl.textContent = hasCoParentSlots ? "Connected" : "Not connected yet";
+    coParentStatusEl.className = hasCoParentSlots ? "status-connected" : "status-pending";
+  }
+
   themePreference?.addEventListener("change", () => {
     window.updateThemePreference?.(themePreference.value);
     showFeatureToast("Appearance updated");
@@ -1106,6 +1156,30 @@ function renderCalendarFeature(data) {
     button.addEventListener("click", () => openCardDialog(button.dataset.calendarCard));
   });
 
+  // Conflict action buttons - "open cards" opens the first conflicting card
+  featureModule.querySelectorAll(".conflict-action").forEach((button) => {
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const resolution = button.dataset.resolution;
+      const cardA = button.dataset.conflictA;
+      if (resolution === "open" && cardA) {
+        window.openCardDialog?.(cardA);
+      } else if (resolution === "swap") {
+        // Swap: open both cards so user can manually adjust
+        window.openCardDialog?.(cardA);
+        showFeatureToast("Open both cards and adjust their due times to resolve the conflict");
+      }
+    });
+  });
+
+  // Agenda card clicks - route to card dialog
+  featureModule.querySelectorAll(".agenda-card[data-card-id]").forEach((card) => {
+    card.addEventListener("click", () => window.openCardDialog?.(card.dataset.cardId));
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); window.openCardDialog?.(card.dataset.cardId); }
+    });
+  });
+
   window.bindUnifiedCardInteractions?.(featureModule);
 }
 
@@ -1133,14 +1207,21 @@ function renderCalendarDays() {
   const blankCount = (firstDay.getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const blanks = Array.from({ length: blankCount }, () => `<span class="calendar-day blank" aria-hidden="true"></span>`);
+  const activeConflicts = _getActiveConflicts();
   const days = Array.from({ length: daysInMonth }, (_, index) => {
     const day = index + 1;
     const date = new Date(year, month, day);
     const key = toCalendarKey(date);
     const events = eventsForDate(key);
-    const classes = ["calendar-day", key === calendarState.selected ? "selected" : "", events.length ? "has-marker" : ""].filter(Boolean).join(" ");
-    const dots = events.slice(0, 3).map((item) => `<i class="${item.kind}"></i>`).join("");
-    return `<button class="${classes}" type="button" data-calendar-day="${key}"><strong>${day}</strong><span>${dots}</span></button>`;
+    const dayConflicts = getConflictsForDate(key, activeConflicts);
+    const classes = ["calendar-day",
+      key === calendarState.selected ? "selected" : "",
+      events.length ? "has-marker" : "",
+      dayConflicts.length ? "has-conflict" : "",
+    ].filter(Boolean).join(" ");
+    const dots = events.slice(0, 3).map((item) => `<i class="${item.kind}${item.recurring ? " recurring" : ""}"></i>`).join("");
+    const conflictDot = dayConflicts.length ? `<i class="conflict-dot" title="${dayConflicts.length} conflict${dayConflicts.length > 1 ? "s" : ""}">⚠</i>` : "";
+    return `<button class="${classes}" type="button" data-calendar-day="${key}"><strong>${day}</strong><span>${dots}${conflictDot}</span></button>`;
   });
   return [...blanks, ...days].join("");
 }
@@ -1154,10 +1235,12 @@ function renderWeekView() {
         const date = addDays(start, index);
         const key = toCalendarKey(date);
         const events = eventsForDate(key);
+        const weekDayConflicts = getConflictsForDate(key, _getActiveConflicts());
+        const conflictTag = weekDayConflicts.length ? ` <span class="week-conflict-dot">⚠</span>` : "";
         return `
-          <button class="week-day ${key === calendarState.selected ? "selected" : ""}" type="button" data-calendar-day="${key}">
+          <button class="week-day ${key === calendarState.selected ? "selected" : ""}${weekDayConflicts.length ? " has-conflict" : ""}" type="button" data-calendar-day="${key}">
             <span>${weekdayLabel(date)}</span>
-            <strong>${date.getDate()}</strong>
+            <strong>${date.getDate()}${conflictTag}</strong>
             <em>${events.length ? `${events.length} item${events.length === 1 ? "" : "s"}` : "Clear"}</em>
           </button>
         `;
@@ -1179,6 +1262,8 @@ function renderDayView() {
 
 function renderDaySchedule(key) {
   const events = eventsForDate(key);
+  const conflicts = getConflictsForDate(key, _getActiveConflicts());
+
   if (!events.length) {
     return `<div class="day-schedule"><article class="agenda-empty">No events on this day.</article></div>`;
   }
@@ -1189,8 +1274,27 @@ function renderDaySchedule(key) {
     (byTime[t] = byTime[t] || []).push(item);
   });
   const sortedTimes = Object.keys(byTime).sort();
+
+  const conflictBanner = conflicts.length
+    ? `<div class="conflict-banner">
+        <span class="conflict-icon">⚠</span>
+        <div>
+          ${conflicts.map((c) => `
+            <strong>${escapeHtml(c.aTitle)}</strong> overlaps with
+            <strong>${escapeHtml(c.bTitle)}</strong>
+            <span class="conflict-reason">${escapeHtml(c.reason)}</span>
+            <div class="conflict-suggestions">
+              <button class="ghost-button conflict-action" data-conflict-a="${c.a}" data-conflict-b="${c.b}" data-resolution="swap">Swap times</button>
+              <button class="ghost-button conflict-action" data-conflict-a="${c.a}" data-conflict-b="${c.b}" data-resolution="open">Open cards</button>
+            </div>
+          `).join("")}
+        </div>
+       </div>`
+    : "";
+
   return `
     <div class="day-schedule">
+      ${conflictBanner}
       ${sortedTimes.map((slot) => `
         <div class="day-slot">
           <span>${slot === "00:00" ? "All day" : slot}</span>
@@ -1214,14 +1318,22 @@ function renderAgendaCard(item) {
       </article>
     `;
   }
-  const sourceCard = typeof state !== "undefined" ? state.cards.find((card) => card.id === item.cardId) : null;
+  // For recurring occurrences, look up the parent card
+  const lookupId = item.recurringParentId || item.cardId;
+  const sourceCard = typeof state !== "undefined" ? state.cards.find((card) => card.id === lookupId) : null;
   if (!sourceCard) return "";
-  // Render as a compact clickable row
+
+  const conflicts = _getActiveConflicts();
+  const hasConflict = getConflictsForCard(sourceCard.id, conflicts).length > 0;
+  const recurringIcon = item.recurring ? `<span class="recurring-icon" title="Recurring">&#x21BB;</span>` : "";
+  const conflictBadge = hasConflict ? `<span class="conflict-dot-small" title="Scheduling conflict">⚠</span>` : "";
+
+  // Render as a compact clickable row (use parent card id so dialog opens correctly)
   return `
-    <article class="agenda-card" data-card-id="${sourceCard.id}" role="button" tabindex="0">
-      <div class="agenda-card-time">${item.time}</div>
+    <article class="agenda-card${hasConflict ? " has-conflict" : ""}" data-card-id="${sourceCard.id}" role="button" tabindex="0">
+      <div class="agenda-card-time">${item.time}${recurringIcon}</div>
       <div class="agenda-card-body">
-        <strong>${escapeHtml(sourceCard.title)}</strong>
+        <strong>${escapeHtml(sourceCard.title)}${conflictBadge}</strong>
         ${sourceCard.details ? `<span>${escapeHtml(sourceCard.details.slice(0, 60))}${sourceCard.details.length > 60 ? "..." : ""}</span>` : ""}
       </div>
       <div class="agenda-card-status ${item.kind}">${sourceCard.status}</div>
@@ -1308,40 +1420,117 @@ function syncCalendarEventsFromCards() {
 
 function buildCalendarEvents(baseDate) {
   if (typeof state === "undefined") return [];
-  const familyEvents = state.cards
-    .filter((card) => card.due)
-    .map((card) => {
-      const date = new Date(card.due);
-      return {
-        cardId: card.id,
-        date: toCalendarKey(date),
-        time: date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
-        title: card.title,
-        detail: buildCalendarCardDetail(card),
-        kind: calendarKindForCard(card),
-        badge: card.type === "Expense" ? "Expense" : card.type,
-      };
-    });
 
-  // Merge Google Calendar events (both levels)
+  // Expand cards - including recurring event occurrences
+  const familyEvents = [];
+  for (const card of state.cards) {
+    if (!card.due) continue;
+    const baseOccurrence = _cardToCalEvent(card, new Date(card.due));
+    familyEvents.push(baseOccurrence);
+
+    // Expand recurring events up to 90 days out
+    if (card.recurrence?.freq && card.recurrence.freq !== "none") {
+      const occurrences = _expandRecurringCard(card, baseDate);
+      familyEvents.push(...occurrences);
+    }
+  }
+
+  // Merge Google Calendar events (own + co-parent + Apple CalDAV)
   const gcalEvents = (window.getGoogleCalendarEvents?.() || []).map((item) => {
     const date = new Date(item.start);
-    const isWorkBusy = item.source === "work" || item.source === "personal";
+    const isBusy = item.source === "work" || item.source === "personal"
+      || item.source === "coparent-work" || item.source === "apple-work";
     return {
       cardId: item.id,
       date: toCalendarKey(date),
       time: item.allDay ? "All day" : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
-      title: isWorkBusy ? "Busy" : item.title,
-      detail: isWorkBusy ? "Private calendar · details hidden" : (item.description || "Family calendar"),
-      kind: isWorkBusy ? "busy" : "event",
-      badge: isWorkBusy ? "Busy" : "GCal",
-      person: item.person || null, // "Parent A" or "Parent B"
+      title: isBusy ? "Busy" : item.title,
+      detail: isBusy ? "Private calendar - details hidden" : (item.description || "Family calendar"),
+      kind: isBusy ? "busy" : "event",
+      badge: isBusy ? "Busy" : (item.source === "family" ? "GCal" : "Calendar"),
+      person: item.person || null,
       googleLink: item.htmlLink || null,
-      privateBlock: isWorkBusy,
+      privateBlock: isBusy,
     };
   });
   familyEvents.push(...gcalEvents);
   return [...familyEvents, ...buildPrivateWorkBlocks(baseDate)];
+}
+
+function _cardToCalEvent(card, date) {
+  return {
+    cardId: card.id,
+    date: toCalendarKey(date),
+    time: date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+    title: card.title,
+    detail: buildCalendarCardDetail(card),
+    kind: calendarKindForCard(card),
+    badge: card.type === "Expense" ? "Expense" : card.type,
+    recurring: Boolean(card.recurrence?.freq && card.recurrence.freq !== "none"),
+    child: card.child || null,
+    assignee: card.assignee || null,
+    due: date.toISOString(),
+  };
+}
+
+function _expandRecurringCard(card, baseDate) {
+  const results = [];
+  const baseStart = new Date(card.due);
+  const horizonEnd = new Date(baseDate.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const rec = card.recurrence;
+
+  // Generate occurrences from the day after the base date up to horizon
+  let cursor = new Date(baseStart);
+
+  for (let i = 0; i < 200; i++) { // safety cap
+    cursor = _nextOccurrence(cursor, rec);
+    if (!cursor || cursor > horizonEnd) break;
+    const occ = _cardToCalEvent(card, cursor);
+    occ.cardId = `${card.id}-rec-${i}`; // unique per occurrence
+    occ.recurringParentId = card.id;
+    results.push(occ);
+    cursor = new Date(cursor); // clone
+  }
+  return results;
+}
+
+function _nextOccurrence(from, rec) {
+  if (!rec?.freq || rec.freq === "none") return null;
+  const next = new Date(from);
+  switch (rec.freq) {
+    case "daily":
+      next.setDate(next.getDate() + 1);
+      return next;
+    case "weekly":
+    case "biweekly": {
+      const interval = rec.freq === "biweekly" ? 14 : 7;
+      if (!rec.days?.length) {
+        next.setDate(next.getDate() + interval);
+        return next;
+      }
+      // Find the next matching weekday
+      const dayMap = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+      const targetDays = rec.days.map((d) => dayMap[d]).filter((n) => n !== undefined).sort((a, b) => a - b);
+      for (let d = 1; d <= interval + 7; d++) {
+        const candidate = new Date(from);
+        candidate.setDate(from.getDate() + d);
+        if (targetDays.includes(candidate.getDay())) return candidate;
+      }
+      return null;
+    }
+    case "monthly":
+      next.setMonth(next.getMonth() + 1);
+      return next;
+    case "custom-wowo":
+      next.setDate(next.getDate() + 14);
+      return next;
+    case "custom-223":
+      // 2-2-3 rotates in a 7-day cycle
+      next.setDate(next.getDate() + 7);
+      return next;
+    default:
+      return null;
+  }
 }
 
 function buildPrivateWorkBlocks(baseDate) {
@@ -1374,6 +1563,60 @@ function calendarKindForCard(card) {
   if (card.type === "Expense" || card.topic === "Expenses") return "payment";
   if (card.type === "Request" || card.status === "Waiting" || card.status === "Important") return "request";
   return "event";
+}
+
+// ─── Conflict detection ───────────────────────────────────────────────────────
+
+function detectConflicts(cards) {
+  // Only check cards with due dates that are not Done/Paid
+  const active = cards.filter((c) => c.due && c.status !== "Done" && c.status !== "Paid");
+  const conflicts = [];
+  for (let i = 0; i < active.length; i++) {
+    for (let j = i + 1; j < active.length; j++) {
+      const a = active[i];
+      const b = active[j];
+      const aStart = new Date(a.due);
+      const bStart = new Date(b.due);
+      const aEnd = new Date(aStart.getTime() + 60 * 60 * 1000); // assume 1 h
+      const bEnd = new Date(bStart.getTime() + 60 * 60 * 1000);
+      // Overlap check: ±30 min tolerance (ranges intersect if aStart < bEnd && bStart < aEnd)
+      const gap30 = 30 * 60 * 1000;
+      const overlaps = aStart < new Date(bEnd.getTime() + gap30)
+        && bStart < new Date(aEnd.getTime() + gap30);
+      if (!overlaps) continue;
+      const sharedChild = a.child && b.child && a.child === b.child;
+      const sameParent = a.assignee && b.assignee && a.assignee === b.assignee;
+      const bothParents = (a.assignee === "Both parents" || b.assignee === "Both parents");
+      if (sharedChild || sameParent || bothParents) {
+        conflicts.push({
+          a: a.id,
+          b: b.id,
+          aTitle: a.title,
+          bTitle: b.title,
+          aTime: a.due,
+          bTime: b.due,
+          reason: sharedChild ? `Both involve ${a.child}` : `Same person assigned`,
+          date: toCalendarKey(aStart),
+        });
+      }
+    }
+  }
+  return conflicts;
+}
+
+function getConflictsForDate(key, allConflicts) {
+  return allConflicts.filter((c) => c.date === key);
+}
+
+function getConflictsForCard(cardId, allConflicts) {
+  return allConflicts.filter((c) => c.a === cardId || c.b === cardId);
+}
+
+// ─── Cached conflicts for the current render ──────────────────────────────────
+
+function _getActiveConflicts() {
+  if (typeof state === "undefined") return [];
+  return detectConflicts(state.cards);
 }
 
 function toCalendarKey(date) {
@@ -1458,6 +1701,7 @@ function renderSpecialPanel(moduleName, part = "all") {
 
   if (moduleName === "settings") {
     const themePreference = window.getThemePreference?.() || "system";
+    const appleCalStatus = window.getAppleCalConnectionStatus?.() || { connected: false };
     const automation = window.getAutomationSettings?.() || {
       automateReminders: false,
       syncFamilyCalendar: false,
@@ -1598,6 +1842,56 @@ function renderSpecialPanel(moduleName, part = "all") {
               <em>Only occupied time ranges become visible inside the family calendar.</em>
             </span>
             <b>Busy only</b>
+          </div>
+        </div>
+      </section>
+
+      <section class="feature-panel apple-calendar-section">
+        <div class="feature-panel-header">
+          <h3>Apple Calendar (iCloud)</h3>
+          <span class="feature-badge ${appleCalStatus.connected ? "badge-connected" : "badge-pending"}">${appleCalStatus.connected ? "Connected" : "Not connected"}</span>
+        </div>
+        <p class="feature-note">iPhone users: connect iCloud Calendar to see your busy blocks and sync Do-Do events. Requires an app-specific password from <a href="https://appleid.apple.com" target="_blank" rel="noopener">appleid.apple.com</a> → Security → App-Specific Passwords.</p>
+        ${appleCalStatus.connected
+          ? `<div class="settings-connection-row">
+               <span><strong>Connected as</strong><em>${appleCalStatus.email}</em></span>
+               <button class="ghost-button" id="disconnectAppleCalButton">Disconnect</button>
+             </div>`
+          : `<div class="apple-cal-form">
+               <label class="clean-field">
+                 iCloud email
+                 <input type="email" id="appleCalEmail" placeholder="you@icloud.com" autocomplete="off" />
+               </label>
+               <label class="clean-field">
+                 App-specific password
+                 <input type="password" id="appleCalPassword" placeholder="xxxx-xxxx-xxxx-xxxx" autocomplete="new-password" />
+               </label>
+               <div class="section-actions">
+                 <button class="secondary-button" id="connectAppleCalButton">Connect iCloud Calendar</button>
+               </div>
+             </div>`
+        }
+      </section>
+
+      <section class="feature-panel coparent-calendar-section">
+        <div class="feature-panel-header">
+          <h3>Co-parent calendar</h3>
+        </div>
+        <p class="feature-note">Your co-parent connects their own calendar from their device in their Do-Do settings. Once connected, their busy blocks show on your shared calendar in a different color - without exposing any event details.</p>
+        <div class="settings-connection-list">
+          <div class="settings-connection-row">
+            <span>
+              <strong>Your calendar</strong>
+              <em>${automation.syncFamilyCalendar || automation.syncWorkCalendar ? "Connected - busy blocks shared" : "Not connected"}</em>
+            </span>
+            <b class="${automation.syncFamilyCalendar || automation.syncWorkCalendar ? "status-connected" : "status-pending"}">${automation.syncFamilyCalendar || automation.syncWorkCalendar ? "Active" : "Set up above"}</b>
+          </div>
+          <div class="settings-connection-row">
+            <span>
+              <strong>Co-parent's calendar</strong>
+              <em>Visible once they connect from their device.</em>
+            </span>
+            <b class="status-pending" id="coParentCalStatus">Checking...</b>
           </div>
         </div>
       </section>
