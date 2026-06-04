@@ -1,5 +1,21 @@
 # Do-Do Changelog
 
+## 2026-06-04 - Session: SEG-03 - AI field extraction, NLP reminders, conflict suggestions
+
+### AI replaces regex in card form (SEG-03)
+- **AI wired into card form** - `deriveFieldsFromShortInfo()` now schedules a Claude Haiku call 800ms after typing stops. Regex still fires instantly as a preview; AI result overrides all fields when it arrives.
+- **Full field extraction** - AI returns title, topic, type, status, due date, amount, assignee, child, details, reminderMinutes, reminderAbsolute, and recurrence. All applied directly to the card dialog fields.
+- **NLP reminder extraction** - `/api/interpret` now detects "night before" (720min), "morning of" (480min), "30 minutes before" (30min), "remind me at 9am Thursday" (absolute time). Applied to reminder panel automatically.
+- **Recurring event detection** - AI detects "every Friday", "alternate weekends", "every Tuesday and Thursday" and populates the recurrence picker (freq + day checkboxes).
+- **Conflict AI suggestion** - new `/api/suggest-resolution.js` endpoint. When two cards conflict, calls Claude Haiku for a specific one-sentence resolution ("Move the dentist to Thursday - Leo has football Tuesday at 16:00"). Shown in the conflict banner, fetched async, cached per conflict pair.
+
+### Bug fixes
+- **Autosave no longer closes dialog** - `saveCardSilent()` uses a `_silent` flag so autosave persists without closing the card.
+- **Reminder preset from card text applied on save** - `saveCard()` reads from the reminder panel fields (set by AI or user) instead of always using the global default. GCal event alert gets the card-specific preset.
+- **Open existing card overrides stored reminder** - `openCardDialog()` runs `inferReminderFromText()` on title+details; if a reminder is mentioned in the text it overrides the stored preset so re-saving corrects the GCal alert.
+
+---
+
 ## 2026-06-03 - Session: Parent names, NLP reminders, card dialog overhaul
 
 ### Parent names and tagging
