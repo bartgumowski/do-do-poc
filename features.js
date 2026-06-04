@@ -2059,6 +2059,13 @@ function renderSettingsFeature() {
         </div>
       </section>
 
+      <section class="feature-panel" id="notifPrefsPanel">
+        <h3>Notifications</h3>
+        <div class="feature-items" id="notifPrefsContent">
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">Loading...</p>
+        </div>
+      </section>
+
       ${renderSpecialPanel("settings", "appearance")}
     </div>
   `;
@@ -2077,6 +2084,9 @@ function renderSettingsFeature() {
 
   // Co-parent invite panel
   renderInvitePanel();
+
+  // Notification preferences panel
+  renderNotifPrefsPanel();
 
   // Edit/delete children
   featureModule.querySelectorAll("[data-edit-child]").forEach((btn) => {
@@ -2282,3 +2292,116 @@ window.addEventListener("googleCalendarLoaded", () => {
     renderFeature("calendar", featureData.calendar);
   }
 });
+
+// ─── Notification preferences panel ───────────────────────────────────────────
+
+async function renderNotifPrefsPanel() {
+  const container = document.getElementById("notifPrefsContent");
+  if (!container) return;
+
+  const session = typeof getAuthState === "function" ? getAuthState() : null;
+  const userId = session?.session?.user?.id;
+
+  // Load current prefs from Supabase if available
+  let prefs = { email: true, push: true, quiet_from: "22:00", quiet_to: "07:00" };
+  let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Zurich";
+
+  if (userId && window.supabaseClient) {
+    try {
+      const { data } = await window.supabaseClient
+        .from("profiles")
+        .select("notification_prefs, timezone")
+        .eq("id", userId)
+        .single();
+      if (data?.notification_prefs) prefs = { ...prefs, ...data.notification_prefs };
+      if (data?.timezone) timezone = data.timezone;
+    } catch {}
+  }
+
+  const pushSupported = "PushManager" in window;
+  const pushPermission = typeof Notification !== "undefined" ? Notification.permission : "denied";
+
+  container.innerHTML = `
+    <article class="feature-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+        <div>
+          <strong>Email reminders</strong>
+          <span>Send email when a reminder is due</span>
+        </div>
+        <label class="toggle-switch" style="margin-left:12px;">
+          <input type="checkbox" id="notifPrefEmail" ${prefs.email !== false ? "checked" : ""}>
+          <span class="toggle-knob"></span>
+        </label>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+        <div>
+          <strong>Push notifications</strong>
+          <span>${pushSupported ? (pushPermission === "denied" ? "Blocked in browser settings" : "Push to this device") : "Not supported on this browser"}</span>
+        </div>
+        <label class="toggle-switch" style="margin-left:12px;">
+          <input type="checkbox" id="notifPrefPush" ${prefs.push !== false ? "checked" : ""} ${!pushSupported || pushPermission === "denied" ? "disabled" : ""}>
+          <span class="toggle-knob"></span>
+        </label>
+      </div>
+      <div style="width:100%;">
+        <strong style="display:block;margin-bottom:8px;">Quiet hours</strong>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:13px;color:var(--muted);">From
+            <input type="time" id="notifQuietFrom" value="${prefs.quiet_from || "22:00"}" style="margin-left:6px;font-size:13px;border:1px solid var(--border);border-radius:8px;padding:4px 8px;background:var(--input-bg,var(--card-bg));color:var(--text);">
+          </label>
+          <label style="font-size:13px;color:var(--muted);">To
+            <input type="time" id="notifQuietTo" value="${prefs.quiet_to || "07:00"}" style="margin-left:6px;font-size:13px;border:1px solid var(--border);border-radius:8px;padding:4px 8px;background:var(--input-bg,var(--card-bg));color:var(--text);">
+          </label>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">No reminders sent during quiet hours.</p>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+        <button class="secondary-button" id="saveNotifPrefs" style="font-size:13px;">Save</button>
+        <button class="ghost-button" id="testNotifBtn" style="font-size:13px;padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:999px;color:var(--text);cursor:pointer;" ${!pushSupported || pushPermission !== "granted" ? "disabled title='Enable push notifications first'" : ""}>Send test push</button>
+      </div>
+    </article>
+  `;
+
+  // Save prefs
+  document.getElementById("saveNotifPrefs")?.addEventListener("click", async () => {
+    const emailOn = document.getElementById("notifPrefEmail")?.checked ?? true;
+    const pushOn = document.getElementById("notifPrefPush")?.checked ?? true;
+    const quietFrom = document.getElementById("notifQuietFrom")?.value || "22:00";
+    const quietTo = document.getElementById("notifQuietTo")?.value || "07:00";
+    const newPrefs = { email: emailOn, push: pushOn, quiet_from: quietFrom, quiet_to: quietTo };
+
+    // Subscribe or unsubscribe from push based on toggle
+    if (pushOn && pushPermission === "default") {
+      const granted = await Notification.requestPermission();
+      if (granted === "granted" && typeof subscribeToPush === "function") {
+        await subscribeToPush();
+      }
+    } else if (!pushOn && typeof unsubscribeFromPush === "function") {
+      await unsubscribeFromPush();
+    }
+
+    if (userId && window.supabaseClient) {
+      await window.supabaseClient
+        .from("profiles")
+        .update({ notification_prefs: newPrefs })
+        .eq("id", userId);
+    }
+    if (typeof showToast === "function") showToast("Notification preferences saved");
+  });
+
+  // Test push
+  document.getElementById("testNotifBtn")?.addEventListener("click", async () => {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      reg.showNotification("Do-Do test", {
+        body: "Push notifications are working!",
+        icon: "./assets/dodo-icon.png",
+        badge: "./assets/dodo-icon.png",
+        tag: "do-do-test",
+      });
+    } catch (e) {
+      if (typeof showToast === "function") showToast("Could not send test notification");
+    }
+  });
+}

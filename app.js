@@ -3602,11 +3602,97 @@ function registerServiceWorker() {
   });
 }
 
-// ─── Notifications ────────────────────────────────────────────────────────────
-// Reminders are delivered via Google Calendar alerts set at event creation.
-// The "minutes before" value comes from defaultReminderPreset in automation settings.
-// Browser Notification API polling is not used.
+// ─── Notifications / Web Push ─────────────────────────────────────────────────
 
-function requestNotificationPermission() { /* handled by calendar */ }
-function stopReminderChecker() { /* no-op */ }
-function initNotifications() { /* no-op - reminders via calendar alerts */ }
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+async function subscribeToPush() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  if (!window.VAPID_PUBLIC_KEY) return false;
+  if (!currentAuthSession?.user?.id) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    const sub = existing || await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(window.VAPID_PUBLIC_KEY),
+    });
+    const p256dh = btoa(String.fromCharCode(...new Uint8Array(sub.getKey("p256dh"))));
+    const auth = btoa(String.fromCharCode(...new Uint8Array(sub.getKey("auth"))));
+    await fetch("/api/push-subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: currentAuthSession.user.id,
+        endpoint: sub.endpoint,
+        p256dh,
+        auth,
+      }),
+    });
+    return true;
+  } catch (e) {
+    console.warn("Push subscribe failed:", e);
+    return false;
+  }
+}
+
+async function unsubscribeFromPush() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await fetch("/api/push-subscribe", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: sub.endpoint }),
+      });
+      await sub.unsubscribe();
+    }
+  } catch (e) {
+    console.warn("Push unsubscribe failed:", e);
+  }
+}
+
+function requestNotificationPermission() {
+  // Show contextual prompt once if not yet asked and not already granted/denied
+  if (typeof Notification === "undefined") return;
+  if (Notification.permission !== "default") return;
+  if (localStorage.getItem("notif-asked")) return;
+
+  const prompt = document.getElementById("notif-prompt");
+  if (!prompt) return;
+
+  // Delay slightly so it doesn't pop right at login
+  setTimeout(() => {
+    prompt.classList.remove("hidden");
+
+    document.getElementById("notif-prompt-allow")?.addEventListener("click", async () => {
+      prompt.classList.add("hidden");
+      localStorage.setItem("notif-asked", "1");
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        await subscribeToPush();
+      }
+    }, { once: true });
+
+    document.getElementById("notif-prompt-dismiss")?.addEventListener("click", () => {
+      prompt.classList.add("hidden");
+      localStorage.setItem("notif-asked", "dismissed");
+    }, { once: true });
+  }, 3000);
+}
+
+function stopReminderChecker() { /* no-op - handled server-side via cron */ }
+
+function initNotifications() {
+  // If permission was already granted (returning user), re-subscribe silently
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    subscribeToPush().catch(() => {});
+  }
+}

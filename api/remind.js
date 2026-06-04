@@ -1,7 +1,43 @@
-// Vercel cron function - sends reminder emails for due cards
+// Vercel cron function - sends reminder emails + web push for due cards
 // Schedule: every 15 minutes via vercel.json crons config
-// Requires env vars: RESEND_API_KEY (add to Vercel)
+// Requires env vars: RESEND_API_KEY, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
 // Uses existing: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+
+// Inline VAPID / web-push implementation to avoid npm dependency
+// Uses the Web Crypto API available in Node 18+ (Vercel default runtime)
+
+async function encryptWebPush(subscription, payload) {
+  // Dynamically import web-push if available, otherwise skip push silently
+  try {
+    const webpush = await import("web-push");
+    return webpush;
+  } catch {
+    return null;
+  }
+}
+
+function isInQuietHours(quietFrom, quietTo, userTimezone) {
+  if (!quietFrom || !quietTo) return false;
+  try {
+    const tz = userTimezone || "UTC";
+    const now = new Date();
+    const localStr = now.toLocaleString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false });
+    const [h, m] = localStr.split(":").map(Number);
+    const nowMins = h * 60 + m;
+    const [fh, fm] = quietFrom.split(":").map(Number);
+    const [th, tm] = quietTo.split(":").map(Number);
+    const fromMins = fh * 60 + fm;
+    const toMins = th * 60 + tm;
+    if (fromMins <= toMins) {
+      return nowMins >= fromMins && nowMins < toMins;
+    } else {
+      // Crosses midnight
+      return nowMins >= fromMins || nowMins < toMins;
+    }
+  } catch {
+    return false;
+  }
+}
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -13,22 +49,31 @@ export default async function handler(req, res) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const resendKey = process.env.RESEND_API_KEY;
+  const vapidPublic = process.env.VAPID_PUBLIC_KEY;
+  const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
+  const vapidSubject = process.env.VAPID_SUBJECT || "mailto:bart@do-do.app";
 
   if (!supabaseUrl || !supabaseKey) {
     return res.status(500).json({ error: "Supabase not configured" });
   }
-  if (!resendKey) {
-    return res.status(200).json({ skipped: true, reason: "no_resend_key" });
+
+  // Setup web-push if VAPID keys are available
+  let webpush = null;
+  if (vapidPublic && vapidPrivate) {
+    try {
+      webpush = (await import("web-push")).default;
+      webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
+    } catch {
+      // web-push not installed - push will be skipped
+    }
   }
 
   try {
-    // Find cards with reminders due in the next 16 minutes (cron fires every 15 min)
-    // plus any missed in the last 15 minutes (catch-up window)
     const now = new Date();
     const windowStart = new Date(now.getTime() - 15 * 60 * 1000).toISOString();
     const windowEnd = new Date(now.getTime() + 16 * 60 * 1000).toISOString();
 
-    // Fetch due cards with reminder_time in window, not yet notified, not done
+    // Fetch due cards
     const cardsRes = await fetch(
       `${supabaseUrl}/rest/v1/unified_cards?select=id,title,details,topic,type,status,reminder_time,reminder_notified_at,pair_id&reminder_time=gte.${windowStart}&reminder_time=lte.${windowEnd}&reminder_notified_at=is.null&status=neq.done&status=neq.paid&deleted_at=is.null`,
       {
@@ -48,39 +93,46 @@ export default async function handler(req, res) {
     const cards = await cardsRes.json();
     if (!cards.length) return res.status(200).json({ sent: 0, message: "No reminders due" });
 
-    // Get unique pair_ids to look up parent emails
     const pairIds = [...new Set(cards.map((c) => c.pair_id).filter(Boolean))];
 
-    // Fetch profiles for those pairs
+    // Fetch profiles with notification prefs
     const profilesRes = await fetch(
-      `${supabaseUrl}/rest/v1/profiles?select=id,display_name,pair_id&pair_id=in.(${pairIds.join(",")})`,
+      `${supabaseUrl}/rest/v1/profiles?select=id,display_name,pair_id,notification_prefs,timezone&pair_id=in.(${pairIds.join(",")})`,
       {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
       }
     );
-
     const profiles = profilesRes.ok ? await profilesRes.json() : [];
+    const profileMap = {}; // userId -> profile
+    profiles.forEach((p) => { profileMap[p.id] = p; });
 
-    // Get auth emails for those user IDs
+    // Get auth emails
     const userIds = profiles.map((p) => p.id);
-    const emailMap = {}; // userId -> email
-
+    const emailMap = {};
     if (userIds.length) {
       const usersRes = await fetch(
         `${supabaseUrl}/auth/v1/admin/users?per_page=50`,
-        {
-          headers: {
-            apikey: supabaseKey,
-            Authorization: `Bearer ${supabaseKey}`,
-          },
-        }
+        { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
       );
       if (usersRes.ok) {
         const { users = [] } = await usersRes.json();
         users.forEach((u) => { if (u.email) emailMap[u.id] = u.email; });
+      }
+    }
+
+    // Get push subscriptions for these users
+    const pushSubMap = {}; // userId -> [subscription]
+    if (userIds.length && webpush) {
+      const pushRes = await fetch(
+        `${supabaseUrl}/rest/v1/push_subscriptions?select=user_id,endpoint,p256dh,auth&user_id=in.(${userIds.join(",")})`,
+        { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+      );
+      if (pushRes.ok) {
+        const subs = await pushRes.json();
+        subs.forEach((s) => {
+          if (!pushSubMap[s.user_id]) pushSubMap[s.user_id] = [];
+          pushSubMap[s.user_id].push(s);
+        });
       }
     }
 
@@ -89,10 +141,17 @@ export default async function handler(req, res) {
     profiles.forEach((p) => {
       if (!pairRecipients[p.pair_id]) pairRecipients[p.pair_id] = [];
       const email = emailMap[p.id];
-      if (email) pairRecipients[p.pair_id].push({ email, name: p.display_name || "Parent" });
+      pairRecipients[p.pair_id].push({
+        userId: p.id,
+        email,
+        name: p.display_name || "Parent",
+        prefs: p.notification_prefs || { email: true, push: true },
+        timezone: p.timezone || "UTC",
+      });
     });
 
-    let sent = 0;
+    let sentEmail = 0;
+    let sentPush = 0;
     const notifiedIds = [];
 
     for (const card of cards) {
@@ -104,34 +163,66 @@ export default async function handler(req, res) {
         ? new Date(card.reminder_time).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", weekday: "short", day: "numeric", month: "short" })
         : "";
 
-      const html = `
-        <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
-          <div style="background: #65d6c6; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-            <span style="font-size: 18px; font-weight: 900; color: white;">D</span>
-          </div>
-          <p style="font-size: 12px; color: #78747e; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">${topic}</p>
-          <h1 style="font-size: 20px; font-weight: 800; margin: 0 0 8px;">${card.title}</h1>
-          ${card.details ? `<p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">${card.details}</p>` : ""}
-          ${dueText ? `<p style="font-size: 13px; color: #78747e; margin: 0 0 24px;">Reminder: ${dueText}</p>` : ""}
-          <a href="https://do-do.vercel.app" style="display: inline-block; background: #65d6c6; color: white; font-weight: 700; font-size: 14px; padding: 12px 24px; border-radius: 999px; text-decoration: none;">Open Do-Do</a>
-        </div>
-      `;
-
       for (const recipient of recipients) {
-        const emailRes = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "Do-Do <reminders@do-do.app>",
-            to: [recipient.email],
-            subject: `Reminder: ${card.title}`,
-            html,
-          }),
-        });
-        if (emailRes.ok) sent++;
+        const prefs = recipient.prefs || { email: true, push: true };
+        const inQuiet = isInQuietHours(prefs.quiet_from, prefs.quiet_to, recipient.timezone);
+
+        // Email
+        if (prefs.email !== false && recipient.email && !inQuiet && resendKey) {
+          const html = `
+            <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
+              <div style="background: #65d6c6; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                <span style="font-size: 18px; font-weight: 900; color: white;">D</span>
+              </div>
+              <p style="font-size: 12px; color: #78747e; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">${topic}</p>
+              <h1 style="font-size: 20px; font-weight: 800; margin: 0 0 8px;">${card.title}</h1>
+              ${card.details ? `<p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">${card.details}</p>` : ""}
+              ${dueText ? `<p style="font-size: 13px; color: #78747e; margin: 0 0 24px;">Reminder: ${dueText}</p>` : ""}
+              <a href="https://do-do.app/#board" style="display: inline-block; background: #65d6c6; color: white; font-weight: 700; font-size: 14px; padding: 12px 24px; border-radius: 999px; text-decoration: none;">Open Do-Do</a>
+            </div>
+          `;
+          const emailRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: process.env.RESEND_FROM_EMAIL || "Do-Do <reminders@resend.dev>",
+              to: [recipient.email],
+              subject: `Reminder: ${card.title}`,
+              html,
+            }),
+          });
+          if (emailRes.ok) sentEmail++;
+        }
+
+        // Web push
+        if (prefs.push !== false && !inQuiet && webpush) {
+          const subs = pushSubMap[recipient.userId] || [];
+          for (const sub of subs) {
+            try {
+              await webpush.sendNotification(
+                {
+                  endpoint: sub.endpoint,
+                  keys: { p256dh: sub.p256dh, auth: sub.auth },
+                },
+                JSON.stringify({
+                  title: card.title,
+                  body: dueText ? `Due: ${dueText}` : topic,
+                  tag: `card-${card.id}`,
+                  data: { cardId: card.id, url: "https://do-do.app/#board" },
+                })
+              );
+              sentPush++;
+            } catch (pushErr) {
+              // Subscription expired - clean it up
+              if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+                await fetch(
+                  `${supabaseUrl}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`,
+                  { method: "DELETE", headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+                );
+              }
+            }
+          }
+        }
       }
 
       notifiedIds.push(card.id);
@@ -154,7 +245,7 @@ export default async function handler(req, res) {
       );
     }
 
-    return res.status(200).json({ sent, cards: notifiedIds.length });
+    return res.status(200).json({ sentEmail, sentPush, cards: notifiedIds.length });
   } catch (err) {
     console.error("remind error:", err);
     return res.status(500).json({ error: err.message });

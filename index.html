@@ -691,8 +691,24 @@
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- Notification permission prompt (shown once after login) -->
+    <div id="notif-prompt" class="notif-prompt hidden" role="dialog" aria-label="Enable notifications">
+      <div class="notif-prompt-icon">🔔</div>
+      <p class="notif-prompt-title">Never miss a reminder</p>
+      <p class="notif-prompt-body">Get push notifications for pickups, appointments and deadlines.</p>
+      <div class="notif-prompt-actions">
+        <button id="notif-prompt-allow" class="primary-button">Enable notifications</button>
+        <button id="notif-prompt-dismiss" class="ghost-button">Not now</button>
+      </div>
+    </div>
+
+    <script>
+      // VAPID public key - set matching VAPID_PUBLIC_KEY env var in Vercel
+      window.VAPID_PUBLIC_KEY = "BI9wJDPhoEc2sBl39VZ-VFJMJz-EpmwmVI7Y3Zgkk1ECwE3dQQb5O6y_BK0Lr0egl_X17c_l3W6S0EksSubbj2M";
+    </script>
     <script src="supabase-data.js?v=20260601"></script>
-    <script src="app.js?v=20260603-dialog-v10"></script>
+    <script src="app.js?v=20260604-seg04"></script>
     <script src="features.js?v=20260531-shopping-buyer"></script>
   </body>
 </html>
