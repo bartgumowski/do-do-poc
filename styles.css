@@ -1911,6 +1911,13 @@ svg {
   gap: 8px;
 }
 
+/* Board cards: strip the pill background that the features demo .card-state-row span rule applies */
+.unified-card .card-state-row span {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
 .card-date-tag {
   font-size: 10px;
   font-weight: 700;
@@ -6835,4 +6842,44 @@ html[data-theme="dark"] .notif-prompt {
 .toggle-switch input:disabled + .toggle-knob {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ─── Version badge (sidebar desktop + settings mobile) ──────────────────── */
+
+.sidebar-version {
+  margin-top: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.version-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted, #78747e);
+  letter-spacing: 0.05em;
+}
+
+.version-date {
+  font-size: 10px;
+  color: var(--muted, #78747e);
+  opacity: 0.7;
+}
+
+.settings-version-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  font-size: 11px;
+  color: var(--muted, #78747e);
+  opacity: 0.7;
+  margin-top: 8px;
+}
+
+/* Sidebar needs flex-column so version badge sticks to bottom */
+.sidebar {
+  display: flex;
+  flex-direction: column;
 }

@@ -1,3 +1,5 @@
+const APP_VERSION = "0.4.0";
+const APP_VERSION_DATE = "2026-06-04";
 const statusColumns = ["Important", "Waiting", "To Do", "Done"]; // kept for DB mapping
 const kanbanColumns = [
   { id: "to-decide", label: "To decide", statuses: ["Important", "Waiting", "Disputed"] },
@@ -315,6 +317,7 @@ const elements = {
 trackVisit();
 bindEvents();
 registerServiceWorker();
+initVersionBadge();
 handleAuthCallback();
 window.applySidebarTopic = (topic) => {
   if (topic === "All") {
@@ -3699,6 +3702,22 @@ function requestNotificationPermission() {
 }
 
 function stopReminderChecker() { /* no-op - handled server-side via cron */ }
+
+// ─── Version badge ─────────────────────────────────────────────────────────────
+
+function getAppVersion() {
+  return { version: APP_VERSION, date: APP_VERSION_DATE };
+}
+
+function initVersionBadge() {
+  const numEl = document.getElementById("versionNumber");
+  const dateEl = document.getElementById("versionDate");
+  if (numEl) numEl.textContent = APP_VERSION;
+  if (dateEl) dateEl.textContent = APP_VERSION_DATE;
+}
+
+// Expose for settings panel and external use
+window.getAppVersion = getAppVersion;
 
 function initNotifications() {
   // If permission was already granted (returning user), re-subscribe silently
