@@ -1,5 +1,94 @@
 # Do-Do Changelog
 
+---
+
+## v0.5.0 - 2026-06-05 - SEG-05: Payments and Subscription
+
+### Stripe integration
+- **3 new API functions**: `/api/stripe-create-checkout.js` (Checkout session), `/api/stripe-webhook.js` (event handler), `/api/stripe-portal.js` (Customer Portal).
+- **Webhook events handled**: `checkout.session.completed` -> active/trialing, `customer.subscription.updated` -> status sync, `customer.subscription.deleted` -> canceled, `invoice.payment_failed` -> past_due.
+- **14-day free trial** added to checkout sessions automatically.
+- **Apple Pay / Google Pay** available automatically via Stripe Checkout hosted page.
+
+### Subscription state
+- `pairs` table columns `subscription_status` and `subscription_period_end` read on login via `loadSubscriptionStatus()` in supabase-data.js.
+- `subscriptionLoaded` custom event syncs status into `state.subscriptionStatus` in app.js.
+
+### Paywall and feature gating
+- **Free plan**: 10-card limit (non-Done cards). Upgrade prompt shown on 11th create attempt, in both card dialog and inline capture.
+- **isPaidUser()** helper: returns true for `active` and `trialing` statuses.
+- **AI interpret** (`/api/interpret`) gated - free users see upgrade prompt instead.
+- **Calendar sync toggle** gated - checking the toggle when free reverts it and shows upgrade prompt.
+
+### Upgrade prompt
+- `showUpgradePrompt(reason)` creates a `<dialog>` dynamically with feature list, pricing (CHF 9.90/mo, CHF 89/yr), and "Start free trial" CTA.
+- CTA calls `/api/stripe-create-checkout` and redirects to Stripe Checkout.
+
+### Subscription panel in Settings
+- New "Subscription" section renders above "Account".
+- Paid users: shows current plan, renewal date, "Manage" button -> Stripe Customer Portal.
+- Free users: shows Dos used (n/10), feature pitch, and "Upgrade" CTA.
+
+### Env vars required
+
+| Variable | Where | Purpose |
+|---|---|---|
+| `STRIPE_SECRET_KEY` | Vercel | Server-side Stripe API calls |
+| `STRIPE_PUBLISHABLE_KEY` | (future) | Client-side Stripe.js if needed |
+| `STRIPE_WEBHOOK_SECRET` | Vercel | Webhook signature verification |
+| `STRIPE_MONTHLY_PRICE_ID` | index.html | Monthly price ID (price_...) |
+| `STRIPE_ANNUAL_PRICE_ID` | index.html | Annual price ID (price_...) |
+
+### Supabase migration required
+```sql
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE public.pairs ADD COLUMN IF NOT EXISTS subscription_status TEXT
+  DEFAULT 'free' CHECK (subscription_status IN ('free', 'trialing', 'active', 'past_due', 'canceled'));
+ALTER TABLE public.pairs ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMPTZ;
+```
+
+---
+
+## v0.4.1 - 2026-06-04 - Vaccine cards, bug fixes, versioning
+
+### Vaccine cards
+- **Real vaccine cards** - "Vaccine" added as a card type. Vaccine cards appear on the board with a 💉 badge and teal color chip.
+- **Live vaccine panel in Settings** - replaces hardcoded demo. Shows all active vaccine cards sorted by due date. "Add vaccine" button opens the card dialog prefilled with type=Vaccine, topic=Medical.
+- **Click to open** - any row in the vaccine panel opens the card dialog for that card.
+
+### Bug fixes
+- **GCal/Apple delete on card removal** - `deleteCurrentCard` now calls `deleteCardFromFamilyCalendar` / `deleteCardFromAppleCalendar` when the card has a linked event id.
+- **Reminder panel always visible** - removed logic that hid the reminder panel when Google Calendar sync was on. Manual reminders now stay accessible in all cases.
+- **Duplicate cards on autosave fixed** - `saveCard` now writes the generated id back to `cardId.value` immediately so repeated autosaves and the manual Save button all update the same card instead of creating duplicates.
+- **Dark pill background on board cards removed** - features demo CSS (`.card-state-row span { background }`) was leaking onto board cards. Scoped out with `.unified-card .card-state-row span { background: transparent }`.
+
+### Versioning
+- **`APP_VERSION` constant** in `app.js` (currently `0.4.0`). Bump this with every push.
+- **Version badge in sidebar** (desktop) and **bottom of Settings** (mobile). Shows version number and date.
+
+---
+
+## v0.4.0 - 2026-06-04 - SEG-04 Notifications
+
+### Cron reminders (4.1)
+- `vercel.json` cron: `/api/remind` fires every 15 minutes (requires Vercel Pro).
+
+### Web push (4.2)
+- `api/push-subscribe.js` - new endpoint to save/remove VAPID push subscriptions in Supabase.
+- `api/remind.js` - sends web push via `web-push` lib alongside email. Respects `notification_prefs` and quiet hours.
+- VAPID keys generated and set in Vercel env vars (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`).
+
+### Notification permission UI (4.3)
+- Contextual "Enable notifications" prompt shown once 3s after login (stored in localStorage `notif-asked`).
+- `subscribeToPush()` / `unsubscribeFromPush()` in `app.js`. Returning users with permission granted re-subscribe silently.
+
+### Notification preferences (4.4)
+- Settings panel: email/push toggles, quiet hours from/to, "Send test push" button.
+- `profiles.notification_prefs` JSONB column + `profiles.timezone` - see `seg04-notifications.sql`.
+- `push_subscriptions` table with RLS - see `seg04-notifications.sql`.
+
+---
+
 ## 2026-06-04 - Session: SEG-03 - AI field extraction, NLP reminders, conflict suggestions
 
 ### AI replaces regex in card form (SEG-03)

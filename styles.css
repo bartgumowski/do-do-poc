@@ -6883,3 +6883,75 @@ html[data-theme="dark"] .notif-prompt {
   display: flex;
   flex-direction: column;
 }
+
+/* ─── Card type badge ─────────────────────────────────────────────────────── */
+
+.card-type-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.card-type-vaccine {
+  background: color-mix(in srgb, #65d6c6 15%, transparent);
+  color: #2a9d8f;
+}
+
+html[data-theme="dark"] .card-type-vaccine {
+  background: color-mix(in srgb, #65d6c6 12%, transparent);
+  color: #65d6c6;
+}
+
+/* ─── Upgrade modal (SEG-05) ─────────────────────────────────────────────── */
+
+.upgrade-modal {
+  max-width: 420px;
+  width: 90vw;
+}
+
+.upgrade-reason {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: var(--surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+.upgrade-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upgrade-feature-list li {
+  font-size: 14px;
+  padding-left: 20px;
+  position: relative;
+  color: var(--ink);
+}
+
+.upgrade-feature-list li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.upgrade-pricing {
+  font-size: 15px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.upgrade-pricing strong {
+  color: var(--ink);
+  font-size: 18px;
+}

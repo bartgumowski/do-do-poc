@@ -113,6 +113,8 @@ let currentPairId = null;
 let currentUserId = null;
 let realtimeChannel = null;
 let supabaseDataReady = false;
+let _subscriptionStatus = "free";
+let _subscriptionPeriodEnd = null;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
@@ -137,7 +139,10 @@ async function initSupabaseData(session) {
     }
 
     if (currentPairId) {
-      await loadCardsFromSupabase();
+      await Promise.all([
+        loadCardsFromSupabase(),
+        loadSubscriptionStatus(),
+      ]);
       subscribeToCardChanges();
     } else {
       // Logged in but no pair yet - show empty board, not mock cards
@@ -177,6 +182,39 @@ async function loadCardsFromSupabase() {
       if (typeof render === "function") render();
     }
   }
+}
+
+// ─── Subscription status ──────────────────────────────────────────────────────
+
+async function loadSubscriptionStatus() {
+  if (!currentPairId || !window.supabaseClient) return;
+
+  try {
+    const { data, error } = await window.supabaseClient
+      .from("pairs")
+      .select("subscription_status, subscription_period_end")
+      .eq("id", currentPairId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Could not load subscription status:", error.message);
+      return;
+    }
+
+    _subscriptionStatus = data?.subscription_status || "free";
+    _subscriptionPeriodEnd = data?.subscription_period_end || null;
+
+    // Notify app so it can update gating immediately
+    window.dispatchEvent(new CustomEvent("subscriptionLoaded", {
+      detail: { status: _subscriptionStatus, periodEnd: _subscriptionPeriodEnd },
+    }));
+  } catch (err) {
+    console.warn("loadSubscriptionStatus failed:", err.message);
+  }
+}
+
+function getSubscriptionStatus() {
+  return { status: _subscriptionStatus, periodEnd: _subscriptionPeriodEnd };
 }
 
 // ─── Save card ────────────────────────────────────────────────────────────────
@@ -1163,6 +1201,8 @@ window.getUnreadCounts = getUnreadCounts;
 window.loadUserProfile = loadUserProfile;
 window.acceptInviteToken = acceptInviteToken;
 window.lookupInviteToken = lookupInviteToken;
+window.loadSubscriptionStatus = loadSubscriptionStatus;
+window.getSubscriptionStatus = getSubscriptionStatus;
 
 // ─── Invite acceptance ────────────────────────────────────────────────────────
 

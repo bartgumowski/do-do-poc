@@ -595,7 +595,14 @@ function bindAutomationSettings() {
     window.switchModule("settings");
   };
   autoRemindersToggle?.addEventListener("change", save);
-  familyCalendarToggle?.addEventListener("change", save);
+  familyCalendarToggle?.addEventListener("change", (e) => {
+    if (e.target.checked && !window.isPaidUser?.()) {
+      e.target.checked = false; // revert
+      window.showUpgradePrompt?.("Calendar sync is available on the Family plan.");
+      return;
+    }
+    save();
+  });
   familyCalendarProvider?.addEventListener("change", save);
   workCalendarToggle?.addEventListener("change", save);
   workCalendarProvider?.addEventListener("change", save);
@@ -1932,29 +1939,7 @@ function renderSpecialPanel(moduleName, part = "all") {
         </div>
       </section>
       ` : ""}
-      ${part === "all" || part === "vaccine" ? `
-      <section class="feature-panel settings-preview">
-        <div class="feature-panel-header">
-          <h3>Pet vaccine schedule</h3>
-          <button class="secondary-button feature-action" data-action="Add vaccine">Add vaccine</button>
-        </div>
-        <div class="budget-list">
-          ${[
-            ["Milo rabies booster", "Due 12 Jun · annual"],
-            ["Milo kennel cough", "Due 22 Sep · daycare required"],
-            ["Milo deworming", "Due 1 Dec · recurring"],
-          ].map(([name, detail]) => `
-            <div class="budget-row">
-              <span>
-                <strong>${name}</strong>
-                <em>${detail}</em>
-              </span>
-              <button class="secondary-button feature-action" data-action="${name}">Card</button>
-            </div>
-          `).join("")}
-        </div>
-      </section>
-      ` : ""}
+      ${part === "all" || part === "vaccine" ? renderVaccinePanel() : ""}
     `;
   }
 
@@ -1964,6 +1949,80 @@ function renderSpecialPanel(moduleName, part = "all") {
       <p class="feature-note">This screen captures the workflow and user-facing information architecture. Production requires platform APIs, backend services, compliance review, and real audit/security controls.</p>
     </section>
   `;
+}
+
+function renderVaccinePanel() {
+  // Pull live vaccine cards from state
+  const allCards = typeof window.getCards === "function" ? window.getCards() : [];
+  const vaccineCards = allCards
+    .filter((c) => c.type === "Vaccine" && c.status !== "Done" && !c.deleted_at)
+    .sort((a, b) => (a.due || "9999") < (b.due || "9999") ? -1 : 1);
+
+  const rows = vaccineCards.length
+    ? vaccineCards.map((c) => {
+        const dueStr = c.due
+          ? new Date(c.due).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+          : "No date";
+        return `
+          <div class="budget-row vaccine-row" data-vaccine-card="${c.id}" role="button" tabindex="0" style="cursor:pointer;">
+            <span>
+              <strong>${escapeHtml(c.title)}</strong>
+              <em>Due ${dueStr}${c.details ? " · " + escapeHtml(c.details.substring(0, 40)) : ""}</em>
+            </span>
+            <button class="secondary-button" type="button" data-open-vaccine="${c.id}" style="flex-shrink:0;">Open</button>
+          </div>
+        `;
+      }).join("")
+    : `<p class="feature-empty">No vaccine cards yet. Add one to track due dates and reminders.</p>`;
+
+  return `
+    <section class="feature-panel" id="vaccinePanelSection">
+      <div class="feature-panel-header">
+        <h3>Vaccine schedule</h3>
+        <button class="secondary-button" type="button" id="addVaccineBtn">+ Add vaccine</button>
+      </div>
+      <div class="budget-list" id="vaccineCardList">
+        ${rows}
+      </div>
+    </section>
+  `;
+}
+
+function bindVaccinePanel() {
+  const section = document.getElementById("vaccinePanelSection");
+  if (!section) return;
+
+  // Add vaccine - open card dialog with Vaccine type + Medical topic prefilled
+  section.querySelector("#addVaccineBtn")?.addEventListener("click", () => {
+    if (typeof openCardDialog === "function") {
+      openCardDialog("", "info", { type: "Vaccine", topic: "Medical" });
+    }
+  });
+
+  // Open existing vaccine card
+  section.querySelectorAll("[data-open-vaccine]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.openVaccine;
+      if (typeof openCardDialog === "function") openCardDialog(id);
+    });
+  });
+
+  // Click row to open card
+  section.querySelectorAll("[data-vaccine-card]").forEach((row) => {
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      const id = row.dataset.vaccineCard;
+      if (typeof openCardDialog === "function") openCardDialog(id);
+    });
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const id = row.dataset.vaccineCard;
+        if (typeof openCardDialog === "function") openCardDialog(id);
+      }
+    });
+  });
 }
 
 function renderToggle(label, checked) {
@@ -2046,6 +2105,13 @@ function renderSettingsFeature() {
         </div>
       </section>
 
+      <section class="feature-panel" id="subscriptionPanel">
+        <h3>Subscription</h3>
+        <div class="feature-items" id="subscriptionPanelContent">
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">Loading...</p>
+        </div>
+      </section>
+
       <section class="feature-panel">
         <h3>Account</h3>
         <div class="feature-items">
@@ -2087,11 +2153,17 @@ function renderSettingsFeature() {
     if (typeof signOut === "function") signOut();
   });
 
+  // Subscription panel
+  renderSubscriptionPanel();
+
   // Co-parent invite panel
   renderInvitePanel();
 
   // Notification preferences panel
   renderNotifPrefsPanel();
+
+  // Vaccine panel interactions
+  bindVaccinePanel();
 
   // Edit/delete children
   featureModule.querySelectorAll("[data-edit-child]").forEach((btn) => {
@@ -2116,6 +2188,78 @@ function renderSettingsFeature() {
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
+}
+
+async function renderSubscriptionPanel() {
+  const panel = featureModule.querySelector("#subscriptionPanelContent");
+  if (!panel) return;
+
+  const { status, periodEnd } = window.getSubscriptionStatus?.() || { status: "free", periodEnd: null };
+  const paid = ["active", "trialing"].includes(status);
+
+  const statusLabel = {
+    free: "Free plan",
+    trialing: "Family - free trial",
+    active: "Family",
+    past_due: "Family - payment past due",
+    canceled: "Canceled",
+  }[status] || "Free plan";
+
+  const renewalHtml = periodEnd
+    ? `<span style="color:var(--muted);font-size:12px;">Renews ${new Date(periodEnd).toLocaleDateString()}</span>`
+    : "";
+
+  if (paid) {
+    panel.innerHTML = `
+      <article class="feature-item">
+        <div>
+          <strong>${statusLabel}</strong>
+          ${renewalHtml}
+        </div>
+        <button class="secondary-button" id="manageSubBtn" style="white-space:nowrap;">Manage</button>
+      </article>
+    `;
+    panel.querySelector("#manageSubBtn")?.addEventListener("click", async () => {
+      const btn = panel.querySelector("#manageSubBtn");
+      if (btn) { btn.disabled = true; btn.textContent = "Opening..."; }
+      try {
+        const userId = window.getCurrentUserId?.() || "";
+        const res = await fetch("/api/stripe-portal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        });
+        const data = await res.json();
+        if (data.url) { location.href = data.url; }
+        else { showFeatureToast("Could not open billing portal: " + (data.error || "unknown error")); }
+      } catch (err) {
+        showFeatureToast("Portal error: " + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "Manage"; }
+      }
+    });
+  } else {
+    // Free user - show upgrade CTA
+    const used = typeof state !== "undefined" ? state.cards.filter((c) => c.status !== "Done").length : 0;
+    const limit = typeof FREE_CARD_LIMIT !== "undefined" ? FREE_CARD_LIMIT : 10;
+    panel.innerHTML = `
+      <article class="feature-item" style="flex-direction:column;align-items:flex-start;gap:8px;">
+        <div>
+          <strong>Free plan</strong>
+          <span style="display:block;color:var(--muted);font-size:13px;">
+            ${used}/${limit} Dos used
+          </span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin:0;">
+          Upgrade for unlimited Dos, calendar sync, AI, and co-parent collaboration.
+        </p>
+        <button class="primary-button" id="upgradeSubBtn">Upgrade to Family - CHF 9.90/mo</button>
+      </article>
+    `;
+    panel.querySelector("#upgradeSubBtn")?.addEventListener("click", () => {
+      window.showUpgradePrompt?.("Upgrade to Do-Do Family for unlimited Dos and all features.");
+    });
+  }
 }
 
 async function renderInvitePanel() {

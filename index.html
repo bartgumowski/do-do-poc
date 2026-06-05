@@ -511,6 +511,7 @@
                   <option>Expense</option>
                   <option>Info</option>
                   <option>Request</option>
+                  <option>Vaccine</option>
                 </select>
                 <select id="statusInput" tabindex="-1">
                   <option>To Do</option>
@@ -712,8 +713,14 @@
       // VAPID public key - set matching VAPID_PUBLIC_KEY env var in Vercel
       window.VAPID_PUBLIC_KEY = "BI9wJDPhoEc2sBl39VZ-VFJMJz-EpmwmVI7Y3Zgkk1ECwE3dQQb5O6y_BK0Lr0egl_X17c_l3W6S0EksSubbj2M";
     </script>
-    <script src="supabase-data.js?v=20260601"></script>
-    <script src="app.js?v=20260604-seg04"></script>
-    <script src="features.js?v=20260531-shopping-buyer"></script>
+    <script>
+      // Stripe publishable config - set STRIPE_MONTHLY_PRICE_ID and STRIPE_ANNUAL_PRICE_ID in Vercel env
+      // These are price IDs (not secret keys) - safe to expose client-side
+      window.STRIPE_MONTHLY_PRICE_ID = ""; // e.g. price_1ABC...
+      window.STRIPE_ANNUAL_PRICE_ID  = ""; // e.g. price_1DEF...
+    </script>
+    <script src="supabase-data.js?v=20260605-seg05"></script>
+    <script src="app.js?v=20260605-seg05"></script>
+    <script src="features.js?v=20260605-seg05"></script>
   </body>
 </html>

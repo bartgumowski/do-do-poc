@@ -166,6 +166,8 @@ const seedCards = [
   },
 ];
 
+const FREE_CARD_LIMIT = 10;
+
 const state = {
   cards: loadCards(),
   automationSettings: loadAutomationSettings(),
@@ -176,7 +178,94 @@ const state = {
   actionFilter: "",
   personFilter: "",
   cardDialogEditMode: false,
+  subscriptionStatus: "free",
+  subscriptionPeriodEnd: null,
 };
+
+// Sync subscription state when Supabase loads it
+window.addEventListener("subscriptionLoaded", (e) => {
+  state.subscriptionStatus = e.detail.status || "free";
+  state.subscriptionPeriodEnd = e.detail.periodEnd || null;
+});
+
+// Subscription helpers
+function isPaidUser() {
+  return ["active", "trialing"].includes(state.subscriptionStatus);
+}
+
+function freeCardCount() {
+  return state.cards.filter((c) => c.status !== "Done").length;
+}
+
+function showUpgradePrompt(reason) {
+  document.getElementById("upgradeModal")?.remove();
+  const modal = document.createElement("dialog");
+  modal.id = "upgradeModal";
+  modal.className = "card-dialog upgrade-modal";
+  const reasonHtml = reason ? `<p class="upgrade-reason">${escapeHtml(reason)}</p>` : "";
+  modal.innerHTML = `
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">Do-Do Family</p>
+          <h2>Upgrade to unlock all features</h2>
+        </div>
+        <div class="dialog-header-actions">
+          <button class="icon-button" id="upgradeModalClose" aria-label="Close" title="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      ${reasonHtml}
+      <ul class="upgrade-feature-list">
+        <li>Both parents, unlimited Dos</li>
+        <li>Google &amp; Apple Calendar sync</li>
+        <li>AI field extraction and reminders</li>
+        <li>Co-parent collaboration</li>
+        <li>14-day free trial - no card required</li>
+      </ul>
+      <div class="upgrade-pricing">
+        <strong>CHF 9.90</strong>/month &nbsp; or &nbsp; <strong>CHF 89</strong>/year
+      </div>
+      <div class="dialog-actions">
+        <button class="ghost-button" id="upgradeModalCancel">Maybe later</button>
+        <button class="primary-button" id="upgradeModalMonthly">Start free trial</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.showModal();
+  modal.querySelector("#upgradeModalClose")?.addEventListener("click", () => modal.close());
+  modal.querySelector("#upgradeModalCancel")?.addEventListener("click", () => modal.close());
+  modal.addEventListener("click", (e) => { if (e.target === modal) modal.close(); });
+  modal.querySelector("#upgradeModalMonthly")?.addEventListener("click", async () => {
+    const btn = modal.querySelector("#upgradeModalMonthly");
+    btn.textContent = "Redirecting...";
+    btn.disabled = true;
+    try {
+      const priceId = window.STRIPE_MONTHLY_PRICE_ID || "";
+      const userId = window.getCurrentUserId?.() || "";
+      const pairId = window.getCurrentPairId?.() || "";
+      if (!priceId) { showToast("Stripe not configured yet"); modal.close(); return; }
+      const res = await fetch("/api/stripe-create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceId, userId, pairId,
+          successUrl: location.origin + "/#board?checkout=success",
+          cancelUrl: location.origin + "/#settings",
+        }),
+      });
+      const data = await res.json();
+      if (data.url) { location.href = data.url; }
+      else { showToast("Could not start checkout: " + (data.error || "unknown error")); modal.close(); }
+    } catch (err) { showToast("Checkout failed: " + err.message); modal.close(); }
+  });
+}
+
+window.showUpgradePrompt = showUpgradePrompt;
+window.isPaidUser = isPaidUser;
+
 applyAutomationSettingsToCards();
 
 const mobileVoice = {
@@ -1334,6 +1423,7 @@ function renderUnifiedCard(card, options = {}) {
     <article class="${className}" ${attributes}>
       <div class="card-state-row">
         <span class="card-date-tag">${dateStr}</span>
+        ${card.type === "Vaccine" ? `<span class="card-type-badge card-type-vaccine">💉 Vaccine</span>` : ""}
         ${statusLabel ? `<span class="card-status-label${isDone ? " card-status-done" : ""}">${statusLabel}</span>` : ""}
         ${card.amount ? `<span class="card-money-tag">${escapeHtml(card.amount)}</span>` : ""}
       </div>
@@ -1499,6 +1589,12 @@ function createCardFromInlineCapture(input) {
     googleCalendar: calendarSync,
     createdAt: Date.now(),
   };
+
+  // Enforce free-tier card limit
+  if (!isPaidUser() && freeCardCount() >= FREE_CARD_LIMIT) {
+    showUpgradePrompt(`You have reached the ${FREE_CARD_LIMIT}-Do limit on the free plan. Upgrade for unlimited Dos.`);
+    return;
+  }
 
   state.cards.unshift(card);
   persist();
@@ -1743,6 +1839,11 @@ function syncLlmCardPrompt(options = {}) {
 
 async function callAiInterpret(text) {
   if (!text?.trim()) return;
+  // AI interpret is a paid feature - show upgrade prompt for free users
+  if (!isPaidUser()) {
+    showUpgradePrompt("AI field extraction is available on the Family plan.");
+    return;
+  }
   const interpretBtn = elements.llmInterpretButton;
   if (interpretBtn) {
     interpretBtn.textContent = "Thinking...";
@@ -2601,6 +2702,12 @@ async function saveCard(event) {
   if (existing) {
     state.cards = state.cards.map((item) => (item.id === id ? card : item));
   } else {
+    // Enforce free-tier card limit
+    if (!isPaidUser() && freeCardCount() >= FREE_CARD_LIMIT) {
+      elements.cardDialog.close();
+      showUpgradePrompt(`You have reached the ${FREE_CARD_LIMIT}-Do limit on the free plan. Upgrade for unlimited Dos.`);
+      return;
+    }
     state.cards.unshift(card);
   }
 
@@ -3347,6 +3454,7 @@ window.signOut = signOut;
 window.quickCompleteCard = quickCompleteCard;
 window.quickRespondCard = quickRespondCard;
 window.openCardDialog = openCardDialog;
+window.getCards = () => state.cards;
 window.startDictationForField = startDictationForField;
 window.extractMessageTags = extractMessageTags;
 window.renderMessageTags = renderMessageTags;
