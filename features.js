@@ -2266,6 +2266,23 @@ async function renderInvitePanel() {
   const panel = featureModule.querySelector("#invitePanelContent");
   if (!panel) return;
 
+  // Co-parent invite is a paid feature (free plan = single user only)
+  if (!window.isPaidUser?.()) {
+    panel.innerHTML = `
+      <article class="feature-item">
+        <div>
+          <strong style="display:block;margin-bottom:4px;">Invite your co-parent</strong>
+          <span style="color:var(--muted);font-size:13px;">Shared board and collaboration require the Family plan.</span>
+        </div>
+        <button class="secondary-button" id="inviteUpgradeBtn" style="white-space:nowrap;">Upgrade</button>
+      </article>
+    `;
+    panel.querySelector("#inviteUpgradeBtn")?.addEventListener("click", () => {
+      window.showUpgradePrompt?.("Co-parent collaboration is available on the Family plan.");
+    });
+    return;
+  }
+
   const hasPair = Boolean(window.getCurrentPairId?.());
   const setup = window.getOnboardingState?.() || {};
   const coparentName = setup.parents?.coparent || "Co-parent";
