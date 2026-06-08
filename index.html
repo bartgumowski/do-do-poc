@@ -443,7 +443,6 @@
           <div>
             <p class="eyebrow visually-hidden" id="dialogMode">New Do</p>
             <h2 id="dialogTitle">New Do</h2>
-            <p class="presence-indicator" id="presenceIndicator" hidden></p>
           </div>
           <div class="dialog-header-actions">
             <button class="icon-button" type="button" id="editCardMenuButton" aria-label="Edit card" title="Edit card">
@@ -604,24 +603,6 @@
                   <button class="secondary-button" type="button" id="saveCardReminderButton">Save</button>
                 </div>
               </section>
-              <!-- Payment panel - shown for Expense cards with an amount set -->
-              <section class="card-info-section" id="cardPaymentPanel" hidden>
-                <div class="section-heading">Payment</div>
-                <div id="paymentPanelContent"></div>
-              </section>
-
-              <!-- Receipt panel - shown for Expense cards -->
-              <section class="card-info-section" id="cardReceiptPanel" hidden>
-                <div class="section-heading">Receipt</div>
-                <input type="file" id="receiptFileInput" accept="image/*,application/pdf" hidden aria-hidden="true">
-                <button class="secondary-button receipt-upload-btn" type="button" id="receiptUploadButton">
-                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="16" height="16">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                  Attach receipt
-                </button>
-                <div id="receiptPreview"></div>
-              </section>
             </div><!-- /dialog-side-col -->
           </div><!-- /dialog-two-col -->
           </div>
@@ -716,15 +697,6 @@
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-    <!-- Cookie consent banner (shown once to new visitors) -->
-    <div id="cookieBanner" class="cookie-banner" hidden role="dialog" aria-label="Cookie notice">
-      <p class="cookie-banner-text">
-        We use cookies only for authentication - no tracking, no ads.
-        <a href="/legal.html#cookies" target="_blank" rel="noopener">Learn more</a>
-      </p>
-      <button class="primary-button cookie-banner-btn" id="cookieBannerOk" type="button">Got it</button>
-    </div>
 
     <!-- Notification permission prompt (shown once after login) -->
     <div id="notif-prompt" class="notif-prompt hidden" role="dialog" aria-label="Enable notifications">

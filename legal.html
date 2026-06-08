@@ -207,8 +207,8 @@
       <section class="legal-card" id="privacy">
         <h2>Privacy Notice</h2>
         <p>
-          This notice describes how Do-Do collects, uses, and protects your personal data.
-          Do-Do is operated by Bart Gumowski (Switzerland). Effective date: June 2026.
+          This notice describes personal data practices for Do-Do. Replace placeholders with the real legal entity,
+          processor list, data hosting region, and privacy contact before production.
         </p>
 
         <h3>Data we may collect</h3>
@@ -252,29 +252,16 @@
 
         <h3>Sharing and processors</h3>
         <ul>
-          <li><strong>Supabase (EU-West-1, Ireland)</strong> - database, authentication, file storage, and real-time sync. Your data is stored in the EU.</li>
-          <li><strong>Vercel (US)</strong> - serverless API hosting. Request data passes through Vercel's infrastructure.</li>
-          <li><strong>Anthropic (US)</strong> - AI field extraction via Claude Haiku. Card text submitted for AI interpretation is sent to Anthropic's API. No data is used for model training without consent.</li>
-          <li><strong>Stripe (US/EU)</strong> - payment processing for subscriptions and expense payments. Payment card data is handled exclusively by Stripe and never stored by Do-Do.</li>
-          <li><strong>Resend (US)</strong> - transactional email delivery (reminders, invites, payment requests).</li>
-          <li>Data is shared with your invited co-parent according to family-board permissions.</li>
-          <li>Data may be shared with authorities when legally required.</li>
+          <li>Data may be shared with service providers that host, authenticate, store, analyze, secure, or send app notifications.</li>
+          <li>Data may be shared with invited family-board members according to permissions and with authorities when legally required.</li>
+          <li>Processor names, regions, and transfer safeguards must be listed before production launch.</li>
         </ul>
 
-        <h3>Retention and deletion</h3>
+        <h3>Retention</h3>
         <ul>
           <li>Account and board data is kept while the account or family board is active.</li>
-          <li>You may delete your account at any time via Settings → Account → Delete account. Your profile and messages are removed immediately. Cards you authored are anonymised within 30 days. Your co-parent's data is preserved.</li>
-          <li>You may export all your personal data via Settings → Account → Download my data (GDPR data portability).</li>
-          <li>Backups may persist for up to 30 days before automatic deletion.</li>
-          <li>Stripe retains payment transaction records as required by financial regulations.</li>
-        </ul>
-
-        <h3>Data residency</h3>
-        <ul>
-          <li>Primary data storage: Supabase EU-West-1 (Ireland). Do-Do selects EU storage to serve Swiss and European users.</li>
-          <li>API processing: Vercel edge functions may execute in the closest available region.</li>
-          <li>AI processing: Anthropic's API (US). Only card text submitted for interpretation is transferred.</li>
+          <li>Deleted accounts should be removed or anonymized within 30 days unless a longer period is required for legal, safety, billing, or dispute reasons.</li>
+          <li>Backups may persist for a limited recovery period before automatic deletion.</li>
         </ul>
       </section>
 
@@ -303,27 +290,23 @@
       </section>
 
       <section class="legal-card" id="cookies">
-        <h2>Cookies and Local Storage</h2>
+        <h2>Cookies, Local Storage, and Notifications</h2>
         <ul>
-          <li><strong>Session cookies</strong> - Supabase uses a single authentication cookie to keep you signed in. This is strictly necessary and does not require consent.</li>
-          <li><strong>Local storage</strong> - Do-Do stores your board data, settings, and preferences in your browser's local storage to keep the app fast and available offline. No personal data is sent to advertisers.</li>
-          <li><strong>Service worker cache</strong> - App assets (HTML, CSS, JS) are cached for offline use and fast loading. No tracking data is cached.</li>
-          <li><strong>No advertising or analytics cookies</strong> - Do-Do does not use Google Analytics, Facebook Pixel, or any advertising-network cookies. There is no tracking of your activity across other websites.</li>
-          <li><strong>Push notifications</strong> - require your explicit browser permission and can be disabled at any time in your browser or device settings, or in Do-Do Settings → Notifications.</li>
-          <li>If analytics are added in future they will be privacy-preserving (e.g. Plausible or Fathom) and this notice will be updated.</li>
+          <li>Do-Do may use local storage, service workers, and cache storage to keep the app fast and installable.</li>
+          <li>Push notifications require browser or operating-system permission and can be disabled in device settings.</li>
+          <li>Analytics should be limited to product events and configured to avoid unnecessary family-content capture.</li>
+          <li>Non-essential analytics or marketing cookies may require consent in some regions.</li>
         </ul>
       </section>
 
       <section class="legal-card" id="contact">
-        <h2>Contact</h2>
+        <h2>Contact and placeholders</h2>
         <p>
-          <strong>Operator:</strong> Bart Gumowski<br />
-          <strong>Country:</strong> Switzerland<br />
-          <strong>Privacy contact:</strong> <a href="mailto:hello@do-do.app">hello@do-do.app</a><br />
-          <strong>Security issues:</strong> <a href="mailto:hello@do-do.app">hello@do-do.app</a>
-        </p>
-        <p style="color:var(--muted);font-size:13px;margin-top:16px;">
-          Swiss users: Do-Do processes personal data under the Swiss Federal Act on Data Protection (revDSG / nFADP) and, where applicable, the EU General Data Protection Regulation (GDPR) for EU residents. You have the right to lodge a complaint with the Federal Data Protection and Information Commissioner (FDPIC) at <a href="https://www.edoeb.admin.ch" target="_blank" rel="noopener">edoeb.admin.ch</a>.
+          Controller/operator: <code>[Legal company name]</code><br />
+          Address: <code>[Registered address]</code><br />
+          Privacy contact: <code>privacy@example.com</code><br />
+          Security contact: <code>security@example.com</code><br />
+          EU representative/DPO, if required: <code>[Name and contact]</code>
         </p>
       </section>
     </main>
