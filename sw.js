@@ -52,6 +52,18 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
+// Background sync - retry queued cards when connection returns
+self.addEventListener("sync", (event) => {
+  if (event.tag === "sync-cards") {
+    event.waitUntil(
+      // Tell all open app windows to flush their sync queue
+      self.clients.matchAll({ type: "window" }).then((clientList) => {
+        clientList.forEach((client) => client.postMessage({ type: "flush-sync-queue" }));
+      })
+    );
+  }
+});
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(

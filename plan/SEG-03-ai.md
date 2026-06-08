@@ -1,7 +1,7 @@
 # SEG-03 - AI - Replace Regex with Claude
 
 **Priority:** High - regex breaks on real-world input constantly
-**Status:** Partial (`/api/interpret.js` exists and works, not wired to main form)
+**Status:** Done
 **Estimated effort:** 2-3 days
 **Depends on:** Nothing (interpret endpoint is already deployed)
 

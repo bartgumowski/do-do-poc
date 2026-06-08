@@ -60,6 +60,8 @@ module.exports = async function handler(req, res) {
       success_url: successUrl || `${req.headers.origin || ""}/?checkout=success`,
       cancel_url: cancelUrl || `${req.headers.origin || ""}/?checkout=cancelled`,
       allow_promotion_codes: true,
+      // pairId on session metadata as direct fallback for the webhook
+      metadata: { pairId },
       subscription_data: {
         metadata: { pairId },
         trial_period_days: 14,

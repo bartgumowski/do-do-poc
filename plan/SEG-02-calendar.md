@@ -1,7 +1,7 @@
 # SEG-02 - Calendar - Real Integration
 
 **Priority:** Core feature - blocking for launch
-**Status:** Partial (GCal write/read works for primary user only; token dies after first session)
+**Status:** Done - token refresh, co-parent busy slots, Apple CalDAV, recurring events, conflict detection all implemented
 **Estimated effort:** 4-6 days
 **Depends on:** SEG-01 task 1.2 (token refresh)
 
