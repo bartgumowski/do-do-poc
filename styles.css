@@ -6981,49 +6981,6 @@ html[data-theme="dark"] .notif-prompt {
   margin-top: 8px;
 }
 
-/* Prominent version panel in Settings */
-.settings-version-panel {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  background: var(--surface-raised, #f3f4f6);
-  border-radius: var(--radius-md, 16px);
-  margin-top: 8px;
-}
-
-.settings-version-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.settings-version-name {
-  font-weight: 800;
-  font-size: 15px;
-  color: var(--ink);
-  letter-spacing: -.3px;
-}
-
-.settings-version-number {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  background: var(--ink);
-  color: var(--paper);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .2px;
-}
-
-.settings-version-date {
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 600;
-}
-
 /* Sidebar needs flex-column so version badge sticks to bottom */
 .sidebar {
   display: flex;

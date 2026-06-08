@@ -697,15 +697,7 @@ function bindAutomationSettings() {
 
   themePreference?.addEventListener("change", () => {
     window.updateThemePreference?.(themePreference.value);
-    showFeatureToast(window.t?.("toast.updated") ?? "Updated");
-  });
-
-  // Language selector
-  const langSelect = featureModule.querySelector("#languagePreference");
-  langSelect?.addEventListener("change", () => {
-    const newLang = langSelect.value;
-    window.setLanguage?.(newLang);
-    showFeatureToast(window.t?.("toast.lang_changed") ?? "Language updated");
+    showFeatureToast("Appearance updated");
   });
 }
 
@@ -747,8 +739,8 @@ async function renderShoppingFeature() {
 function _renderShoppingBoard(lists) {
   const board = featureModule.querySelector("#shoppingBoard") || featureModule;
   board.innerHTML = `
-    ${renderShoppingGroup("groceries", window.t ? window.t("shopping.groceries") : "Groceries", lists.groceries)}
-    ${renderShoppingGroup("other", window.t ? window.t("shopping.other") : "Other", lists.other)}
+    ${renderShoppingGroup("groceries", "Groceries", lists.groceries)}
+    ${renderShoppingGroup("other", "Other", lists.other)}
   `;
 
   board.querySelectorAll("[data-shopping-check]").forEach((input) => {
@@ -765,7 +757,7 @@ function _renderShoppingBoard(lists) {
         // Supabase item
         await window.toggleShoppingItem?.(id, input.checked);
       }
-      showFeatureToast(input.checked ? (window.t?.("toast.marked_bought") ?? "Marked as bought") : (window.t?.("toast.returned") ?? "Returned to list"));
+      showFeatureToast(input.checked ? "Marked as bought" : "Returned to list");
     });
   });
 
@@ -787,7 +779,7 @@ function _renderShoppingBoard(lists) {
         const refreshed = await window.loadShoppingItems?.();
         if (refreshed) _renderShoppingBoard(refreshed);
       }
-      showFeatureToast(window.t?.("toast.removed") ?? "Removed");
+      showFeatureToast("Removed");
     });
   });
 
@@ -851,8 +843,7 @@ function _renderShoppingBoard(lists) {
       nextLists[listKey] = list;
       saveShoppingLists(nextLists);
       _renderShoppingBoard(nextLists);
-      const groupName = listKey === "groceries" ? (window.t?.("shopping.groceries") ?? "Groceries") : (window.t?.("shopping.other") ?? "Other");
-      showFeatureToast(`${window.t?.("toast.added") ?? "Added"} – ${groupName}`);
+      showFeatureToast(`Added to ${listKey === "groceries" ? "Groceries" : "Other"}`);
     });
   });
 }
@@ -860,17 +851,13 @@ function _renderShoppingBoard(lists) {
 function renderShoppingGroup(key, title, items) {
   const remaining = items.filter((item) => !item.bought).length;
   const boughtCount = items.length - remaining;
-  const dictateLabel = window.t ? window.t("shopping.dictate") : "Dictate item";
-  const addPlaceholder = window.t ? window.t("shopping.add_ph") : "Add or dictate an item";
-  const clearLabel = window.t ? window.t("shopping.clear_bought", { n: boughtCount }) : `Clear bought (${boughtCount})`;
-  const leftLabel = window.t ? window.t("shopping.items_left", { n: remaining }) : `${remaining} left`;
   return `
     <section class="feature-panel shopping-group">
       <div class="shopping-group-header">
         <h3>${title}</h3>
         <div class="shopping-group-header-actions">
-          ${boughtCount > 0 ? `<button class="shopping-clear-btn" type="button" data-shopping-clear="${key}" title="${clearLabel}">${clearLabel}</button>` : ""}
-          <span>${leftLabel}</span>
+          ${boughtCount > 0 ? `<button class="shopping-clear-btn" type="button" data-shopping-clear="${key}" title="Remove all bought items">Clear bought (${boughtCount})</button>` : ""}
+          <span>${remaining} left</span>
         </div>
       </div>
       <div class="shopping-list">
@@ -890,14 +877,14 @@ function renderShoppingGroup(key, title, items) {
         `).join("")}
       </div>
       <form class="shopping-capture" data-shopping-add-form="${key}">
-        <input data-shopping-input placeholder="${addPlaceholder}" autocomplete="off" />
-        <button class="shopping-mic" type="button" data-shopping-mic aria-label="${dictateLabel}" title="${dictateLabel}">
+        <input data-shopping-input placeholder="Add or dictate an item" autocomplete="off" />
+        <button class="shopping-mic" type="button" data-shopping-mic aria-label="Dictate ${title} item" title="Dictate item">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
             <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
           </svg>
         </button>
-        <button class="shopping-add" type="submit" aria-label="+ ${title}">+</button>
+        <button class="shopping-add" type="submit" aria-label="Add ${title} item">+</button>
       </form>
     </section>
   `;
@@ -932,39 +919,37 @@ function renderExpensesFeature() {
   const myName = typeof getMyName === "function" ? getMyName() : "";
   const balance = computeBalance(expenseCards, myName);
   const balanceAbs = Math.abs(balance);
-  const _sym = LOCALE_CONFIG?.symbol || "CHF";
   const balanceLabel = balance > 0.01
-    ? `<span class="balance-positive">${window.t?.("expense.they_owe", { sym: _sym, amt: formatExpenseCurrency(balanceAbs) }) ?? `They owe you ${_sym} ${formatExpenseCurrency(balanceAbs)}`}</span>`
+    ? `<span class="balance-positive">They owe you ${LOCALE_CONFIG.symbol} ${formatExpenseCurrency(balanceAbs)}</span>`
     : balance < -0.01
-    ? `<span class="balance-negative">${window.t?.("expense.you_owe", { sym: _sym, amt: formatExpenseCurrency(balanceAbs) }) ?? `You owe ${_sym} ${formatExpenseCurrency(balanceAbs)}`}</span>`
-    : `<span class="balance-zero">${window.t?.("expense.settled") ?? "Settled up"}</span>`;
+    ? `<span class="balance-negative">You owe ${LOCALE_CONFIG.symbol} ${formatExpenseCurrency(balanceAbs)}</span>`
+    : `<span class="balance-zero">Settled up</span>`;
 
-  const _t = window.t || ((k) => k);
   featureModule.innerHTML = `
     <section class="finance-hero">
       <div>
-        <span>${_t("expense.total")}</span>
-        <strong>${_sym} ${formatExpenseCurrency(total)}</strong>
-        <p>${_t("expense.desc")}</p>
+        <span>Expense total</span>
+        <strong>${LOCALE_CONFIG.symbol} ${formatExpenseCurrency(total)}</strong>
+        <p>Every expense is a normal Do with its discussion, people, date, and status attached.</p>
       </div>
-      <button class="primary-button" type="button" id="addExpenseButton">${_t("expense.add")}</button>
+      <button class="primary-button" type="button" id="addExpenseButton">Add expense</button>
     </section>
 
     <section class="expense-summary-panel">
       <div class="expense-summary-row">
-        <span>${_t("expense.all")}</span>
+        <span>All expenses</span>
         <strong>${expenseCards.length}</strong>
       </div>
       <div class="expense-summary-row">
-        <span>${_t("expense.open")}</span>
-        <strong>${openCards.length} · ${_sym} ${formatExpenseCurrency(openCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0))}</strong>
+        <span>Open</span>
+        <strong>${openCards.length} · ${LOCALE_CONFIG.symbol} ${formatExpenseCurrency(openCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0))}</strong>
       </div>
       <div class="expense-summary-row">
-        <span>${_t("expense.paid")}</span>
-        <strong>${paidCards.length} · ${_sym} ${formatExpenseCurrency(paidCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0))}</strong>
+        <span>Paid</span>
+        <strong>${paidCards.length} · ${LOCALE_CONFIG.symbol} ${formatExpenseCurrency(paidCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0))}</strong>
       </div>
       <div class="expense-summary-row expense-summary-balance">
-        <span>${_t("expense.balance")}</span>
+        <span>Balance</span>
         <strong>${balanceLabel}</strong>
       </div>
     </section>
@@ -972,14 +957,14 @@ function renderExpensesFeature() {
     <section class="upcoming-expenses">
       <div class="agenda-heading">
         <div>
-          <span>${_t("nav.expenses")}</span>
-          <strong>${_t("nav.expenses")}</strong>
+          <span>Cards</span>
+          <strong>Expenses</strong>
         </div>
       </div>
       <div class="upcoming-expense-list">
         ${expenseCards.length
           ? expenseCards.map((card) => renderExpenseCard(card)).join("")
-          : `<article class="agenda-empty">${_t("expense.no_expenses")}</article>`}
+          : `<article class="agenda-empty">No expense Dos yet.</article>`}
       </div>
     </section>
   `;
@@ -1019,13 +1004,12 @@ function renderExpenseCard(card) {
   const isDisputed = card.status === "Disputed";
   const amount = card.amount ? `<span class="expense-amount">${card.amount}</span>` : "";
 
-  const _et = window.t || ((k) => k);
   // Payment status chip
   let payChip = "";
   if (isPaid) {
-    payChip = `<span class="payment-chip payment-chip-paid">${_et("expense.paid")}</span>`;
+    payChip = `<span class="payment-chip payment-chip-paid">Paid</span>`;
   } else if (isPending) {
-    payChip = `<span class="payment-chip payment-chip-pending">${_et("expense.awaiting")}</span>`;
+    payChip = `<span class="payment-chip payment-chip-pending">Awaiting payment</span>`;
   }
 
   // Receipt indicator
@@ -1039,13 +1023,13 @@ function renderExpenseCard(card) {
     const canRequest = !isPending && card.amount && !isDisputed;
     actions = `
       <div class="expense-card-actions">
-        ${!isPending && !isDisputed ? `<button class="expense-action-btn approve" data-expense-action="approve" data-card-id="${card.id}">${_et("expense.approve")}</button>` : ""}
-        ${!isPending && !isDisputed ? `<button class="expense-action-btn dispute" data-expense-action="dispute" data-card-id="${card.id}">${_et("expense.dispute")}</button>` : ""}
+        ${!isPending && !isDisputed ? `<button class="expense-action-btn approve" data-expense-action="approve" data-card-id="${card.id}">Approve</button>` : ""}
+        ${!isPending && !isDisputed ? `<button class="expense-action-btn dispute" data-expense-action="dispute" data-card-id="${card.id}">Dispute</button>` : ""}
         ${isPending
-          ? `<span class="expense-action-pending">${_et("expense.awaiting")}</span>`
+          ? `<span class="expense-action-pending">Awaiting payment</span>`
           : canRequest
-            ? `<button class="expense-action-btn request-payment" data-expense-action="request-payment" data-card-id="${card.id}">${_et("expense.request_pay")}</button>`
-            : `<button class="expense-action-btn paid" data-expense-action="paid" data-card-id="${card.id}">${_et("expense.mark_paid")}</button>`
+            ? `<button class="expense-action-btn request-payment" data-expense-action="request-payment" data-card-id="${card.id}">Request payment</button>`
+            : `<button class="expense-action-btn paid" data-expense-action="paid" data-card-id="${card.id}">Mark paid</button>`
         }
       </div>
     `;
@@ -1126,24 +1110,24 @@ async function renderMessagesFeature() {
         <header class="chat-header">
           <div>
             <span>${activeMessageTopic}</span>
-            <strong>${window.t?.("msg.family_messages") ?? "Family messages"}</strong>
+            <strong>Family messages</strong>
           </div>
         </header>
 
         <div class="message-list" id="messageList">
-          <p class="chat-loading" style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">${window.t?.("msg.loading") ?? "Loading messages..."}</p>
+          <p class="chat-loading" style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">Loading messages...</p>
         </div>
 
         <form class="message-composer" id="messageComposer">
           <button class="composer-icon" type="button" aria-label="Attach card">+</button>
-          <input id="messageInput" placeholder="${window.t?.("msg.placeholder", { topic: activeMessageTopic.toLowerCase() }) ?? `Message #${activeMessageTopic.toLowerCase()}`}" autocomplete="off" />
+          <input id="messageInput" placeholder="Message #${activeMessageTopic.toLowerCase()}" autocomplete="off" />
           <button class="composer-icon composer-mic" type="button" id="messageMicButton" aria-label="Dictate message">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
               <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
             </svg>
           </button>
-          <button class="composer-send" type="submit">${window.t?.("msg.send") ?? "Send"}</button>
+          <button class="composer-send" type="submit">Send</button>
         </form>
       </section>
     </section>
@@ -1158,7 +1142,7 @@ async function renderMessagesFeature() {
       featureModule.querySelectorAll(".slack-channel").forEach((item) => item.classList.toggle("active", item === button));
       activeMessageTopic = button.dataset.messageTag;
       featureModule.querySelector(".chat-header div span").textContent = activeMessageTopic;
-      featureModule.querySelector("#messageInput").placeholder = window.t?.("msg.placeholder", { topic: activeMessageTopic.toLowerCase() }) ?? `Message #${activeMessageTopic.toLowerCase()}`;
+      featureModule.querySelector("#messageInput").placeholder = `Message #${activeMessageTopic.toLowerCase()}`;
       await loadAndRenderMessages(activeMessageTopic);
       window.applyCardTagFilter?.(activeMessageTopic);
     });
@@ -1934,28 +1918,17 @@ function renderSpecialPanel(moduleName, part = "all") {
     return `
       ${part === "all" || part === "appearance" ? `
       <section class="feature-panel appearance-settings">
-        <h3>${window.t?.("settings.appearance") ?? "Appearance"}</h3>
+        <h3>Appearance</h3>
         <div class="settings-control-list">
           <label class="settings-select-row">
             <span>
-              <strong>${window.t?.("settings.theme") ?? "Theme"}</strong>
-              <em>${window.t?.("settings.theme_hint") ?? "Follow your device setting or choose a fixed appearance."}</em>
+              <strong>Theme</strong>
+              <em>Follow your device setting or choose a fixed appearance.</em>
             </span>
             <select id="themePreference">
-              <option value="system" ${themePreference === "system" ? "selected" : ""}>${window.t?.("settings.theme_system") ?? "Use system setting"}</option>
-              <option value="light" ${themePreference === "light" ? "selected" : ""}>${window.t?.("settings.theme_light") ?? "Light"}</option>
-              <option value="dark" ${themePreference === "dark" ? "selected" : ""}>${window.t?.("settings.theme_dark") ?? "Dark"}</option>
-            </select>
-          </label>
-          <label class="settings-select-row">
-            <span>
-              <strong>${window.t?.("settings.language_label") ?? "App language"}</strong>
-              <em>${window.t?.("settings.language_hint") ?? "Choose English, Deutsch or Polski."}</em>
-            </span>
-            <select id="languagePreference">
-              <option value="en" ${window.getCurrentLang?.() === "en" ? "selected" : ""}>English</option>
-              <option value="de" ${window.getCurrentLang?.() === "de" ? "selected" : ""}>Deutsch</option>
-              <option value="pl" ${window.getCurrentLang?.() === "pl" ? "selected" : ""}>Polski</option>
+              <option value="system" ${themePreference === "system" ? "selected" : ""}>Use system setting</option>
+              <option value="light" ${themePreference === "light" ? "selected" : ""}>Light</option>
+              <option value="dark" ${themePreference === "dark" ? "selected" : ""}>Dark</option>
             </select>
           </label>
         </div>
@@ -2248,18 +2221,17 @@ function renderSettingsFeature() {
     </article>
   `;
 
-  const _st = window.t || ((k) => k);
   featureModule.innerHTML = `
     <div class="feature-layout settings-layout">
       ${renderSpecialPanel("settings", "automation")}
 
       <section class="feature-panel">
-        <h3>${_st("settings.your_profile")}</h3>
+        <h3>Your profile</h3>
         <div class="feature-items">
           <article class="feature-item feature-item-editable">
             <div class="feature-item-main">
-              <strong>${escapeHtml(myName || _st("settings.your_profile"))}</strong>
-              <span style="color:var(--muted);font-size:12px;">${_st("settings.display_name")}</span>
+              <strong>${escapeHtml(myName || "Your name")}</strong>
+              <span style="color:var(--muted);font-size:12px;">Your display name</span>
             </div>
             <button class="icon-button icon-button-sm" id="editMyNameBtn" aria-label="Edit your name">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -2284,39 +2256,39 @@ function renderSettingsFeature() {
 
       <section class="feature-panel">
         <div class="feature-panel-header">
-          <h3>${_st("settings.children")}</h3>
-          <button class="secondary-button" id="addChildBtn">${_st("settings.add_child")}</button>
+          <h3>Children</h3>
+          <button class="secondary-button" id="addChildBtn">+ Add child</button>
         </div>
         <div class="feature-items" id="childrenList">
           ${children.length
             ? children.map((c, i) => renderMemberRow(c.name || c, i, "child")).join("")
-            : `<p class="feature-empty">${_st("settings.no_children")}</p>`}
+            : `<p class="feature-empty">No children added yet.</p>`}
         </div>
       </section>
 
       <section class="feature-panel">
         <div class="feature-panel-header">
-          <h3>${_st("settings.pets")}</h3>
-          <button class="secondary-button" id="addPetBtn">${_st("settings.add_pet")}</button>
+          <h3>Pets</h3>
+          <button class="secondary-button" id="addPetBtn">+ Add pet</button>
         </div>
         <div class="feature-items" id="petsList">
           ${pets.length
             ? pets.map((p, i) => renderMemberRow(p.name || p, i, "pet")).join("")
-            : `<p class="feature-empty">${_st("settings.no_pets")}</p>`}
+            : `<p class="feature-empty">No pets added yet.</p>`}
         </div>
       </section>
 
       ${renderSpecialPanel("settings", "vaccine")}
 
       <section class="feature-panel" id="invitePanel">
-        <h3>${_st("settings.coparent")}</h3>
+        <h3>Co-parent</h3>
         <div class="feature-items" id="invitePanelContent">
           <p class="feature-empty" style="font-size:13px;color:var(--muted);">Checking connection...</p>
         </div>
       </section>
 
       <section class="feature-panel" id="subscriptionPanel">
-        <h3>${_st("settings.subscription")}</h3>
+        <h3>Subscription</h3>
         <div class="feature-items" id="subscriptionPanelContent">
           <p class="feature-empty" style="font-size:13px;color:var(--muted);">Loading...</p>
         </div>
@@ -2335,25 +2307,25 @@ function renderSettingsFeature() {
       </section>
 
       <section class="feature-panel">
-        <h3>${_st("settings.account")}</h3>
+        <h3>Account</h3>
         <div class="feature-items">
           <article class="feature-item">
-            <strong>${_st("settings.gcal")}</strong>
-            <span>${_st("settings.gcal_hint")}</span>
+            <strong>Google Calendar</strong>
+            <span>Sign out and back in to reconnect calendar sync</span>
           </article>
         </div>
         <div class="account-action-row" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-          <button class="secondary-button" id="signOutButton" style="color:#ef4444;border-color:#ef4444;">${_st("settings.sign_out")}</button>
-          <button class="secondary-button" id="downloadMyDataButton">${_st("settings.download_data")}</button>
-          <a class="secondary-button" href="/legal.html" target="_blank" rel="noopener" style="text-decoration:none;">${_st("settings.privacy")}</a>
+          <button class="secondary-button" id="signOutButton" style="color:#ef4444;border-color:#ef4444;">Sign out</button>
+          <button class="secondary-button" id="downloadMyDataButton">Download my data</button>
+          <a class="secondary-button" href="/legal.html" target="_blank" rel="noopener" style="text-decoration:none;">Privacy &amp; Terms</a>
         </div>
         <div style="margin-top:12px;">
-          <button class="ghost-button" id="deleteAccountButton" style="color:var(--muted);font-size:12px;padding:4px 0;">${_st("settings.delete_account")}</button>
+          <button class="ghost-button" id="deleteAccountButton" style="color:var(--muted);font-size:12px;padding:4px 0;">Delete account</button>
         </div>
       </section>
 
       <section class="feature-panel" id="notifPrefsPanel">
-        <h3>${_st("settings.notifications")}</h3>
+        <h3>Notifications</h3>
         <div class="feature-items" id="notifPrefsContent">
           <p class="feature-empty" style="font-size:13px;color:var(--muted);">Loading...</p>
         </div>
@@ -2361,12 +2333,9 @@ function renderSettingsFeature() {
 
       ${renderSpecialPanel("settings", "appearance")}
 
-      <div class="settings-version-panel">
-        <div class="settings-version-badge">
-          <span class="settings-version-name">Do-Do</span>
-          <span class="settings-version-number">v${window.getAppVersion?.()?.version || "—"}</span>
-        </div>
-        <span class="settings-version-date">${window.getAppVersion?.()?.date || ""}</span>
+      <div class="settings-version-row">
+        <span>Do-Do v${window.getAppVersion?.()?.version || ""}</span>
+        <span>${window.getAppVersion?.()?.date || ""}</span>
       </div>
     </div>
   `;
@@ -2658,26 +2627,25 @@ async function renderInvitePanel() {
     } catch { /* silent */ }
   }
 
-  const _ipt = window.t || ((k) => k);
   panel.innerHTML = `
     <article class="feature-item">
-      <strong>${escapeHtml(coparentName || _ipt("settings.coparent"))}</strong>
-      <span>${_ipt("settings.not_joined")}${inviteEmail ? ` - ${escapeHtml(inviteEmail)}` : ""}</span>
+      <strong>${escapeHtml(coparentName || "Co-parent")}</strong>
+      <span>Not joined yet${inviteEmail ? ` - invited as ${escapeHtml(inviteEmail)}` : ""}</span>
     </article>
     ${pendingLink ? `
     <div style="display:grid;gap:8px;">
       <label style="display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:800;">
-        ${_ipt("settings.pending_invite")}
+        Invite link
         <div style="display:flex;gap:8px;align-items:center;">
           <input id="settingsInviteInput" readonly value="${escapeHtml(pendingLink)}"
             style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;background:var(--soft);color:var(--ink);" />
-          <button id="settingsInviteCopy" class="secondary-button" style="white-space:nowrap;min-height:36px;padding:0 12px;font-size:12px;">${_ipt("settings.copy_link")}</button>
+          <button id="settingsInviteCopy" class="secondary-button" style="white-space:nowrap;min-height:36px;padding:0 12px;font-size:12px;">Copy link</button>
         </div>
       </label>
-      ${inviteEmail ? `<button id="settingsResendEmail" class="secondary-button" style="justify-self:start;min-height:36px;padding:0 14px;font-size:12px;">${_ipt("settings.resend")}</button>` : ""}
+      ${inviteEmail ? `<button id="settingsResendEmail" class="secondary-button" style="justify-self:start;min-height:36px;padding:0 14px;font-size:12px;">Re-send email</button>` : ""}
     </div>
     ` : inviteEmail ? `
-    <button id="settingsResendEmail" class="secondary-button" style="justify-self:start;min-height:36px;padding:0 14px;font-size:12px;">${_ipt("settings.resend")}</button>
+    <button id="settingsResendEmail" class="secondary-button" style="justify-self:start;min-height:36px;padding:0 14px;font-size:12px;">Re-send invite email</button>
     ` : `
     <p style="margin:0;font-size:13px;color:var(--muted);">Add your co-parent's email in onboarding to send an invite.</p>
     `}
@@ -2685,7 +2653,7 @@ async function renderInvitePanel() {
 
   panel.querySelector("#settingsInviteCopy")?.addEventListener("click", () => {
     navigator.clipboard.writeText(pendingLink).then(() => {
-      panel.querySelector("#settingsInviteCopy").textContent = _ipt("settings.copied");
+      panel.querySelector("#settingsInviteCopy").textContent = "Copied!";
     }).catch(() => panel.querySelector("#settingsInviteInput")?.select());
   });
 
@@ -2736,7 +2704,7 @@ async function promptEditMyName() {
 
   // Update Supabase profile
   const saved = await window.updateProfile?.(newName);
-  showFeatureToast(window.t?.("toast.name_updated", { name: newName }) ?? `Name updated to ${newName}`);
+  showFeatureToast(saved ? `Name updated to ${newName}` : `Name saved locally as ${newName}`);
   window.switchModule("settings");
 }
 

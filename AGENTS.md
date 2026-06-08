@@ -1,5 +1,22 @@
 before commiting always check if the change has been done and if it works
 
+## REQUIRED: Bump version on every push
+
+In `app.js` lines 1-2, update BOTH constants before every single commit:
+
+```js
+const APP_VERSION = "0.6.x";          // increment patch or minor
+const APP_VERSION_DATE = "YYYY-MM-DD"; // today's date
+```
+
+The version is shown prominently in Settings (dark pill badge + date) so Bart can always identify which build he is reviewing. This must not be skipped.
+
+Version format: MAJOR.MINOR.PATCH
+- Increment MINOR for each completed release segment (SEG-xx)
+- Increment PATCH for hotfixes, small additions, and polish pushes
+
+Current: v0.6.2 (2026-06-08)
+
 ## CRITICAL: Curly quote bug - check before every commit
 
 **This has happened repeatedly and breaks the entire app silently.**
@@ -49,13 +66,16 @@ Scope needed: `repo` only. Token goes in the remote URL as shown above.
 ## Tech stack
 
 - Vanilla JS single-page app (no framework, no build step)
-- `index.html` - main HTML shell
-- `app.js` - all app logic
+- `i18n.js` - translation engine (EN/DE/PL), loaded first - `window.t()`, `window.setLanguage()`
+- `index.html` - app shell, all dialogs, data-i18n attributes
+- `app.js` - all app logic, state, card dialog, auth, board render
+- `features.js` - calendar, shopping, expenses, messages, settings modules
 - `styles.css` - all styles
-- `features.js` - shopping and extra features
-- `supabase-data.js` - Supabase data layer
-- Cache-busting via version query strings on script/link tags (e.g. `app.js?v=20260603-fix`)
-- Always bump the version string in `index.html` when changing `app.js` or `styles.css`
+- `supabase-data.js` - Supabase data layer (cards, shopping, messages, auth, presence)
+- `sw.js` - service worker (PWA cache, push, background sync)
+- `api/*.js` - Vercel serverless functions (Node 18, CommonJS)
+- Cache-busting via version query strings: `i18n.js?v=...`, `app.js?v=...`, `features.js?v=...`
+- Bump `APP_VERSION` + `APP_VERSION_DATE` in `app.js` on EVERY push (shown in Settings)
 
 ## Supabase
 
