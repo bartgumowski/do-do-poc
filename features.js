@@ -708,6 +708,13 @@ async function renderShoppingFeature() {
   if (!lists) lists = loadShoppingLists();
 
   _renderShoppingBoard(lists);
+
+  // Subscribe to real-time changes so co-parent updates appear instantly
+  window.unsubscribeShopping?.();
+  window.subscribeToShopping?.(async () => {
+    const refreshed = await window.loadShoppingItems?.();
+    if (refreshed) _renderShoppingBoard(refreshed);
+  });
 }
 
 function _renderShoppingBoard(lists) {
@@ -822,8 +829,18 @@ function renderExpensesFeature() {
     .filter((card) => card.type === "Expense" || card.topic === "Expenses")
     .sort((a, b) => new Date(a.due || 0) - new Date(b.due || 0));
   const total = expenseCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0);
-  const openCards = expenseCards.filter((card) => card.status !== "Done");
-  const paidCards = expenseCards.filter((card) => card.status === "Done");
+  const openCards = expenseCards.filter((card) => card.status !== "Done" && card.payment_status !== "paid");
+  const paidCards = expenseCards.filter((card) => card.status === "Done" || card.payment_status === "paid");
+
+  const myName = typeof getMyName === "function" ? getMyName() : "";
+  const balance = computeBalance(expenseCards, myName);
+  const balanceAbs = Math.abs(balance);
+  const balanceLabel = balance > 0.01
+    ? `<span class="balance-positive">They owe you CHF ${formatExpenseCurrency(balanceAbs)}</span>`
+    : balance < -0.01
+    ? `<span class="balance-negative">You owe CHF ${formatExpenseCurrency(balanceAbs)}</span>`
+    : `<span class="balance-zero">Settled up</span>`;
+
   featureModule.innerHTML = `
     <section class="finance-hero">
       <div>
@@ -847,6 +864,10 @@ function renderExpensesFeature() {
         <span>Paid</span>
         <strong>${paidCards.length} · CHF ${formatExpenseCurrency(paidCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0))}</strong>
       </div>
+      <div class="expense-summary-row expense-summary-balance">
+        <span>Balance</span>
+        <strong>${balanceLabel}</strong>
+      </div>
     </section>
 
     <section class="upcoming-expenses">
@@ -866,7 +887,7 @@ function renderExpensesFeature() {
 
   featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => openCardDialog());
 
-  // Expense quick-action buttons
+  // Expense quick-action and request-payment buttons
   featureModule.querySelectorAll("[data-expense-action]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -878,19 +899,57 @@ function renderExpensesFeature() {
   window.bindUnifiedCardInteractions?.(featureModule);
 }
 
+// Returns running balance: positive = co-parent owes me, negative = I owe them.
+function computeBalance(cards, myName) {
+  let balance = 0;
+  cards.forEach((card) => {
+    const amt = expenseAmount(card.amount);
+    if (!amt) return;
+    if (card.payment_status === "paid") return; // already settled
+    const share = card.payment_amount != null ? parseFloat(card.payment_amount) : amt / 2;
+    const iMine = myName && (card.author === myName || card.assignee === myName);
+    balance += iMine ? share : -share;
+  });
+  return balance;
+}
+
 function renderExpenseCard(card) {
-  const isDone = card.status === "Done" || card.status === "Paid";
+  const payStatus = card.payment_status || "none";
+  const isPaid = payStatus === "paid" || card.status === "Done";
+  const isPending = payStatus === "pending";
   const isDisputed = card.status === "Disputed";
-  const statusLabel = card.status === "Paid" ? "Paid" : card.status === "Disputed" ? "Disputed" : card.status;
   const amount = card.amount ? `<span class="expense-amount">${card.amount}</span>` : "";
 
-  const actions = isDone ? "" : `
-    <div class="expense-card-actions">
-      ${!isDisputed ? `<button class="expense-action-btn approve" data-expense-action="approve" data-card-id="${card.id}">Approve</button>` : ""}
-      ${!isDisputed ? `<button class="expense-action-btn dispute" data-expense-action="dispute" data-card-id="${card.id}">Dispute</button>` : ""}
-      <button class="expense-action-btn paid" data-expense-action="paid" data-card-id="${card.id}">Mark paid</button>
-    </div>
-  `;
+  // Payment status chip
+  let payChip = "";
+  if (isPaid) {
+    payChip = `<span class="payment-chip payment-chip-paid">Paid</span>`;
+  } else if (isPending) {
+    payChip = `<span class="payment-chip payment-chip-pending">Awaiting payment</span>`;
+  }
+
+  // Receipt indicator
+  const receiptChip = card.receipt_url
+    ? `<a class="payment-chip payment-chip-receipt" href="${card.receipt_url}" target="_blank" rel="noopener" title="View receipt" onclick="event.stopPropagation()">Receipt</a>`
+    : "";
+
+  // Actions row
+  let actions = "";
+  if (!isPaid) {
+    const canRequest = !isPending && card.amount && !isDisputed;
+    actions = `
+      <div class="expense-card-actions">
+        ${!isPending && !isDisputed ? `<button class="expense-action-btn approve" data-expense-action="approve" data-card-id="${card.id}">Approve</button>` : ""}
+        ${!isPending && !isDisputed ? `<button class="expense-action-btn dispute" data-expense-action="dispute" data-card-id="${card.id}">Dispute</button>` : ""}
+        ${isPending
+          ? `<span class="expense-action-pending">Awaiting payment</span>`
+          : canRequest
+            ? `<button class="expense-action-btn request-payment" data-expense-action="request-payment" data-card-id="${card.id}">Request payment</button>`
+            : `<button class="expense-action-btn paid" data-expense-action="paid" data-card-id="${card.id}">Mark paid</button>`
+        }
+      </div>
+    `;
+  }
 
   return `
     <article class="expense-preview-card" data-card-id="${card.id}">
@@ -901,7 +960,8 @@ function renderExpenseCard(card) {
         </div>
         <div class="expense-card-meta">
           ${amount}
-          <span class="expense-status-badge expense-status-${(statusLabel || "").toLowerCase().replace(/\s/g, "-")}">${statusLabel}</span>
+          ${payChip}
+          ${receiptChip}
         </div>
       </div>
       ${actions}
@@ -911,8 +971,11 @@ function renderExpenseCard(card) {
 
 function handleExpenseAction(cardId, action) {
   if (!cardId || !action) return;
-  const nextStatus = action === "approve" ? "To Do" : action === "dispute" ? "Disputed" : "Paid";
-  // Use app.js updateCardStatus if available, otherwise call quickCompleteCard / quickRespondCard
+  if (action === "request-payment") {
+    // Open the card dialog focused on the payment panel
+    if (typeof window.openCardDialog === "function") window.openCardDialog(cardId, "payment");
+    return;
+  }
   if (action === "paid" && typeof window.quickCompleteCard === "function") {
     window.quickCompleteCard(cardId);
     return;
@@ -1654,6 +1717,10 @@ function getConflictsForDate(key, allConflicts) {
 function getConflictsForCard(cardId, allConflicts) {
   return allConflicts.filter((c) => c.a === cardId || c.b === cardId);
 }
+
+// Expose conflict helpers for card dialog banner (app.js)
+window.detectConflicts = detectConflicts;
+window.getConflictsForCard = getConflictsForCard;
 
 // ─── Cached conflicts for the current render ──────────────────────────────────
 

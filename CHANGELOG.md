@@ -2,6 +2,57 @@
 
 ---
 
+## v0.6.0 - 2026-06-08 - SEG-06: Expense Payment Flow
+
+### Payment requests (6.1)
+- **New API `/api/stripe-expense-payment.js`** - creates a Stripe PaymentIntent for a shared expense. Input: `{ cardId, amount, currency, description, requestedByName }`. Returns `{ paymentUrl, intentId, emailSent }`.
+- **Payment panel in card dialog** - shown for any Expense card with an amount set. Displays a request form (amount pre-filled to 50%, adjustable split select: 50/50, 60/40, 100% them, I'll cover it). After sending, shows "awaiting payment" chip and a direct payment link.
+- **Email notification** - co-parent receives a branded email with a "Pay CHF X" button. Falls back gracefully if `RESEND_API_KEY` is not configured.
+- **Card state update** - `payment_status`, `payment_amount`, and `payment_intent_id` written to Supabase immediately on request creation.
+
+### Apple Pay / Google Pay payment page (6.2)
+- **New API `/api/expense-pay.js`** - serves a self-contained HTML payment page using Stripe Payment Element (Apple Pay, Google Pay, card fallback). No app login required.
+- **Route `/pay/:intentId`** added to `vercel.json` rewrites, mapping to `/api/expense-pay?intent=:intentId`.
+- Shows success page if already paid; error page for invalid/expired links.
+
+### Webhook - auto-mark paid (6.2)
+- **`payment_intent.succeeded`** event added to `api/stripe-webhook.js`. Sets `payment_status = paid` and `payment_paid_at` on the card in Supabase when Stripe confirms payment.
+- New event must be added to the Stripe webhook endpoint config (see manual steps below).
+
+### Receipt upload (6.3)
+- **Receipt panel in card dialog** - shown for all Expense cards. Camera/file upload button uploads to Supabase Storage bucket `receipts`.
+- Path convention: `{familyId}/{cardId}/receipt.{ext}` with upsert - replacing a receipt overwrites the old one.
+- Image receipts show as a thumbnail preview in the dialog. PDF/other files show as a link.
+- `receipt_url` column stored on `unified_cards` and synced to Supabase on upload.
+
+### Balance summary (6.4)
+- **Running balance row** added to the Expenses summary panel: "They owe you CHF X", "You owe CHF X", or "Settled up".
+- `computeBalance()` in `features.js` - sums unsettled expense cards using `payment_amount` (actual requested share) when available, otherwise half the card amount.
+
+### Data layer
+- **`supabase-data.js`** - `cardToDbRow` and `dbRowToCard` now include `payment_intent_id`, `payment_status`, `payment_amount`, `payment_paid_at`, `receipt_url`.
+- **Expense card list** - updated `renderExpenseCard()` to show payment status pill (Paid / Awaiting payment), receipt chip, and "Request payment" button replacing "Mark paid" for unpaid cards with an amount.
+
+### DB migration required
+Run `seg06-expense-payments.sql` in Supabase SQL editor:
+```sql
+ALTER TABLE public.unified_cards ADD COLUMN IF NOT EXISTS payment_intent_id TEXT;
+ALTER TABLE public.unified_cards ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'none'
+  CHECK (payment_status IN ('none', 'pending', 'paid', 'disputed'));
+ALTER TABLE public.unified_cards ADD COLUMN IF NOT EXISTS payment_amount NUMERIC(10,2);
+ALTER TABLE public.unified_cards ADD COLUMN IF NOT EXISTS payment_paid_by UUID REFERENCES auth.users(id);
+ALTER TABLE public.unified_cards ADD COLUMN IF NOT EXISTS payment_paid_at TIMESTAMPTZ;
+ALTER TABLE public.unified_cards ADD COLUMN IF NOT EXISTS receipt_url TEXT;
+```
+
+### Manual steps required
+1. Run `seg06-expense-payments.sql` in Supabase SQL editor
+2. Create `receipts` storage bucket in Supabase (or let the SQL do it)
+3. Add `payment_intent.succeeded` to the Stripe webhook endpoint at `https://do-do.app/api/stripe-webhook`
+4. Optional: set `APP_BASE_URL=https://do-do.app` in Vercel env vars (used for payment link generation; falls back to `VERCEL_URL`)
+
+---
+
 ## v0.5.0 - 2026-06-05 - SEG-05: Payments and Subscription
 
 ### Stripe integration

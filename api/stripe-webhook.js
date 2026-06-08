@@ -139,6 +139,25 @@ module.exports = async function handler(req, res) {
         break;
       }
 
+      // SEG-06: expense one-time payment completed
+      case "payment_intent.succeeded": {
+        const intent = event.data.object;
+        const { cardId } = intent.metadata || {};
+        if (!cardId) break;
+
+        const { error: cardErr } = await supabase
+          .from("unified_cards")
+          .update({ payment_status: "paid", payment_paid_at: new Date().toISOString() })
+          .eq("id", cardId);
+
+        if (cardErr) {
+          console.error("payment_intent.succeeded card update failed:", cardErr.message);
+        } else {
+          console.log(`Card ${cardId} -> paid (payment_intent.succeeded)`);
+        }
+        break;
+      }
+
       default:
         // Unhandled event - Stripe expects 200 regardless
         break;
