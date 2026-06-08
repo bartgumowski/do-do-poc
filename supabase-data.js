@@ -76,6 +76,11 @@ function cardToDbRow(card, pairId, userId) {
     child_label: card.child || null,
     due_at: card.due || null,
     amount: card.amount ? parseFloat(card.amount.replace(/[^0-9.-]/g, "")) || null : null,
+    payment_intent_id: card.payment_intent_id || null,
+    payment_status: card.payment_status || "none",
+    payment_amount: card.payment_amount != null ? parseFloat(card.payment_amount) || null : null,
+    payment_paid_at: card.payment_paid_at || null,
+    receipt_url: card.receipt_url || null,
     metadata: {
       comments: card.comments || [],
       reminder: card.reminder || null,
@@ -104,6 +109,11 @@ function dbRowToCard(row) {
     googleCalendar: meta.googleCalendar || null,
     acknowledged: meta.acknowledged || false,
     createdAt: meta.createdAt || new Date(row.created_at).getTime(),
+    payment_intent_id: row.payment_intent_id || null,
+    payment_status: row.payment_status || "none",
+    payment_amount: row.payment_amount != null ? row.payment_amount : null,
+    payment_paid_at: row.payment_paid_at || null,
+    receipt_url: row.receipt_url || null,
   };
 }
 
@@ -282,8 +292,23 @@ function subscribeToCardChanges() {
         if (typeof render === "function") render();
       }
     )
+    // Presence: track which card each user is currently viewing
+    .on("presence", { event: "sync" }, () => {
+      const presenceState = realtimeChannel.presenceState();
+      if (typeof window.onPresenceSync === "function") window.onPresenceSync(presenceState);
+    })
     .subscribe();
 }
+
+// Broadcast that the current user is viewing a card (or no card)
+function broadcastCardPresence(cardId) {
+  if (!realtimeChannel || !currentUserId) return;
+  const setup = (() => { try { return JSON.parse(localStorage.getItem("ido-you-do-onboarding-v1") || "null"); } catch { return null; } })();
+  const displayName = setup?.parents?.primary || "Parent A";
+  realtimeChannel.track({ user_id: currentUserId, display_name: displayName, viewing_card: cardId || null });
+}
+
+window.broadcastCardPresence = broadcastCardPresence;
 
 // ─── Save onboarding to Supabase ──────────────────────────────────────────────
 
@@ -461,11 +486,19 @@ async function _storeRefreshToken(userId, refreshToken) {
 // If the session already has a fresh provider_token, use it.
 // Otherwise call the /api/refresh-token serverless function to get a new one.
 
+// ─── Token health event ───────────────────────────────────────────────────────
+// Dispatched on window so Settings UI can reflect the real connection state.
+// detail.status: "connected" | "no_token" | "token_revoked" | "error"
+function _emitGCalTokenStatus(status, detail = {}) {
+  window.dispatchEvent(new CustomEvent("googleCalTokenStatus", { detail: { status, ...detail } }));
+}
+
 async function _getGoogleAccessToken(session) {
   // Prefer the token baked into the session (only present right after OAuth)
   if (session?.provider_token) {
     // Tokens from a fresh OAuth flow are valid ~1 hour
     googleTokenExpiresAt = Date.now() + 55 * 60 * 1000;
+    _emitGCalTokenStatus("connected");
     return session.provider_token;
   }
 
@@ -487,17 +520,24 @@ async function _getGoogleAccessToken(session) {
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       console.warn("Token refresh failed:", body.error || res.status);
+      const status = body.error === "token_revoked" ? "token_revoked"
+        : body.error === "no_refresh_token" ? "no_token"
+        : "error";
+      _emitGCalTokenStatus(status, { message: body.message });
       return null;
     }
 
     const { access_token, expires_in } = await res.json();
     if (access_token) {
       googleTokenExpiresAt = Date.now() + ((expires_in || 3599) - 60) * 1000;
+      _emitGCalTokenStatus("connected");
       return access_token;
     }
+    _emitGCalTokenStatus("error");
     return null;
   } catch (err) {
     console.warn("Token refresh request failed:", err.message);
+    _emitGCalTokenStatus("error", { message: err.message });
     return null;
   }
 }
@@ -972,6 +1012,22 @@ async function pushCardToAppleCalendar(card) {
   }
 }
 
+async function deleteCardFromAppleCalendar(card) {
+  const uid = card?.appleCalendar?.eventId;
+  if (!uid) return;
+  const creds = _getAppleCalCredentials();
+  if (!creds) return;
+  try {
+    await fetch("/api/apple-calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: creds.email, appPassword: creds.appPassword, action: "deleteEvent", event: { uid } }),
+    });
+  } catch (err) {
+    console.warn("Delete from Apple Calendar failed:", err.message);
+  }
+}
+
 function saveAppleCalCredentials(email, appPassword) {
   localStorage.setItem(APPLE_CAL_KEY, JSON.stringify({ email, appPassword }));
 }
@@ -1119,19 +1175,47 @@ async function loadShoppingItems() {
 
   const { data, error } = await window.supabaseClient
     .from("shopping_items")
-    .select("id, list, name, checked, created_at")
+    .select("id, list, name, checked, checked_by, created_at, profiles:checked_by(display_name)")
     .eq("family_id", familyId)
     .order("created_at", { ascending: true });
 
   if (error) { console.warn("loadShoppingItems failed:", error.message); return null; }
 
-  // Group into groceries / other
+  // Group into groceries / other - use label to match renderShoppingGroup expectations
   const result = { groceries: [], other: [] };
   (data || []).forEach((item) => {
     const group = item.list === "other" ? "other" : "groceries";
-    result[group].push({ id: item.id, name: item.name, bought: item.checked });
+    result[group].push({
+      id: item.id,
+      label: item.name,   // features.js uses .label
+      bought: item.checked,
+      boughtBy: item.profiles?.display_name || null,
+    });
   });
   return result;
+}
+
+let _shoppingChannel = null;
+
+function subscribeToShopping(onUpdate) {
+  if (_shoppingChannel) return; // already subscribed
+  _getFamilyId().then((familyId) => {
+    if (!familyId || !window.supabaseClient) return;
+    _shoppingChannel = window.supabaseClient
+      .channel(`shopping:${familyId}`)
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "shopping_items",
+        filter: `family_id=eq.${familyId}`,
+      }, () => onUpdate())
+      .subscribe();
+  });
+}
+
+function unsubscribeShopping() {
+  if (_shoppingChannel) {
+    _shoppingChannel.unsubscribe();
+    _shoppingChannel = null;
+  }
 }
 
 async function addShoppingItem(listKey, name) {
@@ -1145,7 +1229,8 @@ async function addShoppingItem(listKey, name) {
     .single();
 
   if (error) { console.warn("addShoppingItem failed:", error.message); return null; }
-  return data;
+  // Normalise to match loadShoppingItems shape (label not name)
+  return data ? { ...data, label: data.name } : null;
 }
 
 async function toggleShoppingItem(id, checked) {
@@ -1184,6 +1269,7 @@ window.pushCardToFamilyCalendar = pushCardToFamilyCalendar;
 window.deleteCardFromFamilyCalendar = deleteCardFromFamilyCalendar;
 window.initAppleCalendar = initAppleCalendar;
 window.pushCardToAppleCalendar = pushCardToAppleCalendar;
+window.deleteCardFromAppleCalendar = deleteCardFromAppleCalendar;
 window.saveAppleCalCredentials = saveAppleCalCredentials;
 window.clearAppleCalCredentials = clearAppleCalCredentials;
 window.getAppleCalConnectionStatus = getAppleCalConnectionStatus;
@@ -1194,6 +1280,8 @@ window.loadShoppingItems = loadShoppingItems;
 window.addShoppingItem = addShoppingItem;
 window.toggleShoppingItem = toggleShoppingItem;
 window.deleteShoppingItem = deleteShoppingItem;
+window.subscribeToShopping = subscribeToShopping;
+window.unsubscribeShopping = unsubscribeShopping;
 window.sendMessage = sendMessage;
 window.subscribeToMessages = subscribeToMessages;
 window.unsubscribeMessages = unsubscribeMessages;
@@ -1201,6 +1289,7 @@ window.getUnreadCounts = getUnreadCounts;
 window.loadUserProfile = loadUserProfile;
 window.acceptInviteToken = acceptInviteToken;
 window.lookupInviteToken = lookupInviteToken;
+window.updateProfile = updateProfile;
 window.loadSubscriptionStatus = loadSubscriptionStatus;
 window.getSubscriptionStatus = getSubscriptionStatus;
 
@@ -1210,17 +1299,42 @@ async function lookupInviteToken(token) {
   if (!token || !window.supabaseClient) return null;
   const { data, error } = await window.supabaseClient
     .from("pairs")
-    .select("id, family_id, parent_a, invite_email, accepted_at, profiles!pairs_parent_a_fkey(display_name)")
+    .select("id, family_id, invite_token, parent_a, invite_email, accepted_at, profiles!pairs_parent_a_fkey(display_name)")
     .eq("invite_token", token)
     .single();
   if (error || !data) return null;
   if (data.accepted_at) return { expired: true };
+
+  // Fetch children for this family
+  let childrenNames = [];
+  if (data.family_id) {
+    const { data: children } = await window.supabaseClient
+      .from("children")
+      .select("name")
+      .eq("family_id", data.family_id)
+      .order("created_at", { ascending: true });
+    childrenNames = (children || []).map((c) => c.name).filter(Boolean);
+  }
+
   return {
     pairId: data.id,
     familyId: data.family_id,
+    inviteToken: data.invite_token,
     parentAName: data.profiles?.display_name || "Your co-parent",
     inviteEmail: data.invite_email,
+    childrenNames,
   };
+}
+
+async function updateProfile(displayName) {
+  if (!currentUserId || !window.supabaseClient) return false;
+  const firstName = (displayName || "").trim().split(/\s+/)[0] || displayName;
+  const { error } = await window.supabaseClient
+    .from("profiles")
+    .update({ display_name: displayName.trim(), first_name: firstName })
+    .eq("id", currentUserId);
+  if (error) { console.warn("updateProfile failed:", error.message); return false; }
+  return true;
 }
 
 async function acceptInviteToken(token, userId, displayName) {

@@ -90,6 +90,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Profiles: own row select" ON public.profiles;
 DROP POLICY IF EXISTS "Profiles: family members select" ON public.profiles;
 DROP POLICY IF EXISTS "Profiles: own row upsert" ON public.profiles;
+DROP POLICY IF EXISTS "Profiles: own row insert" ON public.profiles;
 DROP POLICY IF EXISTS "Profiles: own row update" ON public.profiles;
 
 -- Users can always read their own profile (needed for my_family_id() bootstrap)
@@ -163,6 +164,7 @@ ALTER TABLE public.messages_v2 ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Messages: pair members select" ON public.messages_v2;
 DROP POLICY IF EXISTS "Messages: pair members insert" ON public.messages_v2;
 DROP POLICY IF EXISTS "Messages: pair members delete" ON public.messages_v2;
+DROP POLICY IF EXISTS "Messages: own messages delete" ON public.messages_v2;
 
 CREATE POLICY "Messages: pair members select"
   ON public.messages_v2 FOR SELECT TO authenticated
@@ -231,5 +233,29 @@ SELECT
   ) AS policy_count
 FROM pg_tables t
 WHERE schemaname = 'public'
-  AND tablename IN ('unified_cards','families','profiles','pairs','shopping_items','messages_v2','children')
+  AND tablename IN ('unified_cards','families','profiles','pairs','shopping_items','messages_v2','children','push_subscriptions')
+ORDER BY tablename;
+
+-- ─── STEP 10: Security cross-check ───────────────────────────────────────────
+-- Run this as a sanity test after applying policies.
+-- If any row returns policy_count = 0 with rls_enabled = true, data is locked out.
+-- If any row returns rls_enabled = false, data is wide open.
+-- Expected: every row has rls_enabled = true AND policy_count >= 2.
+
+SELECT
+  tablename,
+  rowsecurity AS rls_enabled,
+  (
+    SELECT COUNT(*) FROM pg_policies p
+    WHERE p.schemaname = t.schemaname AND p.tablename = t.tablename
+  ) AS policy_count,
+  CASE
+    WHEN NOT rowsecurity THEN 'FAIL - RLS disabled, data is public'
+    WHEN (SELECT COUNT(*) FROM pg_policies p WHERE p.schemaname = t.schemaname AND p.tablename = t.tablename) = 0
+      THEN 'FAIL - RLS on but no policies, table is blocked'
+    ELSE 'OK'
+  END AS status
+FROM pg_tables t
+WHERE schemaname = 'public'
+  AND tablename IN ('unified_cards','families','profiles','pairs','shopping_items','messages_v2','children','push_subscriptions')
 ORDER BY tablename;

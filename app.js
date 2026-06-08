@@ -1,5 +1,25 @@
 const APP_VERSION = "0.4.0";
 const APP_VERSION_DATE = "2026-06-04";
+
+// ─── Locale / currency config ─────────────────────────────────────────────────
+// Add a new locale here to support a new market. Never hardcode currency symbols
+// in UI strings - always use LOCALE_CONFIG.symbol or LOCALE_CONFIG.currency.
+const LOCALE_CONFIGS = {
+  pl: { currency: "PLN", symbol: "PLN", monthlyPrice: "PLN 39", annualPrice: "PLN 349",
+        stripeMonthlyKey: "STRIPE_MONTHLY_PRICE_ID_PLN", stripeAnnualKey: "STRIPE_ANNUAL_PRICE_ID_PLN" },
+  default: { currency: "CHF", symbol: "CHF", monthlyPrice: "CHF 9.90", annualPrice: "CHF 89",
+             stripeMonthlyKey: "STRIPE_MONTHLY_PRICE_ID", stripeAnnualKey: "STRIPE_ANNUAL_PRICE_ID" },
+};
+const LOCALE_CONFIG = (() => {
+  const lang = (navigator.language || "").toLowerCase().split("-")[0];
+  return LOCALE_CONFIGS[lang] || LOCALE_CONFIGS.default;
+})();
+// Returns the correct Stripe price ID for the current locale and billing period.
+function getLocalePriceId(period = "monthly") {
+  const key = period === "annual" ? LOCALE_CONFIG.stripeAnnualKey : LOCALE_CONFIG.stripeMonthlyKey;
+  return window[key] || window.STRIPE_MONTHLY_PRICE_ID || "";
+}
+
 const statusColumns = ["Important", "Waiting", "To Do", "Done"]; // kept for DB mapping
 const kanbanColumns = [
   { id: "to-decide", label: "To decide", statuses: ["Important", "Waiting", "Disputed"] },
@@ -225,7 +245,7 @@ function showUpgradePrompt(reason) {
         <li>14-day free trial - no card required</li>
       </ul>
       <div class="upgrade-pricing">
-        <strong>CHF 9.90</strong>/month &nbsp; or &nbsp; <strong>CHF 89</strong>/year
+        <strong>${LOCALE_CONFIG.monthlyPrice}</strong>/month &nbsp; or &nbsp; <strong>${LOCALE_CONFIG.annualPrice}</strong>/year
       </div>
       <div class="dialog-actions">
         <button class="ghost-button" id="upgradeModalCancel">Maybe later</button>
@@ -243,7 +263,7 @@ function showUpgradePrompt(reason) {
     btn.textContent = "Redirecting...";
     btn.disabled = true;
     try {
-      const priceId = window.STRIPE_MONTHLY_PRICE_ID || "";
+      const priceId = getLocalePriceId("monthly");
       const userId = window.getCurrentUserId?.() || "";
       const pairId = window.getCurrentPairId?.() || "";
       if (!priceId) { showToast("Stripe not configured yet"); modal.close(); return; }
@@ -559,6 +579,17 @@ function bindEvents() {
   });
   elements.saveCardReminderButton?.addEventListener("click", saveCardDialogReminder);
   elements.clearCardReminderButton?.addEventListener("click", clearCardDialogReminder);
+
+  // SEG-06: Receipt upload button
+  document.querySelector("#receiptUploadButton")?.addEventListener("click", () => {
+    document.querySelector("#receiptFileInput")?.click();
+  });
+  document.querySelector("#receiptFileInput")?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    const cardId = elements.cardId?.value;
+    if (file && cardId) uploadReceipt(file, cardId);
+    e.target.value = ""; // reset so same file can be re-uploaded
+  });
   elements.detailsInput?.addEventListener("input", () => {
     deriveFieldsFromShortInfo(elements.detailsInput.value, { silent: true });
     scheduleAutosave();
@@ -584,6 +615,7 @@ function bindEvents() {
       saveCardSilent();
     }
     elements.cardDialog?.close();
+    window.broadcastCardPresence?.(null);
   });
   elements.cardDialog?.addEventListener("cancel", (e) => {
     e.preventDefault();
@@ -591,6 +623,12 @@ function bindEvents() {
       saveCardSilent();
     }
     elements.cardDialog?.close();
+    window.broadcastCardPresence?.(null);
+  });
+  elements.cardDialog?.addEventListener("close", () => {
+    window.broadcastCardPresence?.(null);
+    const indicator = document.querySelector("#presenceIndicator");
+    if (indicator) indicator.hidden = true;
   });
   elements.messageForm?.addEventListener("submit", saveCardMessage);
   elements.cardMessageMicButton?.addEventListener("click", () => startDictationForField(elements.cardMessageInput, {
@@ -689,7 +727,12 @@ async function showInviteScreen(token) {
       return;
     }
     if (elements.inviteHero) {
-      elements.inviteHero.querySelector("h1").textContent = `${info.parentAName} invited you to their family board.`;
+      const children = info.childrenNames || [];
+      const forChildren = children.length > 0
+        ? ` to coordinate for ${children.slice(0, -1).join(", ")}${children.length > 1 ? " and " : ""}${children[children.length - 1]}`
+        : "";
+      elements.inviteHero.querySelector("h1").textContent =
+        `${info.parentAName} invited you${forChildren}.`;
     }
   }
 
@@ -954,12 +997,15 @@ function showApp(session) {
   if (window.initSupabaseData) {
     window.initSupabaseData(currentAuthSession).catch(() => {});
   }
-  // Initialize notifications
+  // Initialize notifications - silent re-subscribe only; permission prompt deferred to first card save
   initNotifications();
-  requestNotificationPermission();
   // Load Google Calendar events if provider token is available
   if (window.initGoogleCalendar) {
     window.initGoogleCalendar(currentAuthSession).catch(() => {});
+  }
+  // Load Apple Calendar busy slots if credentials are stored
+  if (window.initAppleCalendar) {
+    window.initAppleCalendar().catch(() => {});
   }
 }
 
@@ -1168,6 +1214,27 @@ function setMobileActive(moduleName) {
 
 window.setMobileActive = setMobileActive;
 
+// Handle Supabase Presence updates - show who else is viewing the current card
+window.onPresenceSync = function(presenceState) {
+  const indicator = document.querySelector("#presenceIndicator");
+  if (!indicator || !elements.cardDialog?.open) return;
+  const currentCardId = elements.cardId?.value;
+  if (!currentCardId) return;
+
+  const myId = window.getCurrentUserId?.();
+  const others = Object.values(presenceState)
+    .flat()
+    .filter((p) => p.viewing_card === currentCardId && p.user_id !== myId)
+    .map((p) => p.display_name || "Co-parent");
+
+  if (others.length) {
+    indicator.textContent = `${others[0]} is also viewing this`;
+    indicator.hidden = false;
+  } else {
+    indicator.hidden = true;
+  }
+};
+
 function render() {
   const cards = filteredCards();
   renderCounts();
@@ -1188,7 +1255,7 @@ function renderSummary() {
   const reminders = state.cards.filter((card) => card.reminder).length;
   const waiting = state.cards.filter((card) => card.status === "Waiting").length;
   const todo = state.cards.filter((card) => card.status === "To Do").length;
-  document.querySelector("#topCosts").textContent = expenses ? `CHF ${Math.round(expenses)}` : "CHF 0";
+  document.querySelector("#topCosts").textContent = expenses ? `${LOCALE_CONFIG.symbol} ${Math.round(expenses)}` : `${LOCALE_CONFIG.symbol} 0`;
   document.querySelector("#topMessages").textContent = String(messages);
   document.querySelector("#topReminders").textContent = String(reminders);
   document.querySelector("#topNeeds").textContent = String(messages);
@@ -1668,10 +1735,13 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
         ? toDateTimeInputValue(new Date(card.reminder.time)) : "";
     }
     renderDialogMeta(card);
+    renderDialogConflictBanner(card);
     updateDialogQuickActions(card);
     renderComments(card);
     renderActivity(card);
     renderDerivedTags();
+    updatePaymentPanel(card);
+    updateReceiptPanel(card);
   } else {
     elements.topicInput.value = prefill.topic || (state.topic === "All" ? "Schedule" : state.topic);
     elements.typeInput.value = prefill.type || "Task";
@@ -1687,6 +1757,8 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     if (elements.llmCardPromptInput) elements.llmCardPromptInput.value = "";
     renderLlmInterpretation("");
     renderDerivedTags();
+    updatePaymentPanel(null);
+    updateReceiptPanel(null);
   }
 
   updateReminderCustomVisibility();
@@ -1695,11 +1767,187 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
   setCardDialogEditMode(canEdit);
   elements.cardDialog.showModal();
   focusCardDialogSection(focusSection);
+  // Broadcast presence so co-parent sees we're viewing this card
+  window.broadcastCardPresence?.(id || null);
 }
 
 function renderDialogPeople(card) {
   elements.dialogCardPeople.outerHTML = renderPeopleIcons(card, "dialogCardPeople");
   elements.dialogCardPeople = document.querySelector("#dialogCardPeople");
+}
+
+// ─── SEG-06: Payment panel ────────────────────────────────────────────────────
+
+function updatePaymentPanel(card) {
+  const panel = document.querySelector("#cardPaymentPanel");
+  const content = document.querySelector("#paymentPanelContent");
+  if (!panel || !content) return;
+
+  const isExpense = card && (card.type === "Expense" || card.topic === "Expenses");
+  const hasAmount = isExpense && card.amount;
+  panel.hidden = !hasAmount;
+  if (!hasAmount) return;
+
+  const payStatus = card.payment_status || "none";
+  const rawAmt = parseFloat(String(card.amount).replace(/[^0-9.-]/g, "")) || 0;
+  const currencyMatch = String(card.amount).match(/[A-Za-z]{2,3}/);
+  const currency = currencyMatch ? currencyMatch[0].toUpperCase() : LOCALE_CONFIG.currency;
+
+  if (payStatus === "paid") {
+    const paidAt = card.payment_paid_at
+      ? new Date(card.payment_paid_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+      : "";
+    const paidAmt = card.payment_amount != null
+      ? `${currency} ${parseFloat(card.payment_amount).toFixed(2)}`
+      : "";
+    content.innerHTML = `<div class="payment-status-chip payment-chip-paid">&#10003; Paid${paidAmt ? " " + paidAmt : ""}${paidAt ? " &middot; " + paidAt : ""}</div>`;
+    return;
+  }
+
+  if (payStatus === "pending") {
+    const pAmt = card.payment_amount != null
+      ? `${currency} ${parseFloat(card.payment_amount).toFixed(2)}`
+      : "";
+    const payUrl = card.payment_intent_id ? `/pay/${card.payment_intent_id}` : null;
+    content.innerHTML = `
+      <div class="payment-status-chip payment-chip-pending">${pAmt ? pAmt + " " : ""}requested &ndash; awaiting payment</div>
+      ${payUrl ? `<a class="ghost-button" href="${payUrl}" target="_blank" rel="noopener" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:13px">Open payment link</a>` : ""}
+    `;
+    return;
+  }
+
+  // No payment requested yet - show request form
+  const defaultAmount = (rawAmt / 2).toFixed(2);
+  content.innerHTML = `
+    <div class="payment-request-form">
+      <div class="payment-amount-row">
+        <span class="payment-currency-label">${currency}</span>
+        <input type="number" id="paymentAmountInput" class="payment-amount-input" value="${defaultAmount}" min="0.50" step="0.01" placeholder="0.00">
+      </div>
+      <select id="paymentSplitSelect" class="payment-split-select">
+        <option value="50">50/50 split</option>
+        <option value="100">100% them</option>
+        <option value="60">60% them / 40% me</option>
+        <option value="40">40% them / 60% me</option>
+        <option value="0">I'll cover it</option>
+      </select>
+      <button class="primary-button payment-request-btn" type="button" id="sendPaymentRequestButton">Send payment request</button>
+    </div>
+  `;
+
+  const splitSel = document.querySelector("#paymentSplitSelect");
+  const amtInput = document.querySelector("#paymentAmountInput");
+  splitSel?.addEventListener("change", () => {
+    const pct = parseInt(splitSel.value) / 100;
+    if (amtInput) amtInput.value = (rawAmt * pct).toFixed(2);
+  });
+
+  document.querySelector("#sendPaymentRequestButton")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const amt = parseFloat(amtInput?.value || defaultAmount);
+    if (!amt || amt < 0.5) { showToast("Enter a valid amount (min 0.50)."); return; }
+    btn.disabled = true;
+    btn.textContent = "Sending...";
+    await requestExpensePayment(card.id, amt, currency, card.title);
+    btn.disabled = false;
+  });
+}
+
+async function requestExpensePayment(cardId, amount, currency, description) {
+  try {
+    const res = await fetch("/api/stripe-expense-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cardId,
+        amount: amount.toFixed(2),
+        currency: (currency || LOCALE_CONFIG.currency).toLowerCase(),
+        description: description || "",
+        requestedByName: getMyName(),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Request failed");
+
+    // Update card in local state
+    const card = state.cards.find((c) => c.id === cardId);
+    if (card) {
+      card.payment_status = "pending";
+      card.payment_amount = amount;
+      card.payment_intent_id = data.intentId;
+      persist();
+      if (window.saveCardToSupabase) window.saveCardToSupabase(card).catch(() => {});
+      updatePaymentPanel(card);
+    }
+
+    showToast(data.emailSent ? "Payment request sent by email." : "Payment link created.");
+  } catch (err) {
+    showToast("Could not send payment request: " + err.message);
+    const btn = document.querySelector("#sendPaymentRequestButton");
+    if (btn) { btn.disabled = false; btn.textContent = "Send payment request"; }
+  }
+}
+
+// ─── SEG-06: Receipt upload ───────────────────────────────────────────────────
+
+function updateReceiptPanel(card) {
+  const panel = document.querySelector("#cardReceiptPanel");
+  const preview = document.querySelector("#receiptPreview");
+  if (!panel) return;
+
+  const isExpense = card && (card.type === "Expense" || card.topic === "Expenses");
+  panel.hidden = !isExpense;
+  if (!isExpense || !preview) return;
+
+  if (card.receipt_url) {
+    _renderReceiptPreview(card.receipt_url, preview);
+  } else {
+    preview.innerHTML = "";
+  }
+}
+
+function _renderReceiptPreview(url, container) {
+  if (!url || !container) return;
+  const isImage = /\.(jpe?g|png|gif|webp|heic)$/i.test(url.split("?")[0]);
+  container.innerHTML = isImage
+    ? `<a href="${url}" target="_blank" rel="noopener" class="receipt-preview-link"><img src="${url}" alt="Receipt" class="receipt-thumbnail"></a>`
+    : `<a href="${url}" target="_blank" rel="noopener" class="receipt-preview-link receipt-file-link">View receipt</a>`;
+}
+
+async function uploadReceipt(file, cardId) {
+  if (!window.supabaseClient) { showToast("Not connected to storage."); return; }
+  const card = state.cards.find((c) => c.id === cardId);
+  if (!card) return;
+
+  const uploadBtn = document.querySelector("#receiptUploadButton");
+  if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.textContent = "Uploading..."; }
+
+  try {
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const familyId = typeof getFamilyWorkspaceId === "function" ? getFamilyWorkspaceId() : "family";
+    const path = `${familyId}/${cardId}/receipt.${ext}`;
+
+    const { data, error } = await window.supabaseClient.storage
+      .from("receipts")
+      .upload(path, file, { upsert: true });
+
+    if (error) throw new Error(error.message);
+
+    const { data: urlData } = window.supabaseClient.storage.from("receipts").getPublicUrl(path);
+    const url = urlData?.publicUrl || data?.path || path;
+
+    card.receipt_url = url;
+    persist();
+    if (window.saveCardToSupabase) window.saveCardToSupabase(card).catch(() => {});
+
+    const preview = document.querySelector("#receiptPreview");
+    _renderReceiptPreview(url, preview);
+    showToast("Receipt uploaded.");
+  } catch (err) {
+    showToast("Upload failed: " + err.message);
+  } finally {
+    if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Attach receipt`; }
+  }
 }
 
 function renderDialogMeta(card) {
@@ -1739,6 +1987,38 @@ function renderDialogMeta(card) {
   if (peopleEl) {
     peopleEl.outerHTML = renderPeopleIcons(card, "dialogCardPeople");
     elements.dialogCardPeople = document.querySelector("#dialogCardPeople");
+  }
+}
+
+function renderDialogConflictBanner(card) {
+  // Remove any existing banner first
+  document.querySelector("#dialogConflictBanner")?.remove();
+  if (!card || typeof window.getConflictsForCard !== "function") return;
+  const allConflicts = typeof window.detectConflicts === "function" ? window.detectConflicts(state.cards) : [];
+  const cardConflicts = window.getConflictsForCard(card.id, allConflicts);
+  if (!cardConflicts.length) return;
+
+  const banner = document.createElement("div");
+  banner.id = "dialogConflictBanner";
+  banner.className = "conflict-banner dialog-conflict-banner";
+  banner.innerHTML = cardConflicts.map((c) => {
+    const otherTitle = c.a === card.id ? c.bTitle : c.aTitle;
+    const otherTime = c.a === card.id ? c.bTime : c.aTime;
+    const timeStr = otherTime
+      ? new Date(otherTime).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+      : "";
+    return `<div class="dialog-conflict-item">
+      <span class="conflict-icon">&#9888;</span>
+      <span>Conflicts with <strong>${escapeHtml(otherTitle)}</strong>${timeStr ? ` at ${timeStr}` : ""} - ${escapeHtml(c.reason)}</span>
+    </div>`;
+  }).join("");
+
+  // Insert above the comment panel
+  const commentPanel = document.querySelector("#commentPanel");
+  if (commentPanel) {
+    commentPanel.parentNode.insertBefore(banner, commentPanel);
+  } else {
+    elements.cardDialog.querySelector("form")?.appendChild(banner);
   }
 }
 
@@ -2320,7 +2600,7 @@ function textMentionsName(lowerText, name) {
 }
 
 function inferAmount(text) {
-  const match = text.match(/(?:CHF|USD|EUR|£|\$|€)\s?\d+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?\s?(?:CHF|USD|EUR)/i);
+  const match = text.match(/(?:CHF|PLN|USD|EUR|£|\$|€)\s?\d+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?\s?(?:CHF|PLN|USD|EUR)/i);
   return match ? match[0].replace(/\s+/g, " ") : "";
 }
 
@@ -2692,11 +2972,15 @@ async function saveCard(event) {
     lastEditedBy: authorName,
   };
 
-  // If editing a recurring card and recurrence changed, ask scope
-  if (existing?.recurrence && recurrenceFreq !== (existing.recurrence?.freq || "none")) {
+  // If editing any field of an existing recurring card, ask scope
+  if (existing && existing.recurrence && existing.recurrence.freq && existing.recurrence.freq !== "none") {
     const scope = await _askRecurrenceEditScope();
     if (scope === "cancel") return;
-    card._recurrenceEditScope = scope; // "this" or "all"
+    card._recurrenceEditScope = scope;
+    if (scope === "this") {
+      // Detach this instance from the recurring series - becomes a one-off
+      card.recurrence = null;
+    }
   }
 
   if (existing) {
@@ -2715,6 +2999,9 @@ async function saveCard(event) {
   if (!saveCard._silent) elements.cardDialog.close();
   showToast(existing ? "Do updated" : buildCreateToast(card));
   render();
+  // First card save is the ideal moment to ask for push permission -
+  // user just demonstrated intent so the prompt feels relevant, not intrusive.
+  if (!existing) requestNotificationPermission();
   // Sync to Supabase, then push to calendars if card has a date
   const syncCard = async () => {
     let savedCard = { ...card };
@@ -2731,7 +3018,14 @@ async function saveCard(event) {
     if (card.due && window.pushCardToAppleCalendar) {
       window.pushCardToAppleCalendar(savedCard).catch(() => {});
     }
-    if (window.saveCardToSupabase) await window.saveCardToSupabase(savedCard).catch(() => {});
+    if (window.saveCardToSupabase) {
+      try {
+        await window.saveCardToSupabase(savedCard);
+      } catch {
+        // Offline or Supabase unavailable - queue for background sync
+        _queueOfflineCard(savedCard);
+      }
+    }
   };
   syncCard();
 
@@ -3249,7 +3543,7 @@ function inferConversationalAmountUpdate(currentAmount, lower) {
   if (!/(cost|costs|expense|amount|price|paid|pay)/.test(lower)) return "";
   const match = lower.match(/\b(?:cost|costs|expense|amount|price|paid|pay)\b.{0,18}?\b(\d+(?:[.,]\d{1,2})?)\b/);
   if (!match) return "";
-  const currency = String(currentAmount || "").match(/CHF|USD|EUR|£|\$|€/i)?.[0] || "CHF";
+  const currency = String(currentAmount || "").match(/CHF|PLN|USD|EUR|£|\$|€/i)?.[0] || LOCALE_CONFIG.currency;
   return `${currency} ${match[1]}`;
 }
 
@@ -3379,6 +3673,60 @@ function withTimeOnExistingDate(value, hours, minutes) {
 function persist() {
   storage.setItem(cardsStorageKey(), JSON.stringify(state.cards));
 }
+
+// ─── Offline background sync queue ───────────────────────────────────────────
+
+const SYNC_QUEUE_KEY = "do-do-sync-queue-v1";
+
+function _queueOfflineCard(card) {
+  try {
+    const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "[]");
+    // Replace existing entry for same id or add new
+    const updated = queue.filter((c) => c.id !== card.id);
+    updated.push(card);
+    localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(updated));
+    // Register background sync if supported
+    navigator.serviceWorker?.ready.then((reg) => {
+      reg.sync?.register("sync-cards").catch(() => {});
+    });
+    showToast("Saved locally - will sync when back online");
+  } catch {
+    // localStorage full or unavailable - silent fail
+  }
+}
+
+async function _flushSyncQueue() {
+  if (!window.saveCardToSupabase) return;
+  try {
+    const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "[]");
+    if (!queue.length) return;
+    const synced = [];
+    for (const card of queue) {
+      try {
+        await window.saveCardToSupabase(card);
+        synced.push(card.id);
+      } catch {
+        break; // Still offline - stop trying
+      }
+    }
+    if (synced.length) {
+      const remaining = queue.filter((c) => !synced.includes(c.id));
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(remaining));
+      if (remaining.length === 0) showToast("All offline Dos synced");
+    }
+  } catch {
+    // Queue parse error - clear it
+    localStorage.removeItem(SYNC_QUEUE_KEY);
+  }
+}
+
+// Flush queue when coming back online
+window.addEventListener("online", () => _flushSyncQueue());
+
+// Flush queue when service worker sends the background sync signal
+navigator.serviceWorker?.addEventListener("message", (event) => {
+  if (event.data?.type === "flush-sync-queue") _flushSyncQueue();
+});
 
 function loadAutomationSettings() {
   const stored = storage.getItem(automationSettingsStorageKey);
@@ -3789,7 +4137,7 @@ function requestNotificationPermission() {
   const prompt = document.getElementById("notif-prompt");
   if (!prompt) return;
 
-  // Delay slightly so it doesn't pop right at login
+  // Small delay so the card-saved toast clears before the prompt appears
   setTimeout(() => {
     prompt.classList.remove("hidden");
 
@@ -3806,10 +4154,32 @@ function requestNotificationPermission() {
       prompt.classList.add("hidden");
       localStorage.setItem("notif-asked", "dismissed");
     }, { once: true });
-  }, 3000);
+  }, 1200);
 }
 
 function stopReminderChecker() { /* no-op - handled server-side via cron */ }
+
+// ─── SEG-09: Cookie consent banner ───────────────────────────────────────────
+function initCookieBanner() {
+  if (localStorage.getItem("cookie-consent-v1")) return;
+  const banner = document.getElementById("cookieBanner");
+  if (!banner) return;
+  // Show after a short delay so it doesn't clash with auth/onboarding screens
+  setTimeout(() => {
+    banner.hidden = false;
+    document.getElementById("cookieBannerOk")?.addEventListener("click", () => {
+      banner.hidden = true;
+      localStorage.setItem("cookie-consent-v1", "1");
+    }, { once: true });
+  }, 1500);
+}
+
+// Call on first load
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initCookieBanner);
+} else {
+  initCookieBanner();
+}
 
 // ─── Version badge ─────────────────────────────────────────────────────────────
 

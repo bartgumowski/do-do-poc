@@ -627,6 +627,25 @@ function bindAutomationSettings() {
     });
   });
 
+  // Google Calendar token health indicator
+  // Updates the badge in the Family calendar row based on token refresh result
+  const _updateGCalBadge = (status) => {
+    const badge = featureModule.querySelector("#gcalTokenStatusBadge");
+    if (!badge) return;
+    const automation = window.getAutomationSettings?.() || {};
+    if (!automation.syncFamilyCalendar) return; // only show status when sync is enabled
+    const map = {
+      connected:      { text: "Connected", cls: "status-connected" },
+      no_token:       { text: "Reconnect needed", cls: "status-pending" },
+      token_revoked:  { text: "Re-authorise Google", cls: "status-error" },
+      error:          { text: "Sync error", cls: "status-error" },
+    };
+    const ui = map[status] || { text: "On", cls: "" };
+    badge.textContent = ui.text;
+    badge.className = ui.cls;
+  };
+  window.addEventListener("googleCalTokenStatus", (e) => _updateGCalBadge(e.detail?.status));
+
   // Apple Calendar connect
   featureModule.querySelector("#connectAppleCalButton")?.addEventListener("click", async () => {
     const email = featureModule.querySelector("#appleCalEmail")?.value.trim();
@@ -708,6 +727,13 @@ async function renderShoppingFeature() {
   if (!lists) lists = loadShoppingLists();
 
   _renderShoppingBoard(lists);
+
+  // Subscribe to real-time changes so co-parent updates appear instantly
+  window.unsubscribeShopping?.();
+  window.subscribeToShopping?.(async () => {
+    const refreshed = await window.loadShoppingItems?.();
+    if (refreshed) _renderShoppingBoard(refreshed);
+  });
 }
 
 function _renderShoppingBoard(lists) {
@@ -732,6 +758,60 @@ function _renderShoppingBoard(lists) {
         await window.toggleShoppingItem?.(id, input.checked);
       }
       showFeatureToast(input.checked ? "Marked as bought" : "Returned to list");
+    });
+  });
+
+  // Delete individual item
+  board.querySelectorAll("[data-shopping-delete]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.shoppingDelete;
+      if (id.includes("-")) {
+        // localStorage item (id format: "groceries-1234567")
+        const listKey = id.split("-")[0];
+        const nextLists = loadShoppingLists();
+        nextLists[listKey] = (nextLists[listKey] || []).filter((item) => item.id !== id);
+        saveShoppingLists(nextLists);
+        _renderShoppingBoard(nextLists);
+      } else {
+        // Supabase item (UUID)
+        await window.deleteShoppingItem?.(id);
+        const refreshed = await window.loadShoppingItems?.();
+        if (refreshed) _renderShoppingBoard(refreshed);
+      }
+      showFeatureToast("Removed");
+    });
+  });
+
+  // Clear all bought items in a group
+  board.querySelectorAll("[data-shopping-clear]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const listKey = btn.dataset.shoppingClear;
+      // Get current lists to find bought Supabase items
+      const refreshed = await window.loadShoppingItems?.();
+      const current = refreshed || loadShoppingLists();
+      const boughtItems = (current[listKey] || []).filter((item) => item.bought);
+
+      // Delete all bought items
+      await Promise.all(
+        boughtItems.map((item) => {
+          if (String(item.id).includes("-")) {
+            // localStorage item - will be handled below
+            return Promise.resolve();
+          }
+          return window.deleteShoppingItem?.(item.id) || Promise.resolve();
+        })
+      );
+
+      // Also clear from localStorage
+      const nextLists = loadShoppingLists();
+      nextLists[listKey] = (nextLists[listKey] || []).filter((item) => !item.bought);
+      saveShoppingLists(nextLists);
+
+      const final = await window.loadShoppingItems?.();
+      _renderShoppingBoard(final || nextLists);
+      showFeatureToast(`Cleared ${boughtItems.length} bought item${boughtItems.length !== 1 ? "s" : ""}`);
     });
   });
 
@@ -770,19 +850,30 @@ function _renderShoppingBoard(lists) {
 
 function renderShoppingGroup(key, title, items) {
   const remaining = items.filter((item) => !item.bought).length;
+  const boughtCount = items.length - remaining;
   return `
     <section class="feature-panel shopping-group">
       <div class="shopping-group-header">
         <h3>${title}</h3>
-        <span>${remaining} left</span>
+        <div class="shopping-group-header-actions">
+          ${boughtCount > 0 ? `<button class="shopping-clear-btn" type="button" data-shopping-clear="${key}" title="Remove all bought items">Clear bought (${boughtCount})</button>` : ""}
+          <span>${remaining} left</span>
+        </div>
       </div>
       <div class="shopping-list">
         ${items.map((item) => `
-          <label class="shopping-row ${item.bought ? "bought" : ""}">
-            <input type="checkbox" data-shopping-list="${key}" data-shopping-check="${item.id}" ${item.bought ? "checked" : ""} />
-            <strong>${escapeFeatureHtml(item.label)}</strong>
-            ${item.bought && item.boughtBy ? renderShoppingBuyer(item.boughtBy) : ""}
-          </label>
+          <div class="shopping-row-wrap ${item.bought ? "bought" : ""}">
+            <label class="shopping-row">
+              <input type="checkbox" data-shopping-list="${key}" data-shopping-check="${item.id}" ${item.bought ? "checked" : ""} />
+              <strong>${escapeFeatureHtml(item.label)}</strong>
+              ${item.bought && item.boughtBy ? renderShoppingBuyer(item.boughtBy) : ""}
+            </label>
+            <button class="shopping-delete-btn" type="button" data-shopping-delete="${item.id}" aria-label="Remove ${escapeFeatureHtml(item.label)}">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14">
+                <path d="M12 4 4 12M4 4l8 8"/>
+              </svg>
+            </button>
+          </div>
         `).join("")}
       </div>
       <form class="shopping-capture" data-shopping-add-form="${key}">
@@ -822,13 +913,23 @@ function renderExpensesFeature() {
     .filter((card) => card.type === "Expense" || card.topic === "Expenses")
     .sort((a, b) => new Date(a.due || 0) - new Date(b.due || 0));
   const total = expenseCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0);
-  const openCards = expenseCards.filter((card) => card.status !== "Done");
-  const paidCards = expenseCards.filter((card) => card.status === "Done");
+  const openCards = expenseCards.filter((card) => card.status !== "Done" && card.payment_status !== "paid");
+  const paidCards = expenseCards.filter((card) => card.status === "Done" || card.payment_status === "paid");
+
+  const myName = typeof getMyName === "function" ? getMyName() : "";
+  const balance = computeBalance(expenseCards, myName);
+  const balanceAbs = Math.abs(balance);
+  const balanceLabel = balance > 0.01
+    ? `<span class="balance-positive">They owe you ${LOCALE_CONFIG.symbol} ${formatExpenseCurrency(balanceAbs)}</span>`
+    : balance < -0.01
+    ? `<span class="balance-negative">You owe ${LOCALE_CONFIG.symbol} ${formatExpenseCurrency(balanceAbs)}</span>`
+    : `<span class="balance-zero">Settled up</span>`;
+
   featureModule.innerHTML = `
     <section class="finance-hero">
       <div>
         <span>Expense total</span>
-        <strong>CHF ${formatExpenseCurrency(total)}</strong>
+        <strong>${LOCALE_CONFIG.symbol} ${formatExpenseCurrency(total)}</strong>
         <p>Every expense is a normal Do with its discussion, people, date, and status attached.</p>
       </div>
       <button class="primary-button" type="button" id="addExpenseButton">Add expense</button>
@@ -841,11 +942,15 @@ function renderExpensesFeature() {
       </div>
       <div class="expense-summary-row">
         <span>Open</span>
-        <strong>${openCards.length} · CHF ${formatExpenseCurrency(openCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0))}</strong>
+        <strong>${openCards.length} · ${LOCALE_CONFIG.symbol} ${formatExpenseCurrency(openCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0))}</strong>
       </div>
       <div class="expense-summary-row">
         <span>Paid</span>
-        <strong>${paidCards.length} · CHF ${formatExpenseCurrency(paidCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0))}</strong>
+        <strong>${paidCards.length} · ${LOCALE_CONFIG.symbol} ${formatExpenseCurrency(paidCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0))}</strong>
+      </div>
+      <div class="expense-summary-row expense-summary-balance">
+        <span>Balance</span>
+        <strong>${balanceLabel}</strong>
       </div>
     </section>
 
@@ -866,7 +971,7 @@ function renderExpensesFeature() {
 
   featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => openCardDialog());
 
-  // Expense quick-action buttons
+  // Expense quick-action and request-payment buttons
   featureModule.querySelectorAll("[data-expense-action]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -878,19 +983,57 @@ function renderExpensesFeature() {
   window.bindUnifiedCardInteractions?.(featureModule);
 }
 
+// Returns running balance: positive = co-parent owes me, negative = I owe them.
+function computeBalance(cards, myName) {
+  let balance = 0;
+  cards.forEach((card) => {
+    const amt = expenseAmount(card.amount);
+    if (!amt) return;
+    if (card.payment_status === "paid") return; // already settled
+    const share = card.payment_amount != null ? parseFloat(card.payment_amount) : amt / 2;
+    const iMine = myName && (card.author === myName || card.assignee === myName);
+    balance += iMine ? share : -share;
+  });
+  return balance;
+}
+
 function renderExpenseCard(card) {
-  const isDone = card.status === "Done" || card.status === "Paid";
+  const payStatus = card.payment_status || "none";
+  const isPaid = payStatus === "paid" || card.status === "Done";
+  const isPending = payStatus === "pending";
   const isDisputed = card.status === "Disputed";
-  const statusLabel = card.status === "Paid" ? "Paid" : card.status === "Disputed" ? "Disputed" : card.status;
   const amount = card.amount ? `<span class="expense-amount">${card.amount}</span>` : "";
 
-  const actions = isDone ? "" : `
-    <div class="expense-card-actions">
-      ${!isDisputed ? `<button class="expense-action-btn approve" data-expense-action="approve" data-card-id="${card.id}">Approve</button>` : ""}
-      ${!isDisputed ? `<button class="expense-action-btn dispute" data-expense-action="dispute" data-card-id="${card.id}">Dispute</button>` : ""}
-      <button class="expense-action-btn paid" data-expense-action="paid" data-card-id="${card.id}">Mark paid</button>
-    </div>
-  `;
+  // Payment status chip
+  let payChip = "";
+  if (isPaid) {
+    payChip = `<span class="payment-chip payment-chip-paid">Paid</span>`;
+  } else if (isPending) {
+    payChip = `<span class="payment-chip payment-chip-pending">Awaiting payment</span>`;
+  }
+
+  // Receipt indicator
+  const receiptChip = card.receipt_url
+    ? `<a class="payment-chip payment-chip-receipt" href="${card.receipt_url}" target="_blank" rel="noopener" title="View receipt" onclick="event.stopPropagation()">Receipt</a>`
+    : "";
+
+  // Actions row
+  let actions = "";
+  if (!isPaid) {
+    const canRequest = !isPending && card.amount && !isDisputed;
+    actions = `
+      <div class="expense-card-actions">
+        ${!isPending && !isDisputed ? `<button class="expense-action-btn approve" data-expense-action="approve" data-card-id="${card.id}">Approve</button>` : ""}
+        ${!isPending && !isDisputed ? `<button class="expense-action-btn dispute" data-expense-action="dispute" data-card-id="${card.id}">Dispute</button>` : ""}
+        ${isPending
+          ? `<span class="expense-action-pending">Awaiting payment</span>`
+          : canRequest
+            ? `<button class="expense-action-btn request-payment" data-expense-action="request-payment" data-card-id="${card.id}">Request payment</button>`
+            : `<button class="expense-action-btn paid" data-expense-action="paid" data-card-id="${card.id}">Mark paid</button>`
+        }
+      </div>
+    `;
+  }
 
   return `
     <article class="expense-preview-card" data-card-id="${card.id}">
@@ -901,7 +1044,8 @@ function renderExpenseCard(card) {
         </div>
         <div class="expense-card-meta">
           ${amount}
-          <span class="expense-status-badge expense-status-${(statusLabel || "").toLowerCase().replace(/\s/g, "-")}">${statusLabel}</span>
+          ${payChip}
+          ${receiptChip}
         </div>
       </div>
       ${actions}
@@ -911,8 +1055,11 @@ function renderExpenseCard(card) {
 
 function handleExpenseAction(cardId, action) {
   if (!cardId || !action) return;
-  const nextStatus = action === "approve" ? "To Do" : action === "dispute" ? "Disputed" : "Paid";
-  // Use app.js updateCardStatus if available, otherwise call quickCompleteCard / quickRespondCard
+  if (action === "request-payment") {
+    // Open the card dialog focused on the payment panel
+    if (typeof window.openCardDialog === "function") window.openCardDialog(cardId, "payment");
+    return;
+  }
   if (action === "paid" && typeof window.quickCompleteCard === "function") {
     window.quickCompleteCard(cardId);
     return;
@@ -1407,7 +1554,7 @@ function linkedMessageCard() {
     assignee: "Parent B",
     child: "Ava",
     due: new Date().toISOString(),
-    amount: "CHF 0.00",
+    amount: `${LOCALE_CONFIG.currency} 0.00`,
     details: "Friday dismissal moved to 15:10. Confirm before 13:00 so after-school care can be updated.",
     comments: [{ author: "Parent A", text: "Need confirmation before 13:00.", time: "09:12" }],
     acknowledged: false,
@@ -1655,6 +1802,10 @@ function getConflictsForCard(cardId, allConflicts) {
   return allConflicts.filter((c) => c.a === cardId || c.b === cardId);
 }
 
+// Expose conflict helpers for card dialog banner (app.js)
+window.detectConflicts = detectConflicts;
+window.getConflictsForCard = getConflictsForCard;
+
 // ─── Cached conflicts for the current render ──────────────────────────────────
 
 function _getActiveConflicts() {
@@ -1843,7 +1994,7 @@ function renderSpecialPanel(moduleName, part = "all") {
               <strong>Family calendar</strong>
               <em>${automation.syncFamilyCalendar ? `Ready to sync dated Dos to ${automation.familyCalendarProvider === "outlook" ? "Outlook" : "Google"} Calendar.` : "Choose Google or Outlook and connect the family's main calendar."}</em>
             </span>
-            <b>${automation.syncFamilyCalendar ? "On" : "Connect"}</b>
+            <b id="gcalTokenStatusBadge">${automation.syncFamilyCalendar ? "On" : "Connect"}</b>
           </div>
           <div class="settings-connection-row">
             <span>
@@ -2047,6 +2198,8 @@ function renderSettingsFeature() {
   const setup = window.getOnboardingState?.() || {};
   const children = setup.children || [];
   const pets = setup.pets || [];
+  const myName = typeof getMyName === "function" ? getMyName() : (setup.parents?.primary || "");
+  const coparentName = setup.parents?.coparent || "";
 
   const renderMemberRow = (name, index, type) => `
     <article class="feature-item feature-item-editable">
@@ -2071,6 +2224,35 @@ function renderSettingsFeature() {
   featureModule.innerHTML = `
     <div class="feature-layout settings-layout">
       ${renderSpecialPanel("settings", "automation")}
+
+      <section class="feature-panel">
+        <h3>Your profile</h3>
+        <div class="feature-items">
+          <article class="feature-item feature-item-editable">
+            <div class="feature-item-main">
+              <strong>${escapeHtml(myName || "Your name")}</strong>
+              <span style="color:var(--muted);font-size:12px;">Your display name</span>
+            </div>
+            <button class="icon-button icon-button-sm" id="editMyNameBtn" aria-label="Edit your name">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/>
+              </svg>
+            </button>
+          </article>
+          ${coparentName ? `
+          <article class="feature-item feature-item-editable">
+            <div class="feature-item-main">
+              <strong>${escapeHtml(coparentName)}</strong>
+              <span style="color:var(--muted);font-size:12px;">Co-parent name (local)</span>
+            </div>
+            <button class="icon-button icon-button-sm" id="editCoparentNameBtn" aria-label="Edit co-parent name">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/>
+              </svg>
+            </button>
+          </article>` : ""}
+        </div>
+      </section>
 
       <section class="feature-panel">
         <div class="feature-panel-header">
@@ -2112,6 +2294,18 @@ function renderSettingsFeature() {
         </div>
       </section>
 
+      <section class="feature-panel share-panel">
+        <div class="feature-panel-header">
+          <h3>Share Do-Do</h3>
+        </div>
+        <p class="feature-note">Know someone juggling shared responsibilities? Send them the link.</p>
+        <div class="share-actions">
+          <button class="secondary-button" id="shareWhatsAppButton">Share via WhatsApp</button>
+          <button class="secondary-button" id="shareEmailButton">Share via email</button>
+          <button class="ghost-button" id="shareCopyButton">Copy link</button>
+        </div>
+      </section>
+
       <section class="feature-panel">
         <h3>Account</h3>
         <div class="feature-items">
@@ -2120,8 +2314,13 @@ function renderSettingsFeature() {
             <span>Sign out and back in to reconnect calendar sync</span>
           </article>
         </div>
-        <div style="margin-top:16px;">
+        <div class="account-action-row" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
           <button class="secondary-button" id="signOutButton" style="color:#ef4444;border-color:#ef4444;">Sign out</button>
+          <button class="secondary-button" id="downloadMyDataButton">Download my data</button>
+          <a class="secondary-button" href="/legal.html" target="_blank" rel="noopener" style="text-decoration:none;">Privacy &amp; Terms</a>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="ghost-button" id="deleteAccountButton" style="color:var(--muted);font-size:12px;padding:4px 0;">Delete account</button>
         </div>
       </section>
 
@@ -2144,13 +2343,116 @@ function renderSettingsFeature() {
   // Bind automation settings panel
   bindAutomationSettings();
 
+  // Edit my name
+  featureModule.querySelector("#editMyNameBtn")?.addEventListener("click", () => promptEditMyName());
+  featureModule.querySelector("#editCoparentNameBtn")?.addEventListener("click", () => promptEditCoparentName());
+
   // Add child/pet
   featureModule.querySelector("#addChildBtn")?.addEventListener("click", () => promptAddChild());
   featureModule.querySelector("#addPetBtn")?.addEventListener("click", () => promptAddPet());
 
+  // Share Do-Do
+  const SHARE_URL = "https://do-do.app";
+  const SHARE_TEXT = "I use Do-Do to stay organised with shared tasks and calendars - works great. Try it:";
+  featureModule.querySelector("#shareWhatsAppButton")?.addEventListener("click", () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(SHARE_TEXT + " " + SHARE_URL)}`, "_blank", "noopener");
+  });
+  featureModule.querySelector("#shareEmailButton")?.addEventListener("click", () => {
+    window.location.href = `mailto:?subject=Try Do-Do&body=${encodeURIComponent(SHARE_TEXT + "\n\n" + SHARE_URL)}`;
+  });
+  featureModule.querySelector("#shareCopyButton")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(SHARE_URL);
+      showFeatureToast("Link copied to clipboard");
+    } catch {
+      showFeatureToast(SHARE_URL);
+    }
+  });
+
   // Sign out
   featureModule.querySelector("#signOutButton")?.addEventListener("click", () => {
     if (typeof signOut === "function") signOut();
+  });
+
+  // Download my data (GDPR export)
+  featureModule.querySelector("#downloadMyDataButton")?.addEventListener("click", async () => {
+    const btn = featureModule.querySelector("#downloadMyDataButton");
+    btn.disabled = true;
+    btn.textContent = "Preparing...";
+    try {
+      const session = (await window.supabaseClient?.auth?.getSession())?.data?.session;
+      const token = session?.access_token;
+      if (!token) { showFeatureToast("Sign in required"); return; }
+
+      const res = await fetch("/api/export-data", {
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename = res.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1]
+        || `do-do-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showFeatureToast("Data exported - check your downloads.");
+    } catch (err) {
+      showFeatureToast("Export failed: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Download my data";
+    }
+  });
+
+  // Delete account (GDPR - two-step confirmation)
+  featureModule.querySelector("#deleteAccountButton")?.addEventListener("click", async () => {
+    const first = window.confirm(
+      "Delete your account?\n\nThis permanently removes your profile and messages. " +
+      "Family cards you created will be anonymised. Your co-parent's data is preserved.\n\n" +
+      "This cannot be undone."
+    );
+    if (!first) return;
+
+    const second = window.confirm(
+      "Are you absolutely sure? Type OK in the next prompt to confirm."
+    );
+    if (!second) return;
+
+    const confirmation = window.prompt('Type "DELETE" to permanently delete your account:');
+    if (confirmation?.trim().toUpperCase() !== "DELETE") {
+      showFeatureToast("Account deletion cancelled.");
+      return;
+    }
+
+    const btn = featureModule.querySelector("#deleteAccountButton");
+    btn.disabled = true;
+    btn.textContent = "Deleting...";
+
+    try {
+      const session = (await window.supabaseClient?.auth?.getSession())?.data?.session;
+      const token = session?.access_token;
+      if (!token) throw new Error("Sign in required");
+
+      const res = await fetch("/api/delete-account", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Deletion failed");
+
+      // Sign out locally
+      await window.supabaseClient?.auth?.signOut();
+      window.location.reload();
+    } catch (err) {
+      showFeatureToast("Deletion failed: " + err.message);
+      btn.disabled = false;
+      btn.textContent = "Delete account";
+    }
   });
 
   // Subscription panel
@@ -2266,6 +2568,23 @@ async function renderInvitePanel() {
   const panel = featureModule.querySelector("#invitePanelContent");
   if (!panel) return;
 
+  // Co-parent invite is a paid feature (free plan = single user only)
+  if (!window.isPaidUser?.()) {
+    panel.innerHTML = `
+      <article class="feature-item">
+        <div>
+          <strong style="display:block;margin-bottom:4px;">Invite your co-parent</strong>
+          <span style="color:var(--muted);font-size:13px;">Shared board and collaboration require the Family plan.</span>
+        </div>
+        <button class="secondary-button" id="inviteUpgradeBtn" style="white-space:nowrap;">Upgrade</button>
+      </article>
+    `;
+    panel.querySelector("#inviteUpgradeBtn")?.addEventListener("click", () => {
+      window.showUpgradePrompt?.("Co-parent collaboration is available on the Family plan.");
+    });
+    return;
+  }
+
   const hasPair = Boolean(window.getCurrentPairId?.());
   const setup = window.getOnboardingState?.() || {};
   const coparentName = setup.parents?.coparent || "Co-parent";
@@ -2293,7 +2612,20 @@ async function renderInvitePanel() {
   }
 
   // Co-parent hasn't joined yet - show invite options
-  const pendingLink = (() => { try { return sessionStorage.getItem("do-do-pending-invite-link"); } catch { return null; } })();
+  // Try sessionStorage first; fall back to fetching invite_token from the pair record
+  let pendingLink = (() => { try { return sessionStorage.getItem("do-do-pending-invite-link"); } catch { return null; } })();
+  if (!pendingLink && window.getCurrentPairId?.()) {
+    try {
+      const { data: pairRow } = await window.supabaseClient
+        .from("pairs")
+        .select("invite_token")
+        .eq("id", window.getCurrentPairId())
+        .maybeSingle();
+      if (pairRow?.invite_token) {
+        pendingLink = `${window.location.origin}/invite/${pairRow.invite_token}`;
+      }
+    } catch { /* silent */ }
+  }
 
   panel.innerHTML = `
     <article class="feature-item">
@@ -2357,6 +2689,36 @@ async function renderInvitePanel() {
   });
 }
 
+// ─── Parent name editing ───────────────────────────────────────────────────────
+
+async function promptEditMyName() {
+  const setup = window.getOnboardingState?.() || {};
+  const current = setup.parents?.primary || "";
+  const name = window.prompt("Your display name:", current);
+  if (!name?.trim() || name.trim() === current) return;
+  const newName = name.trim();
+
+  // Update localStorage
+  const updated = { ...setup, parents: { ...(setup.parents || {}), primary: newName } };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+
+  // Update Supabase profile
+  const saved = await window.updateProfile?.(newName);
+  showFeatureToast(saved ? `Name updated to ${newName}` : `Name saved locally as ${newName}`);
+  window.switchModule("settings");
+}
+
+function promptEditCoparentName() {
+  const setup = window.getOnboardingState?.() || {};
+  const current = setup.parents?.coparent || "";
+  const name = window.prompt("Co-parent's name (shown locally):", current);
+  if (!name?.trim() || name.trim() === current) return;
+  const updated = { ...setup, parents: { ...(setup.parents || {}), coparent: name.trim() } };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`Co-parent name updated to ${name.trim()}`);
+  window.switchModule("settings");
+}
+
 // ─── Children CRUD ─────────────────────────────────────────────────────────────
 
 async function promptAddChild() {
@@ -2381,11 +2743,15 @@ async function promptEditChild(index) {
   children[index] = { ...(typeof children[index] === "object" ? children[index] : {}), name: name.trim() };
   const updated = { ...setup, children };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  // Sync all children to Supabase
+  if (setup.familyId) {
+    await window.saveChildrenToSupabase?.(setup.familyId, children).catch(() => {});
+  }
   showFeatureToast(`Updated to ${name.trim()}`);
   window.switchModule("settings");
 }
 
-function confirmDeleteChild(index) {
+async function confirmDeleteChild(index) {
   const setup = window.getOnboardingState?.() || {};
   const children = [...(setup.children || [])];
   const name = children[index]?.name || children[index] || "this child";
@@ -2393,6 +2759,9 @@ function confirmDeleteChild(index) {
   children.splice(index, 1);
   const updated = { ...setup, children };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  if (setup.familyId) {
+    await window.saveChildrenToSupabase?.(setup.familyId, children).catch(() => {});
+  }
   showFeatureToast(`${name} removed`);
   window.switchModule("settings");
 }
