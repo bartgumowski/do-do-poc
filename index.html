@@ -291,12 +291,12 @@
         </div>
         <div class="module-block">
           <nav class="module-list" aria-label="Modules">
-            <button class="module-link active" data-module="board">Board</button>
-            <button class="module-link" data-module="calendar">Calendar</button>
-            <button class="module-link" data-module="messages">Messages</button>
-            <button class="module-link" data-module="shopping">Shopping list</button>
-            <button class="module-link" data-module="expenses">Expenses</button>
-            <button class="module-link" data-module="settings">Settings</button>
+            <button class="module-link active" data-module="board" data-i18n="nav.board">Board</button>
+            <button class="module-link" data-module="calendar" data-i18n="nav.calendar">Calendar</button>
+            <button class="module-link" data-module="messages" data-i18n="nav.messages">Messages</button>
+            <button class="module-link" data-module="shopping" data-i18n="nav.shopping">Shopping</button>
+            <button class="module-link" data-module="expenses" data-i18n="nav.expenses">Expenses</button>
+            <button class="module-link" data-module="settings" data-i18n="nav.settings">Settings</button>
           </nav>
         </div>
 
@@ -400,31 +400,31 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 5h16M4 12h16M4 19h16" />
         </svg>
-        Board
+        <span data-i18n="nav.board">Board</span>
       </button>
       <button class="phone-tab" type="button" data-mobile-module="calendar">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M8 2v4M16 2v4M4 9h16M5 5h14v16H5z" />
         </svg>
-        Calendar
+        <span data-i18n="nav.calendar">Calendar</span>
       </button>
       <button class="phone-tab" type="button" data-mobile-module="messages">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" />
         </svg>
-        Messages
+        <span data-i18n="nav.messages">Messages</span>
       </button>
       <button class="phone-tab" type="button" data-mobile-module="shopping">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M6 7h15l-2 8H8L6 7ZM6 7 5 3H2M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM18 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
         </svg>
-        Shopping
+        <span data-i18n="nav.shopping">Shopping</span>
       </button>
       <button class="phone-tab" type="button" data-mobile-module="expenses">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 7h16v10H4zM7 10h.01M17 14h.01M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
         </svg>
-        Expenses
+        <span data-i18n="nav.expenses">Expenses</span>
       </button>
       <button class="phone-fab" id="mobileNewCardButton" type="button" aria-label="Create new Do. Hold to dictate.">
         <svg class="fab-plus-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -481,7 +481,7 @@
 
             <section class="card-info-section">
               <div class="details-field-wrap">
-                <textarea id="detailsInput" rows="5" maxlength="420" placeholder="What needs to be done? Speak or type naturally - date, people and reminder fill in automatically."></textarea>
+                <textarea id="detailsInput" rows="5" maxlength="420" placeholder="What needs to be done? Speak or type naturally - date, people and reminder fill in automatically." data-i18n="card.details_ph" data-i18n-attr="placeholder"></textarea>
                 <button class="inline-mic-btn" type="button" id="voiceButton" aria-label="Dictate">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="2"/>
@@ -491,10 +491,10 @@
               </div>
               <button class="secondary-button autofill-button" type="button" id="autofillButton" style="display:none">Autofill</button>
               <div class="quick-actions dialog-quick-actions hidden" id="dialogQuickActions">
-                <button class="quick-complete" type="button" id="dialogCompleteButton">Done</button>
-                <button class="quick-response" type="button" id="dialogDoButton">I’ll do it</button>
-                <button class="quick-response" type="button" id="dialogPleaseButton">Please do it</button>
-                <button class="quick-response" type="button" id="dialogCannotButton">Can’t</button>
+                <button class="quick-complete" type="button" id="dialogCompleteButton" data-i18n="card.done_btn">Done</button>
+                <button class="quick-response" type="button" id="dialogDoButton" data-i18n="action.ill_do_it">I’ll do it</button>
+                <button class="quick-response" type="button" id="dialogPleaseButton" data-i18n="action.please_do_it">Please do it</button>
+                <button class="quick-response" type="button" id="dialogCannotButton" data-i18n="action.cant">Can’t</button>
               </div>
               <div class="derived-tags" id="derivedTags" aria-label="Derived card tags"></div>
               <div class="derived-field-bank" aria-hidden="true">
@@ -561,7 +561,7 @@
             <section class="comment-panel card-info-section" id="commentPanel">
               <div class="chat-list" id="commentList"></div>
               <div class="chat-input-row">
-                <textarea id="commentInput" rows="1" placeholder="Write a message..."></textarea>
+                <textarea id="commentInput" rows="1" placeholder="Write a message..." data-i18n="card.message_ph" data-i18n-attr="placeholder"></textarea>
                 <button class="chat-mic-button" type="button" id="commentMicButton" aria-label="Dictate message">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" stroke="currentColor" stroke-width="2"/>
@@ -584,15 +584,15 @@
             </div><!-- /dialog-main-col -->
             <div class="dialog-side-col">
               <section class="card-info-section" id="cardReminderPanel">
-                <div class="section-heading">Reminder</div>
+                <div class="section-heading" data-i18n="card.reminder_heading">Reminder</div>
                 <label class="clean-field">
                   <select id="cardReminderPresetInput">
-                    <option value="at-due">At due time</option>
-                    <option value="15">15 minutes before</option>
-                    <option value="60">1 hour before</option>
-                    <option value="120">2 hours before</option>
-                    <option value="1440">1 day before</option>
-                    <option value="custom">Custom time</option>
+                    <option value="at-due" data-i18n="reminder.at_due">At due time</option>
+                    <option value="15" data-i18n="reminder.min15">15 minutes before</option>
+                    <option value="60" data-i18n="reminder.hr1">1 hour before</option>
+                    <option value="120" data-i18n="reminder.hr2">2 hours before</option>
+                    <option value="1440" data-i18n="reminder.day1">1 day before</option>
+                    <option value="custom" data-i18n="reminder.custom">Custom time</option>
                   </select>
                 </label>
                 <label id="cardReminderCustomLabel">
@@ -600,25 +600,25 @@
                   <input id="cardReminderTimeInput" type="datetime-local" />
                 </label>
                 <div class="section-actions">
-                  <button class="ghost-button" type="button" id="clearCardReminderButton">Clear</button>
-                  <button class="secondary-button" type="button" id="saveCardReminderButton">Save</button>
+                  <button class="ghost-button" type="button" id="clearCardReminderButton" data-i18n="reminder.clear">Clear</button>
+                  <button class="secondary-button" type="button" id="saveCardReminderButton" data-i18n="reminder.save">Save</button>
                 </div>
               </section>
               <!-- Payment panel - shown for Expense cards with an amount set -->
               <section class="card-info-section" id="cardPaymentPanel" hidden>
-                <div class="section-heading">Payment</div>
+                <div class="section-heading" data-i18n="card.payment_heading">Payment</div>
                 <div id="paymentPanelContent"></div>
               </section>
 
               <!-- Receipt panel - shown for Expense cards -->
               <section class="card-info-section" id="cardReceiptPanel" hidden>
-                <div class="section-heading">Receipt</div>
+                <div class="section-heading" data-i18n="card.receipt_heading">Receipt</div>
                 <input type="file" id="receiptFileInput" accept="image/*,application/pdf" hidden aria-hidden="true">
                 <button class="secondary-button receipt-upload-btn" type="button" id="receiptUploadButton">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="16" height="16">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
-                  Attach receipt
+                  <span data-i18n="card.attach_receipt">Attach receipt</span>
                 </button>
                 <div id="receiptPreview"></div>
               </section>
@@ -629,11 +629,11 @@
 
         <div class="dialog-actions">
           <div class="dialog-actions-left">
-            <button class="secondary-button" type="button" id="deleteButton" hidden>Delete</button>
-            <button class="secondary-button" type="button" id="cardCancelButton">Cancel</button>
-            <button class="secondary-button" type="button" id="ackButton" hidden>Got it</button>
+            <button class="secondary-button" type="button" id="deleteButton" hidden data-i18n="card.delete">Delete</button>
+            <button class="secondary-button" type="button" id="cardCancelButton" data-i18n="card.cancel">Cancel</button>
+            <button class="secondary-button" type="button" id="ackButton" hidden data-i18n="card.got_it">Got it</button>
           </div>
-          <button class="primary-button" type="submit" id="cardSaveButton">Save</button>
+          <button class="primary-button" type="submit" id="cardSaveButton" data-i18n="card.save">Save</button>
         </div>
       </form>
     </dialog>
@@ -751,8 +751,9 @@
       window.STRIPE_MONTHLY_PRICE_ID_PLN = ""; // e.g. price_1GHI... (PLN 39/mo)
       window.STRIPE_ANNUAL_PRICE_ID_PLN  = ""; // e.g. price_1JKL... (PLN 349/yr)
     </script>
-    <script src="supabase-data.js?v=20260605-seg05"></script>
-    <script src="app.js?v=20260605-seg05"></script>
-    <script src="features.js?v=20260605-seg05"></script>
+    <script src="i18n.js?v=20260608-i18n"></script>
+    <script src="supabase-data.js?v=20260608-i18n"></script>
+    <script src="app.js?v=20260608-i18n"></script>
+    <script src="features.js?v=20260608-i18n"></script>
   </body>
 </html>

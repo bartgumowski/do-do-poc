@@ -21,11 +21,17 @@ function getLocalePriceId(period = "monthly") {
 }
 
 const statusColumns = ["Important", "Waiting", "To Do", "Done"]; // kept for DB mapping
-const kanbanColumns = [
-  { id: "to-decide", label: "To decide", statuses: ["Important", "Waiting", "Disputed"] },
-  { id: "mine",      label: "Mine",       statuses: ["To Do", "Info Only", "Request"]    },
-  { id: "done",      label: "Done",       statuses: ["Done"]                              },
-];
+// kanbanColumns is computed at render time so labels respond to language changes
+function getKanbanColumns() {
+  const _t = window.t || ((k, fb) => fb || k);
+  return [
+    { id: "to-decide", label: _t("board.col.decide", "To decide"), statuses: ["Important", "Waiting", "Disputed"] },
+    { id: "mine",      label: _t("board.col.mine",   "Mine"),      statuses: ["To Do", "Info Only", "Request"]    },
+    { id: "done",      label: _t("board.col.done",   "Done"),      statuses: ["Done"]                              },
+  ];
+}
+// Keep a static fallback for any code that imported the constant directly
+const kanbanColumns = getKanbanColumns();
 const topics = ["Schedule", "School", "Medical", "Expenses", "General"];
 const cardSchemaVersion = "2026-05-19-card-ui-v2";
 const onboardingStorageKey = "ido-you-do-onboarding-v1";
@@ -760,7 +766,7 @@ async function finishInviteAcceptance(session) {
   if (!result?.ok) {
     showToast(result?.reason === "already_accepted" ? "Invite already accepted" : "Could not join family - try again");
   } else {
-    showToast(`Joined the family board`);
+    showToast((window.t || ((k) => k))("toast.joined"));
   }
   if (elements.inviteScreen) elements.inviteScreen.hidden = true;
   showApp(session);
@@ -903,7 +909,7 @@ async function signOut() {
   }
   currentAuthSession = null;
   showAuthScreen();
-  showToast("Signed out");
+  showToast((window.t || ((k) => k))("toast.signed_out"));
 }
 
 function _isEmailVerified(session) {
@@ -1395,7 +1401,7 @@ function renderBoard(cards) {
     return;
   }
 
-  const columnsHtml = kanbanColumns.map(({ id, label, statuses }) => {
+  const columnsHtml = getKanbanColumns().map(({ id, label, statuses }) => {
     const columnCards = activeCards.filter((card) => statuses.includes(card.status));
     return `
       <section class="column" data-column="${id}">
@@ -1403,7 +1409,7 @@ function renderBoard(cards) {
         <div class="column-body">
           ${columnCards.length
             ? columnCards.map(renderCard).join("")
-            : `<p class="column-empty">No Dos here</p>`}
+            : `<p class="column-empty">&nbsp;</p>`}
         </div>
       </section>
     `;
@@ -1413,7 +1419,7 @@ function renderBoard(cards) {
     <div class="archive-section" style="grid-column:1/-1;" id="archiveSection">
       <button class="archive-toggle" type="button" id="archiveToggle" aria-expanded="false">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v4H3zM5 8v12h14V8"/><path d="M10 12h4"/></svg>
-        Archived
+        ${(window.t || ((k) => k))("board.archived")}
         <span>${archivedCards.length}</span>
         <svg class="archive-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
       </button>
@@ -1675,8 +1681,9 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
   elements.cardForm.reset();
   if (elements.voiceStatus) elements.voiceStatus.textContent = "Record what has to be done";
   elements.cardId.value = card?.id || "";
-  elements.dialogTitle.textContent = card ? card.title : "New Do";
-  elements.dialogMode.textContent = card ? "Information and thread" : "New Do";
+  const _dt = window.t || ((k) => k);
+  elements.dialogTitle.textContent = card ? card.title : _dt("board.new_do");
+  elements.dialogMode.textContent = card ? _dt("card.info_thread") : _dt("board.new_do");
   elements.llmCardChat?.classList.add("hidden"); // never shown - direct form always used
   elements.commentPanel?.classList.toggle("hidden", !card);
   // Always show reminder panel - manual reminder is useful even when GCal is connected
@@ -1810,13 +1817,14 @@ function updatePaymentPanel(card) {
       : "";
     const payUrl = card.payment_intent_id ? `/pay/${card.payment_intent_id}` : null;
     content.innerHTML = `
-      <div class="payment-status-chip payment-chip-pending">${pAmt ? pAmt + " " : ""}requested &ndash; awaiting payment</div>
-      ${payUrl ? `<a class="ghost-button" href="${payUrl}" target="_blank" rel="noopener" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:13px">Open payment link</a>` : ""}
+      <div class="payment-status-chip payment-chip-pending">${pAmt ? pAmt + " " : ""}${(window.t || ((k) => k))("expense.awaiting")}</div>
+      ${payUrl ? `<a class="ghost-button" href="${payUrl}" target="_blank" rel="noopener" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:13px">${(window.t || ((k) => k))("expense.open_link")}</a>` : ""}
     `;
     return;
   }
 
   // No payment requested yet - show request form
+  const _pt = window.t || ((k) => k);
   const defaultAmount = (rawAmt / 2).toFixed(2);
   content.innerHTML = `
     <div class="payment-request-form">
@@ -1825,13 +1833,13 @@ function updatePaymentPanel(card) {
         <input type="number" id="paymentAmountInput" class="payment-amount-input" value="${defaultAmount}" min="0.50" step="0.01" placeholder="0.00">
       </div>
       <select id="paymentSplitSelect" class="payment-split-select">
-        <option value="50">50/50 split</option>
-        <option value="100">100% them</option>
-        <option value="60">60% them / 40% me</option>
-        <option value="40">40% them / 60% me</option>
-        <option value="0">I'll cover it</option>
+        <option value="50">${_pt("pay.split_5050")}</option>
+        <option value="100">${_pt("pay.split_100t")}</option>
+        <option value="60">${_pt("pay.split_60")}</option>
+        <option value="40">${_pt("pay.split_40")}</option>
+        <option value="0">${_pt("pay.split_me")}</option>
       </select>
-      <button class="primary-button payment-request-btn" type="button" id="sendPaymentRequestButton">Send payment request</button>
+      <button class="primary-button payment-request-btn" type="button" id="sendPaymentRequestButton">${_pt("expense.send_request")}</button>
     </div>
   `;
 
@@ -1847,7 +1855,7 @@ function updatePaymentPanel(card) {
     const amt = parseFloat(amtInput?.value || defaultAmount);
     if (!amt || amt < 0.5) { showToast("Enter a valid amount (min 0.50)."); return; }
     btn.disabled = true;
-    btn.textContent = "Sending...";
+    btn.textContent = (window.t || ((k) => k))("pay.sending");
     await requestExpensePayment(card.id, amt, currency, card.title);
     btn.disabled = false;
   });
@@ -1880,7 +1888,7 @@ async function requestExpensePayment(cardId, amount, currency, description) {
       updatePaymentPanel(card);
     }
 
-    showToast(data.emailSent ? "Payment request sent by email." : "Payment link created.");
+    showToast(data.emailSent ? (window.t?.("toast.pay_sent") ?? "Payment request sent by email.") : (window.t?.("toast.pay_created") ?? "Payment link created."));
   } catch (err) {
     showToast("Could not send payment request: " + err.message);
     const btn = document.querySelector("#sendPaymentRequestButton");
@@ -1942,7 +1950,7 @@ async function uploadReceipt(file, cardId) {
 
     const preview = document.querySelector("#receiptPreview");
     _renderReceiptPreview(url, preview);
-    showToast("Receipt uploaded.");
+    showToast(window.t?.("toast.receipt_up") ?? "Receipt uploaded.");
   } catch (err) {
     showToast("Upload failed: " + err.message);
   } finally {
@@ -2029,7 +2037,8 @@ function presetLabel(preset) {
 
 function updateDialogQuickActions(card) {
   const isDone = card.status === "Done";
-  elements.dialogCompleteButton.textContent = isDone ? "Completed" : card.type === "Expense" ? "Paid" : "Done";
+  const _qt = window.t || ((k) => k);
+  elements.dialogCompleteButton.textContent = isDone ? _qt("card.completed_btn") : card.type === "Expense" ? _qt("card.paid_btn") : _qt("card.done_btn");
   [
     elements.dialogCompleteButton,
     elements.dialogDoButton,
@@ -3128,7 +3137,8 @@ function acknowledgeCurrentCard() {
 function quickCompleteCard(id) {
   const card = state.cards.find((item) => item.id === id);
   if (!card || card.status === "Done") return;
-  const label = card.type === "Expense" ? "Marked paid" : "Marked done";
+  const _mt = window.t || ((k) => k);
+  const label = card.type === "Expense" ? _mt("toast.marked_paid") : _mt("toast.marked_done");
   state.cards = state.cards.map((item) => (
     item.id === id
       ? {
