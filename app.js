@@ -299,10 +299,11 @@ function showUpgradePrompt(reason) {
       const userId = window.getCurrentUserId?.() || "";
       const pairId = window.getCurrentPairId?.() || "";
       if (!priceId) { showToast("Stripe not configured yet"); modal.close(); return; }
-      const res = await fetch("/api/stripe-create-checkout", {
+      const res = await fetch("/api/stripe-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          action: "create",
           priceId, userId, pairId,
           successUrl: location.origin + "/#board?checkout=success",
           cancelUrl: location.origin + "/#settings",
@@ -1331,10 +1332,11 @@ async function fetchAiDailySummary() {
   if (!state.cards.length) return;
   try {
     const setup = getOnboardingState() || {};
-    const res = await fetch("/api/summary", {
+    const res = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        action: "summary",
         cards: state.cards.slice(0, 20),
         parentName: setup.parents?.primary || null,
         coparentName: setup.parents?.coparent || null,
@@ -1889,10 +1891,11 @@ function updatePaymentPanel(card) {
 
 async function requestExpensePayment(cardId, amount, currency, description) {
   try {
-    const res = await fetch("/api/stripe-expense-payment", {
+    const res = await fetch("/api/stripe-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        action: "expense",
         cardId,
         amount: amount.toFixed(2),
         currency: (currency || LOCALE_CONFIG.currency).toLowerCase(),
@@ -2174,10 +2177,10 @@ async function callAiInterpret(text) {
       childNames: (setup?.children || []).map((c) => c.name).filter(Boolean),
     };
 
-    const res = await fetch("/api/interpret", {
+    const res = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ action: "interpret", ...body }),
     });
 
     if (!res.ok) throw new Error(`${res.status}`);

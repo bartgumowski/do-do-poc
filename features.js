@@ -12,10 +12,10 @@ async function _fetchConflictSuggestion(idA, idB) {
     const cardA = typeof state !== "undefined" ? state.cards.find((c) => c.id === idA) : null;
     const cardB = typeof state !== "undefined" ? state.cards.find((c) => c.id === idB) : null;
     if (!cardA || !cardB) return;
-    const res = await fetch("/api/suggest-resolution", {
+    const res = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cardA, cardB }),
+      body: JSON.stringify({ action: "suggest-resolution", cardA, cardB }),
     });
     if (!res.ok) return;
     const data = await res.json();
