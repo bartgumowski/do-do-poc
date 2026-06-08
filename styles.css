@@ -7212,3 +7212,74 @@ html[data-theme="dark"] .card-type-vaccine {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* ─── SEG-09: Cookie consent banner ─────────────────────────────────────────── */
+
+.cookie-banner {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom) + 72px); /* above tab bar on mobile */
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100vw - 32px), 480px);
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 1200;
+  box-shadow: 0 4px 24px rgba(0,0,0,.25);
+  animation: slideUpBanner .25s ease;
+}
+
+@media (min-width: 1081px) {
+  .cookie-banner {
+    bottom: 24px;
+    left: auto;
+    right: 24px;
+    transform: none;
+    width: auto;
+    max-width: 440px;
+  }
+}
+
+@keyframes slideUpBanner {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@media (min-width: 1081px) {
+  @keyframes slideUpBanner {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
+
+.cookie-banner-text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+  color: rgba(255,255,255,.85);
+}
+
+.cookie-banner-text a {
+  color: rgba(255,255,255,.7);
+  text-decoration: underline;
+}
+
+.cookie-banner-btn {
+  flex-shrink: 0;
+  background: rgba(255,255,255,.15) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.25) !important;
+  padding: 7px 16px !important;
+  font-size: 13px !important;
+  min-height: 34px !important;
+  border-radius: 8px !important;
+}
+
+.cookie-banner-btn:hover {
+  background: rgba(255,255,255,.25) !important;
+}

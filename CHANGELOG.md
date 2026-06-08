@@ -2,6 +2,35 @@
 
 ---
 
+## v0.6.2 - 2026-06-08 - SEG-09: Legal, Privacy & GDPR
+
+### Account deletion (9.1)
+- **New `api/delete-account.js`** - server-side GDPR account deletion. Requires `Authorization: Bearer <jwt>`. Steps: anonymises cards (author -> "Deleted user"), soft-deletes messages, removes user from pair, deletes profile, emails co-parent notification, then deletes Supabase Auth user. Pair and co-parent data are preserved.
+- **Settings → Account → Delete account** - three-step confirmation: confirm dialog, second confirm, type "DELETE". Calls the API and signs out on success.
+
+### Data export (9.2)
+- **New `api/export-data.js`** - GDPR data portability. Returns a JSON file download containing profile, all cards (with comments), messages, shopping items, and children. Authenticated via Bearer token.
+- **Settings → Account → Download my data** - fetches the export and triggers a browser download.
+
+### Privacy policy & terms (9.3)
+- **`legal.html`** - all placeholders replaced with real content:
+  - Operator: Bart Gumowski, Switzerland
+  - Processor list: Supabase (EU-West-1 Ireland), Vercel, Anthropic, Stripe, Resend
+  - Data residency: primary storage in EU (Ireland)
+  - Retention & deletion: 30-day anonymisation, export link, backup window
+  - Swiss DSG / GDPR section with FDPIC complaint rights
+  - Contact: hello@do-do.app
+- **Settings → Account** - "Privacy & Terms" link added.
+
+### Cookie consent banner (9.4)
+- One-time banner shown to new visitors: "We use cookies only for authentication - no tracking, no ads."
+- Stored in `localStorage('cookie-consent-v1')`. Appears 1.5s after load, above the tab bar on mobile. `#cookieBanner` in index.html, `initCookieBanner()` in app.js, CSS in styles.css.
+
+### Data residency (9.5)
+- Documented in Privacy Notice: Supabase EU-West-1 (Ireland). No action required (Supabase project was already in EU region).
+
+---
+
 ## v0.6.1 - 2026-06-08 - SEG-07 + SEG-08: Real-time sync + Onboarding polish
 
 ### SEG-07: Real-time sync

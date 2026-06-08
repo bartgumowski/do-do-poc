@@ -4137,6 +4137,28 @@ function requestNotificationPermission() {
 
 function stopReminderChecker() { /* no-op - handled server-side via cron */ }
 
+// ─── SEG-09: Cookie consent banner ───────────────────────────────────────────
+function initCookieBanner() {
+  if (localStorage.getItem("cookie-consent-v1")) return;
+  const banner = document.getElementById("cookieBanner");
+  if (!banner) return;
+  // Show after a short delay so it doesn't clash with auth/onboarding screens
+  setTimeout(() => {
+    banner.hidden = false;
+    document.getElementById("cookieBannerOk")?.addEventListener("click", () => {
+      banner.hidden = true;
+      localStorage.setItem("cookie-consent-v1", "1");
+    }, { once: true });
+  }, 1500);
+}
+
+// Call on first load
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initCookieBanner);
+} else {
+  initCookieBanner();
+}
+
 // ─── Version badge ─────────────────────────────────────────────────────────────
 
 function getAppVersion() {

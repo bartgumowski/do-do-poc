@@ -2283,8 +2283,13 @@ function renderSettingsFeature() {
             <span>Sign out and back in to reconnect calendar sync</span>
           </article>
         </div>
-        <div style="margin-top:16px;">
+        <div class="account-action-row" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
           <button class="secondary-button" id="signOutButton" style="color:#ef4444;border-color:#ef4444;">Sign out</button>
+          <button class="secondary-button" id="downloadMyDataButton">Download my data</button>
+          <a class="secondary-button" href="/legal.html" target="_blank" rel="noopener" style="text-decoration:none;">Privacy &amp; Terms</a>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="ghost-button" id="deleteAccountButton" style="color:var(--muted);font-size:12px;padding:4px 0;">Delete account</button>
         </div>
       </section>
 
@@ -2318,6 +2323,87 @@ function renderSettingsFeature() {
   // Sign out
   featureModule.querySelector("#signOutButton")?.addEventListener("click", () => {
     if (typeof signOut === "function") signOut();
+  });
+
+  // Download my data (GDPR export)
+  featureModule.querySelector("#downloadMyDataButton")?.addEventListener("click", async () => {
+    const btn = featureModule.querySelector("#downloadMyDataButton");
+    btn.disabled = true;
+    btn.textContent = "Preparing...";
+    try {
+      const session = (await window.supabaseClient?.auth?.getSession())?.data?.session;
+      const token = session?.access_token;
+      if (!token) { showFeatureToast("Sign in required"); return; }
+
+      const res = await fetch("/api/export-data", {
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename = res.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1]
+        || `do-do-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showFeatureToast("Data exported - check your downloads.");
+    } catch (err) {
+      showFeatureToast("Export failed: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Download my data";
+    }
+  });
+
+  // Delete account (GDPR - two-step confirmation)
+  featureModule.querySelector("#deleteAccountButton")?.addEventListener("click", async () => {
+    const first = window.confirm(
+      "Delete your account?\n\nThis permanently removes your profile and messages. " +
+      "Family cards you created will be anonymised. Your co-parent's data is preserved.\n\n" +
+      "This cannot be undone."
+    );
+    if (!first) return;
+
+    const second = window.confirm(
+      "Are you absolutely sure? Type OK in the next prompt to confirm."
+    );
+    if (!second) return;
+
+    const confirmation = window.prompt('Type "DELETE" to permanently delete your account:');
+    if (confirmation?.trim().toUpperCase() !== "DELETE") {
+      showFeatureToast("Account deletion cancelled.");
+      return;
+    }
+
+    const btn = featureModule.querySelector("#deleteAccountButton");
+    btn.disabled = true;
+    btn.textContent = "Deleting...";
+
+    try {
+      const session = (await window.supabaseClient?.auth?.getSession())?.data?.session;
+      const token = session?.access_token;
+      if (!token) throw new Error("Sign in required");
+
+      const res = await fetch("/api/delete-account", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Deletion failed");
+
+      // Sign out locally
+      await window.supabaseClient?.auth?.signOut();
+      window.location.reload();
+    } catch (err) {
+      showFeatureToast("Deletion failed: " + err.message);
+      btn.disabled = false;
+      btn.textContent = "Delete account";
+    }
   });
 
   // Subscription panel
