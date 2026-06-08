@@ -1,4 +1,4 @@
-const CACHE_NAME = "do-do-phone-v8";
+const CACHE_NAME = "do-do-phone-v9";
 const ASSETS = [
   "./",
   "./index.html",
