@@ -5,8 +5,7 @@
   "buildCommand": "",
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/invite/:token", "destination": "/index.html" },
-    { "source": "/pay/:intent", "destination": "/api/expense-pay?intent=:intent" }
+    { "source": "/invite/:token", "destination": "/index.html" }
   ],
   "crons": [
     {

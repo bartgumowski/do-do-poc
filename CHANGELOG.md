@@ -2,6 +2,47 @@
 
 ---
 
+## v0.6.1 - 2026-06-08 - SEG-07 + SEG-08: Real-time sync + Onboarding polish
+
+### SEG-07: Real-time sync
+
+**Shopping list (7.1)**
+- Already wired to Supabase (`loadShoppingItems`, `addShoppingItem`, `toggleShoppingItem`, `subscribeToShopping` all live).
+- Added **delete button** (×) per shopping item - appears on hover, calls `deleteShoppingItem` for Supabase items or removes from localStorage for offline items.
+- Added **Clear bought (N)** button per group - removes all checked items in one tap.
+- New CSS: `.shopping-row-wrap`, `.shopping-delete-btn`, `.shopping-clear-btn`, `.shopping-group-header-actions`.
+
+**Messages (7.2)** - already live via `messages_v2` table queries. `seg07-realtime-sync.sql` adds the table definition + RLS policies.
+
+**Presence indicators (7.3)** - already live: `broadcastCardPresence` in supabase-data.js, `onPresenceSync` in app.js, `#presenceIndicator` in card dialog header.
+
+**Background sync (7.4)** - already live: `sync-cards` service worker event, `_flushSyncQueue` in app.js.
+
+**New SQL: `seg07-realtime-sync.sql`**
+- `shopping_items` table + RLS (idempotent, also in supabase-shopping.sql).
+- `messages_v2` table + RLS + `my_pair_id()` helper function.
+- Enables Realtime on both tables via `supabase_realtime` publication.
+
+### SEG-08: Co-parent onboarding polish
+
+**Invite landing page (8.1)**
+- Invite screen now shows children names: "Bart invited you to coordinate for Ava and Leo."
+- `lookupInviteToken` in supabase-data.js extended to join `children` table and return `childrenNames[]`.
+
+**Invite status in Settings (8.2)** - already live via `renderInvitePanel()` (shows joined/pending, copy link, re-send email).
+- **Invite link recovery**: `renderInvitePanel` now fetches `invite_token` from Supabase if sessionStorage is empty (survives page reloads).
+
+**Family member management (8.3)**
+- New **Your profile** section in Settings with editable display name - calls `updateProfile(displayName)` to update Supabase `profiles` table + localStorage.
+- Co-parent local name editing added.
+- `promptEditChild` and `confirmDeleteChild` now also call `saveChildrenToSupabase` so edits sync across devices.
+- New `updateProfile(displayName)` function in supabase-data.js, exported as `window.updateProfile`.
+
+### Manual steps required
+1. Run `seg07-realtime-sync.sql` in Supabase SQL editor to create `shopping_items` and `messages_v2` tables.
+
+---
+
 ## v0.6.0 - 2026-06-08 - SEG-06: Expense Payment Flow
 
 ### Payment requests (6.1)

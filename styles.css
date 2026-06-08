@@ -2324,7 +2324,7 @@ svg {
 
 .shopping-group-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
@@ -2334,10 +2334,76 @@ svg {
   margin: 0;
 }
 
+.shopping-group-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .shopping-group-header span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.shopping-clear-btn {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.shopping-clear-btn:hover {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+/* Row wrapper to hold label + delete button side by side */
+.shopping-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shopping-row-wrap .shopping-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.shopping-row-wrap.bought .shopping-row strong {
+  color: var(--muted);
+  opacity: 0.62;
+  text-decoration: line-through;
+}
+
+.shopping-delete-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+
+.shopping-row-wrap:hover .shopping-delete-btn {
+  opacity: 1;
+}
+
+.shopping-delete-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .shopping-row {

@@ -15,6 +15,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Vercel disables body parsing for raw webhook verification
+export const config = { api: { bodyParser: false } };
+
 async function buffer(readable) {
   const chunks = [];
   for await (const chunk of readable) {
@@ -61,19 +64,14 @@ module.exports = async function handler(req, res) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
+        const pairId = session.subscription_data?.metadata?.pairId
+          || session.metadata?.pairId;
+        if (!pairId) break;
 
-        // Fetch subscription first - pairId lives in subscription metadata
-        // (set via subscription_data.metadata at checkout creation).
-        // session.metadata also holds pairId as a direct fallback.
+        // Fetch subscription to get trial/active status and period end
         const sub = session.subscription
           ? await stripe.subscriptions.retrieve(session.subscription)
           : null;
-
-        const pairId = sub?.metadata?.pairId || session.metadata?.pairId;
-        if (!pairId) {
-          console.warn("checkout.session.completed: no pairId found", session.id);
-          break;
-        }
 
         const status = sub?.status === "trialing" ? "trialing" : "active";
         const periodEnd = sub?.current_period_end
@@ -136,25 +134,6 @@ module.exports = async function handler(req, res) {
 
         await updatePairSubscription(pairId, "past_due");
         console.log(`Pair ${pairId} -> past_due (invoice.payment_failed)`);
-        break;
-      }
-
-      // SEG-06: expense one-time payment completed
-      case "payment_intent.succeeded": {
-        const intent = event.data.object;
-        const { cardId } = intent.metadata || {};
-        if (!cardId) break;
-
-        const { error: cardErr } = await supabase
-          .from("unified_cards")
-          .update({ payment_status: "paid", payment_paid_at: new Date().toISOString() })
-          .eq("id", cardId);
-
-        if (cardErr) {
-          console.error("payment_intent.succeeded card update failed:", cardErr.message);
-        } else {
-          console.log(`Card ${cardId} -> paid (payment_intent.succeeded)`);
-        }
         break;
       }
 

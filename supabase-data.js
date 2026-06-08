@@ -1274,6 +1274,7 @@ window.getUnreadCounts = getUnreadCounts;
 window.loadUserProfile = loadUserProfile;
 window.acceptInviteToken = acceptInviteToken;
 window.lookupInviteToken = lookupInviteToken;
+window.updateProfile = updateProfile;
 window.loadSubscriptionStatus = loadSubscriptionStatus;
 window.getSubscriptionStatus = getSubscriptionStatus;
 
@@ -1283,17 +1284,42 @@ async function lookupInviteToken(token) {
   if (!token || !window.supabaseClient) return null;
   const { data, error } = await window.supabaseClient
     .from("pairs")
-    .select("id, family_id, parent_a, invite_email, accepted_at, profiles!pairs_parent_a_fkey(display_name)")
+    .select("id, family_id, invite_token, parent_a, invite_email, accepted_at, profiles!pairs_parent_a_fkey(display_name)")
     .eq("invite_token", token)
     .single();
   if (error || !data) return null;
   if (data.accepted_at) return { expired: true };
+
+  // Fetch children for this family
+  let childrenNames = [];
+  if (data.family_id) {
+    const { data: children } = await window.supabaseClient
+      .from("children")
+      .select("name")
+      .eq("family_id", data.family_id)
+      .order("created_at", { ascending: true });
+    childrenNames = (children || []).map((c) => c.name).filter(Boolean);
+  }
+
   return {
     pairId: data.id,
     familyId: data.family_id,
+    inviteToken: data.invite_token,
     parentAName: data.profiles?.display_name || "Your co-parent",
     inviteEmail: data.invite_email,
+    childrenNames,
   };
+}
+
+async function updateProfile(displayName) {
+  if (!currentUserId || !window.supabaseClient) return false;
+  const firstName = (displayName || "").trim().split(/\s+/)[0] || displayName;
+  const { error } = await window.supabaseClient
+    .from("profiles")
+    .update({ display_name: displayName.trim(), first_name: firstName })
+    .eq("id", currentUserId);
+  if (error) { console.warn("updateProfile failed:", error.message); return false; }
+  return true;
 }
 
 async function acceptInviteToken(token, userId, displayName) {

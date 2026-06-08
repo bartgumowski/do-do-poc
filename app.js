@@ -707,7 +707,12 @@ async function showInviteScreen(token) {
       return;
     }
     if (elements.inviteHero) {
-      elements.inviteHero.querySelector("h1").textContent = `${info.parentAName} invited you to their family board.`;
+      const children = info.childrenNames || [];
+      const forChildren = children.length > 0
+        ? ` to coordinate for ${children.slice(0, -1).join(", ")}${children.length > 1 ? " and " : ""}${children[children.length - 1]}`
+        : "";
+      elements.inviteHero.querySelector("h1").textContent =
+        `${info.parentAName} invited you${forChildren}.`;
     }
   }
 

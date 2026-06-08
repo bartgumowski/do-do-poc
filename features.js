@@ -742,6 +742,60 @@ function _renderShoppingBoard(lists) {
     });
   });
 
+  // Delete individual item
+  board.querySelectorAll("[data-shopping-delete]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.shoppingDelete;
+      if (id.includes("-")) {
+        // localStorage item (id format: "groceries-1234567")
+        const listKey = id.split("-")[0];
+        const nextLists = loadShoppingLists();
+        nextLists[listKey] = (nextLists[listKey] || []).filter((item) => item.id !== id);
+        saveShoppingLists(nextLists);
+        _renderShoppingBoard(nextLists);
+      } else {
+        // Supabase item (UUID)
+        await window.deleteShoppingItem?.(id);
+        const refreshed = await window.loadShoppingItems?.();
+        if (refreshed) _renderShoppingBoard(refreshed);
+      }
+      showFeatureToast("Removed");
+    });
+  });
+
+  // Clear all bought items in a group
+  board.querySelectorAll("[data-shopping-clear]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const listKey = btn.dataset.shoppingClear;
+      // Get current lists to find bought Supabase items
+      const refreshed = await window.loadShoppingItems?.();
+      const current = refreshed || loadShoppingLists();
+      const boughtItems = (current[listKey] || []).filter((item) => item.bought);
+
+      // Delete all bought items
+      await Promise.all(
+        boughtItems.map((item) => {
+          if (String(item.id).includes("-")) {
+            // localStorage item - will be handled below
+            return Promise.resolve();
+          }
+          return window.deleteShoppingItem?.(item.id) || Promise.resolve();
+        })
+      );
+
+      // Also clear from localStorage
+      const nextLists = loadShoppingLists();
+      nextLists[listKey] = (nextLists[listKey] || []).filter((item) => !item.bought);
+      saveShoppingLists(nextLists);
+
+      const final = await window.loadShoppingItems?.();
+      _renderShoppingBoard(final || nextLists);
+      showFeatureToast(`Cleared ${boughtItems.length} bought item${boughtItems.length !== 1 ? "s" : ""}`);
+    });
+  });
+
   board.querySelectorAll("[data-shopping-add-form]").forEach((form) => {
     const input = form.querySelector("[data-shopping-input]");
     const mic = form.querySelector("[data-shopping-mic]");
@@ -777,19 +831,30 @@ function _renderShoppingBoard(lists) {
 
 function renderShoppingGroup(key, title, items) {
   const remaining = items.filter((item) => !item.bought).length;
+  const boughtCount = items.length - remaining;
   return `
     <section class="feature-panel shopping-group">
       <div class="shopping-group-header">
         <h3>${title}</h3>
-        <span>${remaining} left</span>
+        <div class="shopping-group-header-actions">
+          ${boughtCount > 0 ? `<button class="shopping-clear-btn" type="button" data-shopping-clear="${key}" title="Remove all bought items">Clear bought (${boughtCount})</button>` : ""}
+          <span>${remaining} left</span>
+        </div>
       </div>
       <div class="shopping-list">
         ${items.map((item) => `
-          <label class="shopping-row ${item.bought ? "bought" : ""}">
-            <input type="checkbox" data-shopping-list="${key}" data-shopping-check="${item.id}" ${item.bought ? "checked" : ""} />
-            <strong>${escapeFeatureHtml(item.label)}</strong>
-            ${item.bought && item.boughtBy ? renderShoppingBuyer(item.boughtBy) : ""}
-          </label>
+          <div class="shopping-row-wrap ${item.bought ? "bought" : ""}">
+            <label class="shopping-row">
+              <input type="checkbox" data-shopping-list="${key}" data-shopping-check="${item.id}" ${item.bought ? "checked" : ""} />
+              <strong>${escapeFeatureHtml(item.label)}</strong>
+              ${item.bought && item.boughtBy ? renderShoppingBuyer(item.boughtBy) : ""}
+            </label>
+            <button class="shopping-delete-btn" type="button" data-shopping-delete="${item.id}" aria-label="Remove ${escapeFeatureHtml(item.label)}">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14">
+                <path d="M12 4 4 12M4 4l8 8"/>
+              </svg>
+            </button>
+          </div>
         `).join("")}
       </div>
       <form class="shopping-capture" data-shopping-add-form="${key}">
@@ -2114,6 +2179,8 @@ function renderSettingsFeature() {
   const setup = window.getOnboardingState?.() || {};
   const children = setup.children || [];
   const pets = setup.pets || [];
+  const myName = typeof getMyName === "function" ? getMyName() : (setup.parents?.primary || "");
+  const coparentName = setup.parents?.coparent || "";
 
   const renderMemberRow = (name, index, type) => `
     <article class="feature-item feature-item-editable">
@@ -2138,6 +2205,35 @@ function renderSettingsFeature() {
   featureModule.innerHTML = `
     <div class="feature-layout settings-layout">
       ${renderSpecialPanel("settings", "automation")}
+
+      <section class="feature-panel">
+        <h3>Your profile</h3>
+        <div class="feature-items">
+          <article class="feature-item feature-item-editable">
+            <div class="feature-item-main">
+              <strong>${escapeHtml(myName || "Your name")}</strong>
+              <span style="color:var(--muted);font-size:12px;">Your display name</span>
+            </div>
+            <button class="icon-button icon-button-sm" id="editMyNameBtn" aria-label="Edit your name">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/>
+              </svg>
+            </button>
+          </article>
+          ${coparentName ? `
+          <article class="feature-item feature-item-editable">
+            <div class="feature-item-main">
+              <strong>${escapeHtml(coparentName)}</strong>
+              <span style="color:var(--muted);font-size:12px;">Co-parent name (local)</span>
+            </div>
+            <button class="icon-button icon-button-sm" id="editCoparentNameBtn" aria-label="Edit co-parent name">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/>
+              </svg>
+            </button>
+          </article>` : ""}
+        </div>
+      </section>
 
       <section class="feature-panel">
         <div class="feature-panel-header">
@@ -2210,6 +2306,10 @@ function renderSettingsFeature() {
 
   // Bind automation settings panel
   bindAutomationSettings();
+
+  // Edit my name
+  featureModule.querySelector("#editMyNameBtn")?.addEventListener("click", () => promptEditMyName());
+  featureModule.querySelector("#editCoparentNameBtn")?.addEventListener("click", () => promptEditCoparentName());
 
   // Add child/pet
   featureModule.querySelector("#addChildBtn")?.addEventListener("click", () => promptAddChild());
@@ -2377,7 +2477,20 @@ async function renderInvitePanel() {
   }
 
   // Co-parent hasn't joined yet - show invite options
-  const pendingLink = (() => { try { return sessionStorage.getItem("do-do-pending-invite-link"); } catch { return null; } })();
+  // Try sessionStorage first; fall back to fetching invite_token from the pair record
+  let pendingLink = (() => { try { return sessionStorage.getItem("do-do-pending-invite-link"); } catch { return null; } })();
+  if (!pendingLink && window.getCurrentPairId?.()) {
+    try {
+      const { data: pairRow } = await window.supabaseClient
+        .from("pairs")
+        .select("invite_token")
+        .eq("id", window.getCurrentPairId())
+        .maybeSingle();
+      if (pairRow?.invite_token) {
+        pendingLink = `${window.location.origin}/invite/${pairRow.invite_token}`;
+      }
+    } catch { /* silent */ }
+  }
 
   panel.innerHTML = `
     <article class="feature-item">
@@ -2441,6 +2554,36 @@ async function renderInvitePanel() {
   });
 }
 
+// ─── Parent name editing ───────────────────────────────────────────────────────
+
+async function promptEditMyName() {
+  const setup = window.getOnboardingState?.() || {};
+  const current = setup.parents?.primary || "";
+  const name = window.prompt("Your display name:", current);
+  if (!name?.trim() || name.trim() === current) return;
+  const newName = name.trim();
+
+  // Update localStorage
+  const updated = { ...setup, parents: { ...(setup.parents || {}), primary: newName } };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+
+  // Update Supabase profile
+  const saved = await window.updateProfile?.(newName);
+  showFeatureToast(saved ? `Name updated to ${newName}` : `Name saved locally as ${newName}`);
+  window.switchModule("settings");
+}
+
+function promptEditCoparentName() {
+  const setup = window.getOnboardingState?.() || {};
+  const current = setup.parents?.coparent || "";
+  const name = window.prompt("Co-parent's name (shown locally):", current);
+  if (!name?.trim() || name.trim() === current) return;
+  const updated = { ...setup, parents: { ...(setup.parents || {}), coparent: name.trim() } };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`Co-parent name updated to ${name.trim()}`);
+  window.switchModule("settings");
+}
+
 // ─── Children CRUD ─────────────────────────────────────────────────────────────
 
 async function promptAddChild() {
@@ -2465,11 +2608,15 @@ async function promptEditChild(index) {
   children[index] = { ...(typeof children[index] === "object" ? children[index] : {}), name: name.trim() };
   const updated = { ...setup, children };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  // Sync all children to Supabase
+  if (setup.familyId) {
+    await window.saveChildrenToSupabase?.(setup.familyId, children).catch(() => {});
+  }
   showFeatureToast(`Updated to ${name.trim()}`);
   window.switchModule("settings");
 }
 
-function confirmDeleteChild(index) {
+async function confirmDeleteChild(index) {
   const setup = window.getOnboardingState?.() || {};
   const children = [...(setup.children || [])];
   const name = children[index]?.name || children[index] || "this child";
@@ -2477,6 +2624,9 @@ function confirmDeleteChild(index) {
   children.splice(index, 1);
   const updated = { ...setup, children };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  if (setup.familyId) {
+    await window.saveChildrenToSupabase?.(setup.familyId, children).catch(() => {});
+  }
   showFeatureToast(`${name} removed`);
   window.switchModule("settings");
 }
