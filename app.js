@@ -2,18 +2,44 @@ const APP_VERSION = "0.6.4";
 const APP_VERSION_DATE = "2026-06-08";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
-// Add a new locale here to support a new market. Never hardcode currency symbols
-// in UI strings - always use LOCALE_CONFIG.symbol or LOCALE_CONFIG.currency.
+// To add a new market: add an entry to LOCALE_CONFIGS and add the corresponding
+// Stripe price ID variables to index.html. Never hardcode currency symbols in UI.
+//
+// Detection uses navigator.language (full tag, e.g. "de-CH" vs "de-DE").
+// - Swiss users: de-CH, fr-CH, it-CH, rm-CH  -> CHF
+// - Polish users: pl, pl-PL                  -> PLN
+// - German/Austrian: de, de-DE, de-AT        -> EUR
+// - Everything else                          -> CHF (default)
+//
+// Prices set at purchasing power parity with CHF 9.90 (~0.14% of median salary):
+//   Poland:          PLN 19/mo, PLN 169/yr
+//   Germany/Austria: EUR 7.90/mo, EUR 69/yr
+//   Switzerland:     CHF 9.90/mo, CHF 89/yr
 const LOCALE_CONFIGS = {
-  pl: { currency: "PLN", symbol: "PLN", monthlyPrice: "PLN 39", annualPrice: "PLN 349",
-        stripeMonthlyKey: "STRIPE_MONTHLY_PRICE_ID_PLN", stripeAnnualKey: "STRIPE_ANNUAL_PRICE_ID_PLN" },
-  default: { currency: "CHF", symbol: "CHF", monthlyPrice: "CHF 9.90", annualPrice: "CHF 89",
-             stripeMonthlyKey: "STRIPE_MONTHLY_PRICE_ID", stripeAnnualKey: "STRIPE_ANNUAL_PRICE_ID" },
+  pl:  { currency: "PLN", symbol: "PLN", monthlyPrice: "PLN 19",   annualPrice: "PLN 169",
+         stripeMonthlyKey: "STRIPE_MONTHLY_PRICE_ID_PLN", stripeAnnualKey: "STRIPE_ANNUAL_PRICE_ID_PLN" },
+  eur: { currency: "EUR", symbol: "EUR", monthlyPrice: "EUR 7.90", annualPrice: "EUR 69",
+         stripeMonthlyKey: "STRIPE_MONTHLY_PRICE_ID_EUR", stripeAnnualKey: "STRIPE_ANNUAL_PRICE_ID_EUR" },
+  chf: { currency: "CHF", symbol: "CHF", monthlyPrice: "CHF 9.90", annualPrice: "CHF 89",
+         stripeMonthlyKey: "STRIPE_MONTHLY_PRICE_ID",     stripeAnnualKey: "STRIPE_ANNUAL_PRICE_ID" },
 };
+
 const LOCALE_CONFIG = (() => {
-  const lang = (navigator.language || "").toLowerCase().split("-")[0];
-  return LOCALE_CONFIGS[lang] || LOCALE_CONFIGS.default;
+  const full = (navigator.language || "").toLowerCase();   // e.g. "de-CH", "pl-PL", "de"
+  const lang = full.split("-")[0];                         // e.g. "de", "pl"
+  const region = full.split("-")[1] || "";                 // e.g. "ch", "de", ""
+
+  if (lang === "pl") return LOCALE_CONFIGS.pl;
+
+  if (lang === "de" || lang === "fr" || lang === "it" || lang === "rm") {
+    // Swiss regions use a -CH suffix; all others default to EUR
+    if (region === "ch") return LOCALE_CONFIGS.chf;
+    return LOCALE_CONFIGS.eur;
+  }
+
+  return LOCALE_CONFIGS.chf; // default for any unlisted language
 })();
+
 // Returns the correct Stripe price ID for the current locale and billing period.
 function getLocalePriceId(period = "monthly") {
   const key = period === "annual" ? LOCALE_CONFIG.stripeAnnualKey : LOCALE_CONFIG.stripeMonthlyKey;
