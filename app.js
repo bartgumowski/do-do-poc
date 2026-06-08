@@ -1,5 +1,5 @@
-const APP_VERSION = "0.4.0";
-const APP_VERSION_DATE = "2026-06-04";
+const APP_VERSION = "0.6.2";
+const APP_VERSION_DATE = "2026-06-08";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
 // Add a new locale here to support a new market. Never hardcode currency symbols

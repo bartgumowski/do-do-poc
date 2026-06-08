@@ -2361,9 +2361,12 @@ function renderSettingsFeature() {
 
       ${renderSpecialPanel("settings", "appearance")}
 
-      <div class="settings-version-row">
-        <span>Do-Do v${window.getAppVersion?.()?.version || ""}</span>
-        <span>${window.getAppVersion?.()?.date || ""}</span>
+      <div class="settings-version-panel">
+        <div class="settings-version-badge">
+          <span class="settings-version-name">Do-Do</span>
+          <span class="settings-version-number">v${window.getAppVersion?.()?.version || "—"}</span>
+        </div>
+        <span class="settings-version-date">${window.getAppVersion?.()?.date || ""}</span>
       </div>
     </div>
   `;
