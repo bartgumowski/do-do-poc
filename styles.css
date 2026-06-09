@@ -7270,21 +7270,27 @@ html[data-theme="dark"] .card-type-vaccine {
 
 /* ─── SEG-09: Cookie consent banner ─────────────────────────────────────────── */
 
+/* Fix: CSS display:flex overrides [hidden] attribute (UA style loses to author style) */
+.cookie-banner[hidden] {
+  display: none !important;
+}
+
 .cookie-banner {
   position: fixed;
   bottom: calc(env(safe-area-inset-bottom) + 72px); /* above tab bar on mobile */
   left: 50%;
   transform: translateX(-50%);
   width: min(calc(100vw - 32px), 480px);
-  background: var(--ink);
-  color: var(--paper);
+  /* Always use a dark background so white text is always readable */
+  background: #171918;
+  color: #ffffff;
   border-radius: var(--radius-md);
   padding: 14px 16px;
   display: flex;
   align-items: center;
   gap: 14px;
   z-index: 1200;
-  box-shadow: 0 4px 24px rgba(0,0,0,.25);
+  box-shadow: 0 4px 24px rgba(0,0,0,.35);
   animation: slideUpBanner .25s ease;
 }
 
@@ -7337,4 +7343,372 @@ html[data-theme="dark"] .card-type-vaccine {
 
 .cookie-banner-btn:hover {
   background: rgba(255,255,255,.25) !important;
+}
+
+/* ─── Card dialog buttons - neutral black/wireframe (not accent-coloured) ───── */
+
+.card-dialog .primary-button,
+.reminder-dialog .primary-button {
+  background: #171918 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  border-color: #171918 !important;
+}
+
+.card-dialog .primary-button:hover:not(:disabled),
+.reminder-dialog .primary-button:hover:not(:disabled) {
+  background: #2a2a2a !important;
+  border-color: #2a2a2a !important;
+  filter: none !important;
+}
+
+.card-dialog .secondary-button,
+.reminder-dialog .secondary-button {
+  background: transparent !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+  box-shadow: none !important;
+}
+
+.card-dialog .secondary-button:hover:not(:disabled),
+.reminder-dialog .secondary-button:hover:not(:disabled) {
+  background: var(--surface-raised) !important;
+  border-color: var(--ink) !important;
+}
+
+html[data-theme="dark"] .card-dialog .primary-button,
+html[data-theme="dark"] .reminder-dialog .primary-button {
+  background: var(--ink) !important;
+  color: #171918 !important;
+  border-color: var(--ink) !important;
+}
+
+html[data-theme="dark"] .card-dialog .primary-button:hover:not(:disabled),
+html[data-theme="dark"] .reminder-dialog .primary-button:hover:not(:disabled) {
+  opacity: 0.88;
+  filter: none !important;
+}
+
+/* ─── Custody / parenting schedule calendar coloring ────────────────────────── */
+
+/* Day cell tints - palette-matched: teal for mine, warm slate for co-parent */
+.calendar-day.custody-mine {
+  background: var(--custody-mine-bg, rgba(101, 214, 198, 0.2));
+}
+.calendar-day.custody-mine.selected {
+  background: var(--ink);
+}
+.calendar-day.custody-co {
+  background: var(--custody-co-bg, rgba(118, 128, 138, 0.14));
+}
+.calendar-day.custody-co.selected {
+  background: var(--ink);
+}
+.calendar-day.custody-split {
+  background: linear-gradient(135deg, var(--custody-mine-bg, rgba(101,214,198,0.2)) 50%, var(--custody-co-bg, rgba(118,128,138,0.14)) 50%);
+}
+.calendar-day.custody-split.selected {
+  background: var(--ink);
+}
+
+/* Week view: colored left border */
+.week-day.custody-mine {
+  border-left: 3px solid var(--custody-mine-color, #65d6c6);
+}
+.week-day.custody-co {
+  border-left: 3px solid var(--custody-co-color, #76808a);
+}
+.week-day.custody-split {
+  border-left: 3px solid;
+  border-image: linear-gradient(to bottom, var(--custody-mine-color, #65d6c6) 50%, var(--custody-co-color, #76808a) 50%) 1;
+}
+
+/* Dark mode adjustments */
+html[data-theme="dark"] .calendar-day.custody-mine {
+  background: var(--custody-mine-bg, rgba(101, 214, 198, 0.16));
+}
+html[data-theme="dark"] .calendar-day.custody-co {
+  background: var(--custody-co-bg, rgba(118, 128, 138, 0.12));
+}
+html[data-theme="dark"] .calendar-day.custody-mine.selected,
+html[data-theme="dark"] .calendar-day.custody-co.selected,
+html[data-theme="dark"] .calendar-day.custody-split.selected {
+  background: var(--accent);
+}
+
+/* Desktop: slightly taller day cells for richer look */
+@media (min-width: 1081px) {
+  .calendar-day:not(.blank) {
+    min-height: 60px;
+    border-radius: 14px;
+  }
+  .calendar-grid {
+    gap: 6px;
+  }
+}
+
+/* ─── Custody legend in month view ──────────────────────────────────────────── */
+.custody-legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 4px 2px 6px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.custody-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.custody-legend-dot {
+  width: 22px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ─── Custody schedule button in calendar header ─────────────────────────────── */
+.custody-schedule-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface-raised, #f3f3f3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  align-self: center;
+  justify-self: end;
+  transition: color 0.15s, background 0.15s;
+}
+.custody-schedule-btn:hover {
+  color: var(--ink);
+  background: var(--accent-weak);
+}
+html[data-theme="dark"] .custody-schedule-btn {
+  background: var(--surface-raised);
+}
+
+/* ─── Custody day strip in agenda panel ─────────────────────────────────────── */
+.custody-day-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--soft, #f9f9f9);
+  border: 1px solid var(--line);
+  margin-bottom: 4px;
+}
+html[data-theme="dark"] .custody-day-strip {
+  background: var(--surface-raised);
+}
+.custody-day-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.custody-day-dot-sm {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.custody-override-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--accent-weak);
+  color: var(--accent);
+  padding: 2px 7px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.custody-split-time {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.custody-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.custody-chip {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.custody-chip:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.custody-chip.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.custody-chip-reset {
+  color: var(--muted);
+  opacity: 0.7;
+}
+html[data-theme="dark"] .custody-chip {
+  background: var(--surface-input);
+}
+html[data-theme="dark"] .custody-chip.active {
+  background: var(--accent);
+  color: #13201e;
+  border-color: var(--accent);
+}
+.custody-split-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  width: 100%;
+}
+
+/* ─── Custody week overview strip (desktop agenda) ───────────────────────────── */
+.custody-week-overview {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.custody-week-ov-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--muted);
+  transition: background 0.12s;
+}
+.custody-week-ov-day:hover {
+  background: var(--soft);
+}
+.custody-week-ov-day.selected {
+  background: var(--surface-raised);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.custody-week-ov-bar {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  margin-bottom: 2px;
+}
+.custody-week-ov-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.custody-week-ov-num {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+.custody-week-ov-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--accent-weak);
+  border-radius: 999px;
+  padding: 1px 5px;
+}
+html[data-theme="dark"] .custody-week-ov-day.selected {
+  background: var(--surface-raised);
+}
+
+/* ─── Custody schedule dialog body ──────────────────────────────────────────── */
+.custody-schedule-dialog {
+  max-width: 440px;
+}
+.custody-dialog-body {
+  padding: 4px 0 8px;
+}
+.custody-dialog-fields {
+  display: grid;
+  gap: 16px;
+}
+.custody-dialog-field {
+  display: grid;
+  gap: 8px;
+}
+.custody-dialog-field > span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.custody-dialog-swatch-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.custody-dialog-swatch-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.custody-dialog-preview {
+  display: flex;
+  gap: 16px;
+  padding: 10px 14px;
+  background: var(--soft);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+html[data-theme="dark"] .custody-dialog-preview {
+  background: var(--surface-raised);
+}
+
+/* Custody settings color swatches */
+.custody-color-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.custody-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+}
+.custody-swatch:hover {
+  transform: scale(1.2);
+}
+.custody-swatch.active {
+  border-color: var(--ink);
+  outline: 2px solid var(--paper);
+  outline-offset: -4px;
 }

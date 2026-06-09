@@ -1,5 +1,5 @@
-const APP_VERSION = "0.6.5";
-const APP_VERSION_DATE = "2026-06-08";
+const APP_VERSION = "0.6.7";
+const APP_VERSION_DATE = "2026-06-09";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
 // To add a new market: add an entry to LOCALE_CONFIGS and add the corresponding

@@ -726,6 +726,30 @@
       <button class="primary-button cookie-banner-btn" id="cookieBannerOk" type="button">Got it</button>
     </div>
 
+    <!-- Custody schedule editor dialog -->
+    <dialog class="card-dialog custody-schedule-dialog" id="custodyScheduleDialog" aria-label="Parenting schedule">
+      <div class="dialog-content">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Calendar</p>
+            <h2>Parenting schedule</h2>
+          </div>
+          <div class="dialog-header-actions">
+            <button class="icon-button" type="button" id="closeCustodyDialogBtn" aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M18 6 6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="custodyDialogBody" class="custody-dialog-body"></div>
+        <div class="dialog-actions">
+          <button class="ghost-button" type="button" id="custodyDialogCancelBtn">Cancel</button>
+          <button class="primary-button" type="button" id="custodyDialogSaveBtn">Save schedule</button>
+        </div>
+      </div>
+    </dialog>
+
     <!-- Notification permission prompt (shown once after login) -->
     <div id="notif-prompt" class="notif-prompt hidden" role="dialog" aria-label="Enable notifications">
       <div class="notif-prompt-icon">🔔</div>

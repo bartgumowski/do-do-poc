@@ -1,6 +1,118 @@
 const today = new Date();
 const shoppingStorageKey = "do-do-shopping-lists-v1";
 
+// ─── Custody / parenting schedule ────────────────────────────────────────────
+
+const CUSTODY_COLORS = [
+  { value: "#65d6c6", label: "Teal" },
+  { value: "#60a5fa", label: "Blue" },
+  { value: "#a78bfa", label: "Purple" },
+  { value: "#f59e0b", label: "Amber" },
+  { value: "#ef6461", label: "Coral" },
+  { value: "#4ade80", label: "Green" },
+];
+
+function getCustodySchedule() {
+  try {
+    const raw = localStorage.getItem("custody-schedule-v1");
+    const defaults = {
+      enabled: false,
+      type: "7-7",
+      referenceDate: new Date().toISOString().slice(0, 10),
+      myColor: "#65d6c6",
+      coColor: "#76808a",
+      overrides: {},   // { "YYYY-MM-DD": "mine" | "co" | { type:"split", time:"HH:MM", morning:"mine"|"co" } }
+    };
+    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
+  } catch {
+    return { enabled: false, type: "7-7", referenceDate: new Date().toISOString().slice(0, 10), myColor: "#65d6c6", coColor: "#76808a", overrides: {} };
+  }
+}
+
+function saveCustodySchedule(schedule) {
+  localStorage.setItem("custody-schedule-v1", JSON.stringify(schedule));
+  applyCustodyColors(schedule);
+}
+
+function applyCustodyColors(schedule) {
+  schedule = schedule || getCustodySchedule();
+  if (!schedule.enabled) return;
+  // Convert hex to rgba for subtle tints
+  const toRgba = (hex, alpha) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  };
+  document.documentElement.style.setProperty("--custody-mine-bg", toRgba(schedule.myColor, 0.18));
+  document.documentElement.style.setProperty("--custody-mine-color", schedule.myColor);
+  document.documentElement.style.setProperty("--custody-co-bg", toRgba(schedule.coColor, 0.18));
+  document.documentElement.style.setProperty("--custody-co-color", schedule.coColor);
+}
+
+// Returns "mine", "co", or "" for a given Date object (checks overrides first)
+function getCustodyOwner(date) {
+  const schedule = getCustodySchedule();
+  if (!schedule.enabled) return null;
+
+  // Check day-level override first
+  const key = toCalendarKey(date);
+  const ov = (schedule.overrides || {})[key];
+  if (ov === "mine") return "mine";
+  if (ov === "co") return "co";
+  if (ov && ov.type === "split") return "split";
+
+  if (!schedule.referenceDate) return null;
+  const ref = new Date(schedule.referenceDate + "T00:00:00");
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const daysDiff = Math.round((d - ref) / 86400000);
+
+  if (schedule.type === "7-7") {
+    const periodIndex = Math.floor(daysDiff / 7);
+    return ((periodIndex % 2) + 2) % 2 === 0 ? "mine" : "co";
+  }
+  if (schedule.type === "2-2-3") {
+    const pos = ((daysDiff % 14) + 14) % 14;
+    if (pos <= 1) return "mine";
+    if (pos <= 3) return "co";
+    if (pos <= 6) return "mine";
+    if (pos <= 8) return "co";
+    if (pos <= 10) return "mine";
+    return "co";
+  }
+  if (schedule.type === "5-2") {
+    const dow = d.getDay();
+    return (dow === 0 || dow === 6) ? "co" : "mine";
+  }
+  return null;
+}
+
+function getCustodyClass(date) {
+  const owner = getCustodyOwner(date);
+  if (owner === "mine") return "custody-mine";
+  if (owner === "co") return "custody-co";
+  if (owner === "split") return "custody-split";
+  return "";
+}
+
+// Set a day-level override and re-render calendar
+function setCustodyDayOverride(dateKey, value) {
+  const schedule = getCustodySchedule();
+  if (!schedule.overrides) schedule.overrides = {};
+  if (value === "auto") {
+    delete schedule.overrides[dateKey];
+  } else {
+    schedule.overrides[dateKey] = value;
+  }
+  saveCustodySchedule(schedule);
+}
+
+// Apply colors on page load
+(function() {
+  const s = getCustodySchedule();
+  if (s.enabled) applyCustodyColors(s);
+})();
+
 // Cache for AI conflict suggestions keyed by "cardAId|cardBId"
 const _conflictSuggestionCache = {};
 
@@ -566,6 +678,150 @@ function renderFeature(moduleName, data) {
       button.textContent = isConnected ? "Connect" : "Connected";
       button.classList.toggle("connected", !isConnected);
       showFeatureToast(isConnected ? "Integration disconnected" : "Integration connected");
+    });
+  });
+}
+
+// ─── Custody schedule dialog (card-dialog style) ─────────────────────────────
+
+function openCustodyScheduleDialog() {
+  const dialog = document.getElementById("custodyScheduleDialog");
+  if (!dialog) return;
+  const cs = getCustodySchedule();
+
+  const swatchRow = (target, label) => `
+    <div class="custody-dialog-swatch-row">
+      <span class="custody-dialog-swatch-label">${label}</span>
+      <div class="custody-color-swatches" data-custody-target="${target}">
+        ${CUSTODY_COLORS.map(c => `<button type="button" class="custody-swatch${cs[target] === c.value ? " active" : ""}" data-custody-color="${c.value}" style="background:${c.value};" title="${c.label}" aria-label="${c.label}"></button>`).join("")}
+      </div>
+    </div>`;
+
+  document.getElementById("custodyDialogBody").innerHTML = `
+    <div class="custody-dialog-fields">
+      <label class="clean-field custody-dialog-field">
+        <span>Show custody calendar</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="cdEnabled" ${cs.enabled ? "checked" : ""} />
+          <em style="font-size:12px;color:var(--muted);">Colour-code days to show who has the kids</em>
+        </div>
+      </label>
+
+      <label class="clean-field custody-dialog-field">
+        <span>Schedule type</span>
+        <select id="cdType">
+          <option value="7-7" ${cs.type === "7-7" ? "selected" : ""}>Alternating weeks (7-7)</option>
+          <option value="2-2-3" ${cs.type === "2-2-3" ? "selected" : ""}>2-2-3 rotation</option>
+          <option value="5-2" ${cs.type === "5-2" ? "selected" : ""}>Weekdays mine / weekends co-parent</option>
+        </select>
+      </label>
+
+      <label class="clean-field custody-dialog-field" id="cdRefRow" ${cs.type === "5-2" ? 'style="display:none"' : ""}>
+        <span>My schedule starts</span>
+        <input type="date" id="cdReferenceDate" value="${cs.referenceDate || new Date().toISOString().slice(0,10)}" />
+      </label>
+
+      <div class="custody-dialog-field">
+        ${swatchRow("myColor", "My days colour")}
+        ${swatchRow("coColor", "Co-parent days colour")}
+      </div>
+
+      <div class="custody-dialog-preview">
+        <span class="custody-legend-item"><span class="custody-legend-dot" id="cdPreviewMine" style="background:${cs.myColor};border-radius:4px;width:32px;height:16px;display:inline-block;"></span> My days</span>
+        <span class="custody-legend-item"><span class="custody-legend-dot" id="cdPreviewCo" style="background:${cs.coColor};border-radius:4px;width:32px;height:16px;display:inline-block;"></span> Co-parent's days</span>
+      </div>
+    </div>
+  `;
+
+  // Swatch interactions
+  dialog.querySelectorAll(".custody-color-swatches").forEach((group) => {
+    group.querySelectorAll(".custody-swatch").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        group.querySelectorAll(".custody-swatch").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const target = group.dataset.custodyTarget;
+        const previewId = target === "myColor" ? "cdPreviewMine" : "cdPreviewCo";
+        const preview = dialog.querySelector(`#${previewId}`);
+        if (preview) preview.style.background = btn.dataset.custodyColor;
+      });
+    });
+  });
+
+  // Type change hides/shows reference date
+  dialog.querySelector("#cdType")?.addEventListener("change", (e) => {
+    const row = dialog.querySelector("#cdRefRow");
+    if (row) row.style.display = e.target.value === "5-2" ? "none" : "";
+  });
+
+  // Save
+  dialog.querySelector("#custodyDialogSaveBtn")?.addEventListener("click", () => {
+    const activeSwatch = (target) => dialog.querySelector(`.custody-color-swatches[data-custody-target="${target}"] .custody-swatch.active`)?.dataset.custodyColor;
+    const schedule = {
+      ...getCustodySchedule(),
+      enabled: dialog.querySelector("#cdEnabled")?.checked || false,
+      type: dialog.querySelector("#cdType")?.value || "7-7",
+      referenceDate: dialog.querySelector("#cdReferenceDate")?.value || new Date().toISOString().slice(0,10),
+      myColor: activeSwatch("myColor") || cs.myColor,
+      coColor: activeSwatch("coColor") || cs.coColor,
+    };
+    saveCustodySchedule(schedule);
+    dialog.close();
+    showFeatureToast("Parenting schedule saved");
+    // Refresh calendar if visible
+    if (featureModule && !featureModule.classList.contains("hidden")) {
+      const data = window._lastFeatureData;
+      if (data) renderCalendarFeature(data);
+    }
+  });
+
+  dialog.querySelector("#custodyDialogCancelBtn")?.addEventListener("click", () => dialog.close());
+  dialog.querySelector("#closeCustodyDialogBtn")?.addEventListener("click", () => dialog.close());
+
+  dialog.showModal();
+}
+
+window.openCustodyScheduleDialog = openCustodyScheduleDialog;
+
+function bindCustodySettings() {
+  const save = () => {
+    const schedule = {
+      enabled: featureModule.querySelector("#custodyEnabledToggle")?.checked || false,
+      type: featureModule.querySelector("#custodyType")?.value || "7-7",
+      referenceDate: featureModule.querySelector("#custodyReferenceDate")?.value || new Date().toISOString().slice(0, 10),
+      myColor: getCustodySchedule().myColor,
+      coColor: getCustodySchedule().coColor,
+    };
+    saveCustodySchedule(schedule);
+    showFeatureToast("Parenting schedule saved");
+  };
+
+  // Toggle, type, date changes - auto-save
+  featureModule.querySelector("#custodyEnabledToggle")?.addEventListener("change", save);
+  featureModule.querySelector("#custodyType")?.addEventListener("change", (e) => {
+    const refRow = featureModule.querySelector("#custodyRefDateRow");
+    if (refRow) refRow.style.display = e.target.value === "5-2" ? "none" : "";
+    save();
+  });
+  featureModule.querySelector("#custodyReferenceDate")?.addEventListener("change", save);
+
+  // Color swatches
+  featureModule.querySelectorAll(".custody-color-swatches").forEach((group) => {
+    group.querySelectorAll(".custody-swatch").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = group.dataset.custodyTarget; // "myColor" or "coColor"
+        const color = btn.dataset.custodyColor;
+        // Update active state visually
+        group.querySelectorAll(".custody-swatch").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        // Save with the new color
+        const current = getCustodySchedule();
+        current[target] = color;
+        current.enabled = featureModule.querySelector("#custodyEnabledToggle")?.checked || false;
+        current.type = featureModule.querySelector("#custodyType")?.value || current.type;
+        current.referenceDate = featureModule.querySelector("#custodyReferenceDate")?.value || current.referenceDate;
+        saveCustodySchedule(current);
+        showFeatureToast("Colour updated");
+      });
     });
   });
 }
@@ -1279,15 +1535,68 @@ function renderMessage(initial, name, text, time, own, tags = []) {
 }
 
 function renderCalendarFeature(data) {
+  window._lastFeatureData = data; // store for custody dialog refresh
   syncCalendarEventsFromCards();
   const selectedDate = parseCalendarKey(calendarState.selected);
   const selectedEvents = eventsForDate(calendarState.selected);
+  const custody = getCustodySchedule();
+  const selectedOwner = custody.enabled ? getCustodyOwner(selectedDate) : null;
+  const hasOverride = custody.enabled && !!(custody.overrides || {})[calendarState.selected];
+  const setup = window.getOnboardingState?.() || {};
+  const coparentName = setup.parents?.coparent || "Co-parent";
+
+  // Custody status strip for agenda panel
+  const custodyStrip = custody.enabled ? (() => {
+    const ov = (custody.overrides || {})[calendarState.selected];
+    const isSplit = ov && ov.type === "split";
+    const ownerLabel = selectedOwner === "mine" ? "Your day"
+      : selectedOwner === "co" ? `${coparentName}'s day`
+      : selectedOwner === "split" ? "Split day"
+      : "";
+    const dotColor = selectedOwner === "mine" ? custody.myColor
+      : selectedOwner === "co" ? custody.coColor : "#76808a";
+
+    return `
+      <div class="custody-day-strip">
+        <div class="custody-day-who">
+          <span class="custody-day-dot-sm" style="background:${dotColor};"></span>
+          <strong>${ownerLabel || "No schedule set"}</strong>
+          ${hasOverride ? `<span class="custody-override-badge">overridden</span>` : ""}
+          ${isSplit ? `<span class="custody-split-time">Handover ${ov.time}</span>` : ""}
+        </div>
+        <div class="custody-day-actions">
+          <button class="custody-chip ${selectedOwner === "mine" ? "active" : ""}" type="button" data-custody-override="mine">Mine</button>
+          <button class="custody-chip ${selectedOwner === "co" ? "active" : ""}" type="button" data-custody-override="co">${coparentName}</button>
+          <button class="custody-chip" type="button" data-custody-override="split">Split</button>
+          ${hasOverride ? `<button class="custody-chip custody-chip-reset" type="button" data-custody-override="auto">Reset</button>` : ""}
+        </div>
+      </div>`;
+  })() : "";
+
+  // Week overview strip (desktop) - shows whole selected week at a glance
+  const weekOverview = custody.enabled ? (() => {
+    const weekStart = startOfWeek(selectedDate);
+    return `
+      <div class="custody-week-overview" aria-label="Week custody overview">
+        ${Array.from({ length: 7 }, (_, i) => {
+          const d = addDays(weekStart, i);
+          const k = toCalendarKey(d);
+          const owner = getCustodyOwner(d);
+          const dotColor = owner === "mine" ? custody.myColor : owner === "co" ? custody.coColor : "transparent";
+          const evts = eventsForDate(k);
+          const isSelected = k === calendarState.selected;
+          return `<button class="custody-week-ov-day${isSelected ? " selected" : ""}" type="button" data-calendar-day="${k}" title="${weekdayLabel(d)} ${d.getDate()}">
+            <span class="custody-week-ov-bar" style="background:${dotColor};opacity:${owner ? "1" : "0"};"></span>
+            <span class="custody-week-ov-label">${weekdayLabel(d)}</span>
+            <strong class="custody-week-ov-num">${d.getDate()}</strong>
+            ${evts.length ? `<em class="custody-week-ov-count">${evts.length}</em>` : ""}
+          </button>`;
+        }).join("")}
+      </div>`;
+  })() : "";
+
   featureModule.innerHTML = `
     <div class="calendar-shell">
-      <div class="calendar-privacy-note">
-        <strong>Private family calendar</strong>
-        <span>Only family members can see Dos. Connected work calendars show blocked availability only.</span>
-      </div>
       <div class="calendar-topline">
         <button class="round-nav" type="button" data-calendar-nav="-1" aria-label="Previous ${calendarState.view === "month" ? "month" : "week"}">‹</button>
         <div>
@@ -1301,6 +1610,10 @@ function renderCalendarFeature(data) {
           <button class="${calendarState.view === view ? "active" : ""}" type="button" data-calendar-view="${view}">${capitalize(view)}</button>
         `).join("")}
       </div>
+      <button class="custody-schedule-btn" type="button" id="openCustodyDialogBtn" aria-label="Edit parenting schedule">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg>
+        ${custody.enabled ? "Parenting schedule" : "Set up parenting schedule"}
+      </button>
       <div class="calendar-body">
         ${renderCalendarBody()}
       </div>
@@ -1314,6 +1627,8 @@ function renderCalendarFeature(data) {
         </div>
         <button class="secondary-button feature-action" data-action="Add Do">Add Do</button>
       </div>
+      ${weekOverview}
+      ${custodyStrip}
       <div class="agenda-list">
         ${selectedEvents.length
           ? selectedEvents.map(renderAgendaCard).join("")
@@ -1379,6 +1694,47 @@ function renderCalendarFeature(data) {
     });
   });
 
+  // Open custody schedule dialog
+  featureModule.querySelector("#openCustodyDialogBtn")?.addEventListener("click", () => openCustodyScheduleDialog());
+
+  // Custody day override chips
+  featureModule.querySelectorAll("[data-custody-override]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const override = btn.dataset.custodyOverride;
+      const dayKey = calendarState.selected;
+      if (override === "split") {
+        // Show inline time picker in the strip
+        const strip = featureModule.querySelector(".custody-day-actions");
+        if (strip && !strip.querySelector(".custody-split-picker")) {
+          const picker = document.createElement("div");
+          picker.className = "custody-split-picker";
+          picker.innerHTML = `
+            <label style="font-size:12px;color:var(--muted);">Handover time</label>
+            <input type="time" value="15:00" id="custodySplitTime" style="font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface-input);color:var(--ink);" />
+            <button class="custody-chip" type="button" id="custodySplitConfirm">Confirm</button>
+          `;
+          strip.appendChild(picker);
+          picker.querySelector("#custodySplitConfirm")?.addEventListener("click", () => {
+            const time = picker.querySelector("#custodySplitTime")?.value || "15:00";
+            setCustodyDayOverride(dayKey, { type: "split", time, morning: "mine" });
+            renderCalendarFeature(data);
+          });
+        }
+        return;
+      }
+      setCustodyDayOverride(dayKey, override);
+      renderCalendarFeature(data);
+    });
+  });
+
+  // Week overview day clicks
+  featureModule.querySelectorAll(".custody-week-ov-day[data-calendar-day]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      calendarState.selected = btn.dataset.calendarDay;
+      renderCalendarFeature(data);
+    });
+  });
+
   window.bindUnifiedCardInteractions?.(featureModule);
 }
 
@@ -1389,7 +1745,20 @@ function renderCalendarBody() {
 }
 
 function renderMonthView() {
+  const custody = getCustodySchedule();
+  const custodyLegend = custody.enabled ? `
+    <div class="custody-legend">
+      <span class="custody-legend-item">
+        <span class="custody-legend-dot" style="background:${custody.myColor};"></span>
+        My days
+      </span>
+      <span class="custody-legend-item">
+        <span class="custody-legend-dot" style="background:${custody.coColor};"></span>
+        Co-parent days
+      </span>
+    </div>` : "";
   return `
+    ${custodyLegend}
     <div class="calendar-weekdays">
       ${["M", "T", "W", "T", "F", "S", "S"].map((day) => `<span>${day}</span>`).join("")}
     </div>
@@ -1417,6 +1786,7 @@ function renderCalendarDays() {
       key === calendarState.selected ? "selected" : "",
       events.length ? "has-marker" : "",
       dayConflicts.length ? "has-conflict" : "",
+      getCustodyClass(date),
     ].filter(Boolean).join(" ");
     const dots = events.slice(0, 3).map((item) => `<i class="${item.kind}${item.recurring ? " recurring" : ""}"></i>`).join("");
     const conflictDot = dayConflicts.length ? `<i class="conflict-dot" title="${dayConflicts.length} conflict${dayConflicts.length > 1 ? "s" : ""}">⚠</i>` : "";
@@ -1436,8 +1806,9 @@ function renderWeekView() {
         const events = eventsForDate(key);
         const weekDayConflicts = getConflictsForDate(key, _getActiveConflicts());
         const conflictTag = weekDayConflicts.length ? ` <span class="week-conflict-dot">⚠</span>` : "";
+        const custodyWeekClass = getCustodyClass(date);
         return `
-          <button class="week-day ${key === calendarState.selected ? "selected" : ""}${weekDayConflicts.length ? " has-conflict" : ""}" type="button" data-calendar-day="${key}">
+          <button class="week-day ${key === calendarState.selected ? "selected" : ""}${weekDayConflicts.length ? " has-conflict" : ""}${custodyWeekClass ? " " + custodyWeekClass : ""}" type="button" data-calendar-day="${key}">
             <span>${weekdayLabel(date)}</span>
             <strong>${date.getDate()}${conflictTag}</strong>
             <em>${events.length ? `${events.length} item${events.length === 1 ? "" : "s"}` : "Clear"}</em>
@@ -1932,6 +2303,53 @@ function renderSpecialPanel(moduleName, part = "all") {
       ["at-due", "At due time"],
     ];
     return `
+      ${part === "all" || part === "custody" ? (() => {
+        const cs = getCustodySchedule();
+        const swatchRow = (target, currentColor, label) => `
+          <div class="settings-select-row">
+            <span>
+              <strong>${label}</strong>
+            </span>
+            <div class="custody-color-swatches" data-custody-target="${target}">
+              ${CUSTODY_COLORS.map(c => `<button type="button" class="custody-swatch${cs[target] === c.value ? " active" : ""}" data-custody-color="${c.value}" style="background:${c.value};" title="${c.label}" aria-label="${c.label}"></button>`).join("")}
+            </div>
+          </div>`;
+        return `
+        <section class="feature-panel custody-settings">
+          <h3>Parenting schedule</h3>
+          <p class="feature-note" style="margin:0 0 12px;font-size:13px;color:var(--muted);">Colour-code calendar days to show who has the kids.</p>
+          <div class="settings-control-list">
+            <label class="settings-toggle-row">
+              <span>
+                <strong>Show custody calendar</strong>
+                <em>Highlight which days belong to each parent.</em>
+              </span>
+              <input type="checkbox" id="custodyEnabledToggle" ${cs.enabled ? "checked" : ""} />
+            </label>
+            <label class="settings-select-row">
+              <span>
+                <strong>Schedule type</strong>
+                <em>Choose your custody arrangement.</em>
+              </span>
+              <select id="custodyType">
+                <option value="7-7" ${cs.type === "7-7" ? "selected" : ""}>Alternating weeks (7-7)</option>
+                <option value="2-2-3" ${cs.type === "2-2-3" ? "selected" : ""}>2-2-3 rotation</option>
+                <option value="5-2" ${cs.type === "5-2" ? "selected" : ""}>Weekdays mine / weekends co-parent</option>
+              </select>
+            </label>
+            <label class="settings-select-row" id="custodyRefDateRow" ${cs.type === "5-2" ? 'style="display:none"' : ""}>
+              <span>
+                <strong>My schedule starts</strong>
+                <em>First day of your current custody period.</em>
+              </span>
+              <input type="date" id="custodyReferenceDate" value="${cs.referenceDate || new Date().toISOString().slice(0,10)}" style="max-width:160px;" />
+            </label>
+            ${swatchRow("myColor", cs.myColor, "My days colour")}
+            ${swatchRow("coColor", cs.coColor, "Co-parent days colour")}
+          </div>
+        </section>`;
+      })() : ""}
+
       ${part === "all" || part === "appearance" ? `
       <section class="feature-panel appearance-settings">
         <h3>${window.t?.("settings.appearance") ?? "Appearance"}</h3>
@@ -2308,6 +2726,8 @@ function renderSettingsFeature() {
 
       ${renderSpecialPanel("settings", "vaccine")}
 
+      ${renderSpecialPanel("settings", "custody")}
+
       <section class="feature-panel" id="invitePanel">
         <h3>${_st("settings.coparent")}</h3>
         <div class="feature-items" id="invitePanelContent">
@@ -2373,6 +2793,8 @@ function renderSettingsFeature() {
 
   // Bind automation settings panel
   bindAutomationSettings();
+  // Bind custody schedule settings
+  bindCustodySettings();
 
   // Edit my name
   featureModule.querySelector("#editMyNameBtn")?.addEventListener("click", () => promptEditMyName());
