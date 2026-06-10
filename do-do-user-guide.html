@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Do-Do - User Guide</title>
+  <style>
+    :root {
+      --teal: #65d6c6;
+      --teal-dark: #3db8a8;
+      --ink: #171918;
+      --muted: #76808a;
+      --bg: #f8faf9;
+      --white: #ffffff;
+      --border: #e4eae8;
+      --section-bg: #f0f7f5;
+      --warn: #f59e0b;
+      --red: #ef6461;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.65;
+      font-size: 16px;
+    }
+
+    /* ─── Hero ────────────────────────────────────────────── */
+    .hero {
+      background: var(--ink);
+      color: var(--white);
+      padding: 64px 24px 56px;
+      text-align: center;
+    }
+    .hero-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .hero-logo svg { width: 40px; height: 40px; }
+    .hero-logo-text { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+    .hero h1 span { color: var(--teal); }
+    .hero p {
+      font-size: 18px;
+      color: rgba(255,255,255,0.7);
+      max-width: 540px;
+      margin: 0 auto 32px;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(101,214,198,0.15);
+      border: 1px solid rgba(101,214,198,0.35);
+      color: var(--teal);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* ─── Nav ─────────────────────────────────────────────── */
+    .toc-strip {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .toc-strip::-webkit-scrollbar { display: none; }
+    .toc-strip a {
+      white-space: nowrap;
+      padding: 14px 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .toc-strip a:hover { color: var(--ink); border-color: var(--teal); }
+
+    /* ─── Layout ──────────────────────────────────────────── */
+    .content { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    /* ─── Sections ────────────────────────────────────────── */
+    .section { margin-bottom: 60px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+    .section-icon {
+      width: 44px; height: 44px;
+      background: var(--ink);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 20px;
+    }
+    .section h2 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .section h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin: 28px 0 10px;
+    }
+    .section p { margin-bottom: 14px; color: #2a3530; }
+
+    /* ─── Tip / Note boxes ────────────────────────────────── */
+    .tip, .note, .warn {
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 15px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .tip { background: var(--section-bg); border-left: 4px solid var(--teal); }
+    .note { background: #fffbeb; border-left: 4px solid var(--warn); }
+    .warn { background: #fff2f2; border-left: 4px solid var(--red); }
+    .tip-icon, .note-icon, .warn-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ─── Step list ───────────────────────────────────────── */
+    .steps { list-style: none; counter-reset: steps; margin: 16px 0; }
+    .steps li {
+      counter-increment: steps;
+      display: flex;
+      gap: 14px;
+      margin-bottom: 14px;
+      align-items: flex-start;
+    }
+    .steps li::before {
+      content: counter(steps);
+      min-width: 28px; height: 28px;
+      background: var(--teal);
+      color: var(--ink);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ─── Feature grid ────────────────────────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .feature-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 16px;
+    }
+    .feature-card .fc-icon { font-size: 24px; margin-bottom: 8px; }
+    .feature-card .fc-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+    .feature-card .fc-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* ─── Status pill ─────────────────────────────────────── */
+    .pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .pill-decide { background: #fff0d6; color: #92600a; }
+    .pill-mine   { background: #e0f5f2; color: #1a7a6e; }
+    .pill-done   { background: #e8f5e9; color: #2e7d32; }
+
+    /* ─── Keyboard shortcut ───────────────────────────────── */
+    kbd {
+      background: #e9ecee;
+      border: 1px solid #cdd3d8;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    /* ─── Table ───────────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 15px; }
+    th { background: var(--ink); color: var(--white); text-align: left; padding: 10px 14px; font-size: 13px; font-weight: 600; }
+    th:first-child { border-radius: 8px 0 0 0; }
+    th:last-child  { border-radius: 0 8px 0 0; }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f8faf9; }
+
+    /* ─── Footer ──────────────────────────────────────────── */
+    footer {
+      background: var(--ink);
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 14px;
+    }
+    footer a { color: var(--teal); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .feature-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Hero ─────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-logo">
+    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="40" height="40" rx="10" fill="#65d6c6"/>
+      <text x="20" y="27" text-anchor="middle" font-size="18" font-weight="800" fill="#171918" font-family="-apple-system, sans-serif">Do</text>
+    </svg>
+    <span class="hero-logo-text">Do-Do</span>
+  </div>
+  <h1>Stay in sync with<br><span>the people you share life with</span></h1>
+  <p>Whether you're co-parenting, sharing a flat, or just dividing up household responsibilities - Do-Do keeps both of you on the same page.</p>
+  <span class="hero-badge">User Guide - v0.6.7</span>
+</header>
+
+<!-- ─── Sticky nav ───────────────────────────────────────────── -->
+<nav class="toc-strip">
+  <a href="#getting-started">Getting started</a>
+  <a href="#board">Board</a>
+  <a href="#calendar">Calendar</a>
+  <a href="#messages">Messages</a>
+  <a href="#shopping">Shopping</a>
+  <a href="#expenses">Expenses</a>
+  <a href="#settings">Settings</a>
+  <a href="#faq">FAQ</a>
+</nav>
+
+<!-- ─── Main content ─────────────────────────────────────────── -->
+<main class="content">
+
+  <!-- WHAT IS DO-DO -->
+  <section class="section" id="what-is">
+    <div class="section-header">
+      <div class="section-icon">💡</div>
+      <h2>What is Do-Do?</h2>
+    </div>
+    <p>Do-Do is a coordination app for two people who share responsibilities and need to stay in sync. Co-parents, couples, flatmates, caregivers - anyone managing a shared life.</p>
+    <p>Everything lives in one place: your shared task board, calendar, shopping list, expenses, and messages. And because it all updates in real time, you'll both always see the latest version.</p>
+
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-icon">📋</div><div class="fc-title">Board</div><div class="fc-desc">Shared task cards - decide together, assign, track progress</div></div>
+      <div class="feature-card"><div class="fc-icon">📅</div><div class="fc-title">Calendar</div><div class="fc-desc">Shared schedule with Google &amp; Apple Calendar sync</div></div>
+      <div class="feature-card"><div class="fc-icon">💬</div><div class="fc-title">Messages</div><div class="fc-desc">Topic threads for School, Medical, Expenses and more</div></div>
+      <div class="feature-card"><div class="fc-icon">🛒</div><div class="fc-title">Shopping</div><div class="fc-desc">Live shared grocery and other lists</div></div>
+      <div class="feature-card"><div class="fc-icon">💶</div><div class="fc-title">Expenses</div><div class="fc-desc">Track shared costs, split bills, request payments</div></div>
+      <div class="feature-card"><div class="fc-icon">⚙️</div><div class="fc-title">Settings</div><div class="fc-desc">Notifications, integrations, custody schedule, language</div></div>
+    </div>
+  </section>
+
+  <!-- GETTING STARTED -->
+  <section class="section" id="getting-started">
+    <div class="section-header">
+      <div class="section-icon">🚀</div>
+      <h2>Getting started</h2>
+    </div>
+
+    <h3>Create your account</h3>
+    <p>Go to <strong>do-do.app</strong> and sign in with Google, or create an account with your email and a password. That's it - no app to install (though you can add it to your home screen later).</p>
+
+    <h3>Invite your partner</h3>
+    <p>Once you're in, head to <strong>Settings</strong> and look for the <em>Co-parent / Partner</em> section. Enter their email and tap <strong>Send invite</strong>. They'll get an email with a link - when they click it, you're connected and all your shared content will sync automatically.</p>
+
+    <div class="tip">
+      <span class="tip-icon">💡</span>
+      <span>Your 14-day free trial starts when you create your account. No credit card needed upfront.</span>
+    </div>
+
+    <h3>Add your household members</h3>
+    <p>In Settings, you can add your children or pets by name. This makes it easy to reference them when creating cards, expenses, or calendar events.</p>
+
+    <h3>Install on your home screen (optional but great)</h3>
+    <ol class="steps">
+      <li>Open Do-Do in your mobile browser</li>
+      <li>On iOS: tap the Share button, then "Add to Home Screen"</li>
+      <li>On Android: tap the three-dot menu, then "Add to Home Screen"</li>
+      <li>Done - it opens like a native app from now on</li>
+    </ol>
+  </section>
+
+  <!-- BOARD -->
+  <section class="section" id="board">
+    <div class="section-header">
+      <div class="section-icon">📋</div>
+      <h2>Board</h2>
+    </div>
+    <p>The Board is your shared to-do list, laid out as three columns. Think of it as a place where you can propose things, track what each person is working on, and mark things done.</p>
+
+    <h3>The three columns</h3>
+    <table>
+      <thead><tr><th>Column</th><th>What it means</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pill pill-decide">To decide</span></td><td>Something needs a decision or agreement before it can move forward. Both of you need to weigh in.</td></tr>
+        <tr><td><span class="pill pill-mine">Mine</span></td><td>You've taken ownership of this. It's on your plate and you're working on it.</td></tr>
+        <tr><td><span class="pill pill-done">Done</span></td><td>Finished! Completed cards live here so you have a record.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Creating a card</h3>
+    <p>Tap the <strong>+</strong> button. You can type naturally - Do-Do's AI will pick up dates, times, and who it involves automatically. For example, typing "dentist appointment for Ava on Friday at 3pm" will prefill the title, date, and topic for you.</p>
+
+    <h3>What's on a card</h3>
+    <ul class="steps">
+      <li><strong>Title</strong> - what it's about</li>
+      <li><strong>Topic</strong> - Schedule, School, Medical, Expenses, or General</li>
+      <li><strong>Assigned to</strong> - you, your partner, or both</li>
+      <li><strong>Due date</strong> - optional but useful for reminders</li>
+      <li><strong>Reminder</strong> - get notified 15 min, 1 hour, 1 day, or more before it's due</li>
+      <li><strong>Notes / messages</strong> - leave a comment or context for your partner</li>
+      <li><strong>Payment</strong> - attach a cost that can be paid via the app</li>
+      <li><strong>Receipt</strong> - attach a photo for expense tracking</li>
+    </ul>
+
+    <h3>Completing a card</h3>
+    <p>Tap <strong>Done</strong> on a card when it's finished. It moves to the Done column so you both know it's taken care of. You can always find it there if you need to look back.</p>
+
+    <h3>Quick actions</h3>
+    <p>On any card you'll see two buttons: <strong>"I'll do it"</strong> (assign it to yourself) and <strong>"Please do it"</strong> (assign it to your partner). Great for quickly claiming or delegating without opening the full card.</p>
+
+    <div class="tip">
+      <span class="tip-icon">💡</span>
+      <span>If you and your partner have conflicting cards - like two events at the same time - Do-Do will flag them and suggest how to resolve the conflict.</span>
+    </div>
+
+    <div class="note">
+      <span class="note-icon">⚠️</span>
+      <span>Cards marked "Can't" are archived rather than deleted - you can still find them if you need the history.</span>
+    </div>
+  </section>
+
+  <!-- CALENDAR -->
+  <section class="section" id="calendar">
+    <div class="section-header">
+      <div class="section-icon">📅</div>
+      <h2>Calendar</h2>
+    </div>
+    <p>The Calendar gives you and your partner a shared view of what's coming up. It can sync with Google Calendar and Apple Calendar so everything stays in one place - no more "wait, when was that?"</p>
+
+    <h3>Connecting your calendar</h3>
+    <p>Go to <strong>Settings &gt; Integrations</strong> and connect Google Calendar or Apple CalDAV. Once connected, events sync both ways: things you add in Do-Do appear in your calendar app, and your calendar events appear in Do-Do.</p>
+
+    <div class="tip">
+      <span class="tip-icon">💡</span>
+      <span>You can connect a work calendar too, and choose to show it as "busy" only - so your partner sees you're unavailable without seeing the details of your work meetings.</span>
+    </div>
+
+    <h3>Parenting schedule (custody)</h3>
+    <p>If you co-parent, turn on the <strong>Parenting schedule</strong> in the calendar header or in Settings. Choose your schedule type:</p>
+    <table>
+      <thead><tr><th>Schedule type</th><th>Pattern</th></tr></thead>
+      <tbody>
+        <tr><td>7-7</td><td>One week with each parent, alternating</td></tr>
+        <tr><td>2-2-3</td><td>2 days / 2 days / 3 days rotating pattern</td></tr>
+        <tr><td>5-2</td><td>Weekdays with one parent, weekends with the other</td></tr>
+      </tbody>
+    </table>
+    <p>The calendar then colour-codes each day so it's obvious at a glance who has the children. You can pick your own colour for "my days" and your partner's days.</p>
+
+    <h3>Day overrides and split days</h3>
+    <p>Plans change. Tap any day in the agenda panel to override who has the kids that day - or tap <strong>Split</strong> to enter a handover time if the children are with each parent for part of the day. Overridden days show a small badge so you always know when a day differs from the usual pattern.</p>
+
+    <h3>Conflict alerts</h3>
+    <p>If two events clash, you'll see an alert directly on the calendar. Do-Do will also suggest a possible resolution - you can accept, ignore, or discuss it in Messages.</p>
+  </section>
+
+  <!-- MESSAGES -->
+  <section class="section" id="messages">
+    <div class="section-header">
+      <div class="section-icon">💬</div>
+      <h2>Messages</h2>
+    </div>
+    <p>Messages in Do-Do are organised by topic rather than one long chat. This makes it much easier to find what you're looking for - no more scrolling back through everything to find that dentist appointment detail.</p>
+
+    <h3>Topics</h3>
+    <table>
+      <thead><tr><th>Topic</th><th>What to put here</th></tr></thead>
+      <tbody>
+        <tr><td>📅 Schedule</td><td>Pickup times, drop-offs, changes to the weekly routine</td></tr>
+        <tr><td>🎒 School</td><td>Permission slips, parent evenings, teacher updates</td></tr>
+        <tr><td>🏥 Medical</td><td>Appointments, medications, health updates</td></tr>
+        <tr><td>💶 Expenses</td><td>Bills to split, payments owed, receipts</td></tr>
+        <tr><td>💬 General</td><td>Anything else - day-to-day coordination</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Sending a message</h3>
+    <p>Pick a topic, type your message, and tap send. Your partner gets a notification (if they have notifications turned on). Messages update in real time - you'll see replies appear as soon as they're sent.</p>
+
+    <div class="tip">
+      <span class="tip-icon">💡</span>
+      <span>Attach photos directly in messages - handy for sending a photo of a school letter or a receipt.</span>
+    </div>
+  </section>
+
+  <!-- SHOPPING -->
+  <section class="section" id="shopping">
+    <div class="section-header">
+      <div class="section-icon">🛒</div>
+      <h2>Shopping</h2>
+    </div>
+    <p>The shopping list is shared and syncs in real time. If your partner adds something while you're already at the supermarket, it'll appear on your screen immediately.</p>
+
+    <h3>Two lists</h3>
+    <p>There are two lists - <strong>Groceries</strong> and <strong>Other</strong>. Keep food and household basics in Groceries, and one-off purchases (Leo's football socks, that birthday card) in Other.</p>
+
+    <h3>Using the list</h3>
+    <ol class="steps">
+      <li>Type an item in the box at the top and tap Add</li>
+      <li>Tick items as you put them in the trolley - they move to the bottom with a strikethrough</li>
+      <li>Tap <strong>Clear bought</strong> when you're done to clean up the list for next time</li>
+    </ol>
+
+    <div class="tip">
+      <span class="tip-icon">💡</span>
+      <span>Bought items stay visible until you clear them - that way your partner can see what's already been picked up even if they arrive at the shop after you.</span>
+    </div>
+  </section>
+
+  <!-- EXPENSES -->
+  <section class="section" id="expenses">
+    <div class="section-header">
+      <div class="section-icon">💶</div>
+      <h2>Expenses</h2>
+    </div>
+    <p>The Expenses section helps you keep track of shared costs and who owes what. No more spreadsheets or awkward "did you pay me back for that?" conversations.</p>
+
+    <h3>Adding an expense</h3>
+    <ol class="steps">
+      <li>Tap the <strong>+</strong> button in Expenses</li>
+      <li>Enter the amount, what it was for, and who paid</li>
+      <li>Choose how to split it (50/50, or a custom amount)</li>
+      <li>Attach a receipt photo if you have one</li>
+    </ol>
+
+    <h3>The balance</h3>
+    <p>At the top of Expenses you'll always see who owes what. It summarises all outstanding costs into a single balance - either "they owe you" or "you owe them" - so you're never confused about where things stand.</p>
+
+    <h3>Requesting payment</h3>
+    <p>When it's time to settle up, tap <strong>Request payment</strong>. Your partner gets a link to a payment page where they can pay by card, Apple Pay, or Google Pay - without needing a Do-Do account.</p>
+
+    <div class="note">
+      <span class="note-icon">⚠️</span>
+      <span>Payments are processed securely by Stripe. Do-Do never stores your card details.</span>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="section" id="settings">
+    <div class="section-header">
+      <div class="section-icon">⚙️</div>
+      <h2>Settings</h2>
+    </div>
+
+    <h3>Notifications</h3>
+    <p>Turn on push notifications to get alerts for reminders, new messages, and payment requests. You can set <strong>quiet hours</strong> so you're not disturbed at night. There's also an option to receive reminders by email if you prefer.</p>
+
+    <h3>Language</h3>
+    <p>Do-Do is available in English, German, and Polish. Change the language in Settings &gt; Appearance. The whole app switches immediately.</p>
+
+    <h3>Theme</h3>
+    <p>Choose Light, Dark, or System (follows your phone's setting).</p>
+
+    <h3>Calendar integrations</h3>
+    <p>Connect Google Calendar or Apple CalDAV here. You can also connect a separate work calendar and control how much your partner sees (just "busy" times, or full event details).</p>
+
+    <h3>Subscription</h3>
+    <p>Do-Do costs <strong>CHF 9.90/month</strong> (or CHF 89/year - two months free). Pricing is localised:</p>
+    <table>
+      <thead><tr><th>Region</th><th>Monthly</th><th>Annual</th></tr></thead>
+      <tbody>
+        <tr><td>Switzerland</td><td>CHF 9.90</td><td>CHF 89</td></tr>
+        <tr><td>Germany / Austria</td><td>EUR 7.90</td><td>EUR 69</td></tr>
+        <tr><td>Poland</td><td>PLN 19</td><td>PLN 169</td></tr>
+      </tbody>
+    </table>
+    <p>Your 14-day free trial is included automatically when you sign up - no credit card required until the trial ends.</p>
+
+    <h3>Your data</h3>
+    <p>You can export all your data as a JSON file at any time (Settings &gt; Account &gt; Export data). You can also permanently delete your account - this removes all your personal data from Do-Do's servers, in line with GDPR.</p>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section" id="faq">
+    <div class="section-header">
+      <div class="section-icon">❓</div>
+      <h2>Frequently asked questions</h2>
+    </div>
+
+    <h3>Does my partner need an account?</h3>
+    <p>Yes - they'll need to create a free account when they accept your invite. Once connected, everything syncs between you automatically.</p>
+
+    <h3>What happens if I'm offline?</h3>
+    <p>Do-Do works offline. Changes you make are saved locally and sync automatically when you're back online.</p>
+
+    <h3>Is my data private?</h3>
+    <p>Yes. Your data is stored in the EU (Ireland), and only you and your connected partner can see it. Do-Do uses row-level security to ensure your data is completely isolated from other users. Full details are in the <a href="/legal.html">Privacy Policy</a>.</p>
+
+    <h3>Can I use Do-Do if I'm not a co-parent?</h3>
+    <p>Absolutely. The app works equally well for couples, flatmates, or any two people who share responsibilities. The custody calendar is optional and can be ignored if it's not relevant.</p>
+
+    <h3>How do I cancel my subscription?</h3>
+    <p>Go to Settings &gt; Subscription and tap <strong>Manage subscription</strong>. This opens the Stripe billing portal where you can cancel, change plan, or update your payment method.</p>
+
+    <h3>I accidentally deleted something - can I get it back?</h3>
+    <p>Cards marked "Can't" are archived rather than permanently deleted. For other content, contact support and we can check what's recoverable.</p>
+
+    <h3>Can I change the language?</h3>
+    <p>Yes - go to Settings &gt; Appearance &gt; Language. Choose from English, German (Deutsch), or Polish (Polski). More languages are on the way.</p>
+  </section>
+
+</main>
+
+<footer>
+  <p>Do-Do &mdash; <a href="https://do-do.app">do-do.app</a> &nbsp;|&nbsp; <a href="/legal.html">Privacy &amp; Terms</a></p>
+  <p style="margin-top:8px">Questions? Reach us at <a href="mailto:hello@do-do.app">hello@do-do.app</a></p>
+</footer>
+
+</body>
+</html>

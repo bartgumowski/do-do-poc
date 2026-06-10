@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.0";
+const APP_VERSION = "0.8.2";
 const APP_VERSION_DATE = "2026-06-10";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -29,7 +29,13 @@ const LOCALE_CONFIG = (() => {
   const lang = full.split("-")[0];                         // e.g. "de", "pl"
   const region = full.split("-")[1] || "";                 // e.g. "ch", "de", ""
 
-  if (lang === "pl") return LOCALE_CONFIGS.pl;
+  // Also check the saved in-app language preference (set via the language selector).
+  // i18n.js runs before app.js, so window.getCurrentLang() is available here.
+  // This ensures a user who set the app to Polish sees PLN even if their browser is English.
+  const appLang = (typeof window.getCurrentLang === "function" ? window.getCurrentLang() : null)
+    || (() => { try { return localStorage.getItem("do-do-lang"); } catch { return null; } })();
+
+  if (appLang === "pl" || lang === "pl") return LOCALE_CONFIGS.pl;
 
   if (lang === "de" || lang === "fr" || lang === "it" || lang === "rm") {
     // Swiss regions use a -CH suffix; all others default to EUR

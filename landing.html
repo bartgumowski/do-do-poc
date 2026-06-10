@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do-Do - dobro dziecka na pierwszym miejscu | aplikacja dla rodziców po rozstaniu</title>
+<meta name="description" content="Zadbaj o dobro dziecka po rozstaniu: wspólna tablica spraw, harmonogram opieki, rozliczone wydatki i mniej konfliktów, których dziecko jest świadkiem. Po polsku, dane w UE.">
+<meta property="og:title" content="Do-Do - dobro dziecka zawsze na pierwszym miejscu">
+<meta property="og:description" content="Rozejście się nigdy nie jest łatwe. Ale rozstaliście się ze sobą - nie z dzieckiem. Jedna wspólna tablica spraw, jasne ustalenia, spokojniejsze dzieciństwo w dwóch domach.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://do-do.app/">
+<meta name="theme-color" content="#1F6F5C">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Do-Do",
+  "applicationCategory": "LifestyleApplication",
+  "operatingSystem": "Web (PWA)",
+  "description": "Wspólna tablica spraw dla rodziców po rozstaniu: harmonogram opieki, decyzje o szkole i zdrowiu, wydatki, lista zakupów i przypomnienia - z dobrem dziecka w centrum.",
+  "offers": { "@type": "Offer", "price": "35.00", "priceCurrency": "PLN" },
+  "inLanguage": "pl"
+}
+</script>
+<style>
+  :root{
+    --green:#1F6F5C; --green-dark:#175249; --green-light:#E8F2EF;
+    --ink:#1c2422; --muted:#5b6663; --bg:#ffffff; --warm:#FDF6EC; --amber:#E8A33D;
+    --radius:14px; --shadow:0 8px 30px rgba(23,82,73,.10);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  h1,h2,h3{line-height:1.2;font-weight:800}
+  h2{font-size:clamp(26px,4vw,38px);margin-bottom:14px}
+  .sub{color:var(--muted);font-size:18px;max-width:680px}
+  section{padding:72px 0}
+  .btn{display:inline-block;padding:14px 28px;border-radius:999px;font-weight:700;text-decoration:none;font-size:17px;transition:transform .15s ease, box-shadow .15s ease;cursor:pointer;border:none}
+  .btn:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .btn-primary{background:var(--green);color:#fff}
+  .btn-ghost{background:transparent;color:var(--green);border:2px solid var(--green)}
+  /* nav */
+  nav{position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid #eee;z-index:50}
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .logo{font-size:24px;font-weight:900;color:var(--green);text-decoration:none}
+  .nav-links{display:flex;gap:26px;align-items:center}
+  .nav-links a{color:var(--ink);text-decoration:none;font-weight:600;font-size:15px}
+  .nav-links a:hover{color:var(--green)}
+  @media(max-width:760px){.nav-links a:not(.btn){display:none}}
+  /* hero */
+  .hero{background:linear-gradient(180deg,var(--green-light) 0%,#fff 100%);padding:88px 0 64px}
+  .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center}
+  @media(max-width:860px){.hero-grid{grid-template-columns:1fr}}
+  .hero h1{font-size:clamp(34px,5.5vw,54px);margin-bottom:18px}
+  .hero h1 em{font-style:normal;color:var(--green)}
+  .hero p{font-size:20px;color:var(--muted);margin-bottom:28px;max-width:540px}
+  .hero-cta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .hero-note{font-size:14px;color:var(--muted)}
+  /* phone mock */
+  .phone{background:#fff;border:1px solid #e5e9e8;border-radius:32px;box-shadow:var(--shadow);padding:22px;max-width:340px;margin:0 auto}
+  .phone .bar{height:6px;width:90px;background:#e5e9e8;border-radius:3px;margin:0 auto 18px}
+  .card{border:1px solid #edf0ef;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:14px}
+  .card b{display:block;font-size:13px;color:var(--green);margin-bottom:2px}
+  .chip{display:inline-block;background:var(--green-light);color:var(--green-dark);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;margin-top:6px}
+  /* stats */
+  .stats{background:var(--green);color:#fff;padding:36px 0}
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}
+  @media(max-width:760px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+  .stat b{display:block;font-size:30px;font-weight:900}
+  .stat span{font-size:13px;opacity:.85}
+  /* quotes woven into narrative */
+  .voice{border-left:4px solid var(--amber);background:var(--warm);border-radius:0 var(--radius) var(--radius) 0;padding:22px 26px;margin:30px 0;max-width:760px}
+  .voice p{font-size:17px;font-style:italic;color:var(--ink);margin-bottom:8px}
+  .voice cite{font-style:normal;font-size:14px;color:var(--muted)}
+  .voice cite a{color:var(--green);font-weight:700;text-decoration:none}
+  .voice.green{border-left-color:var(--green);background:var(--green-light)}
+  /* problem scenes */
+  .scenes{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:34px}
+  @media(max-width:760px){.scenes{grid-template-columns:1fr}}
+  .scene{border:1px solid #eee;border-radius:var(--radius);padding:22px 24px}
+  .scene b{display:block;margin-bottom:6px;font-size:16px}
+  .scene p{font-size:15px;color:var(--muted)}
+  .scene .kid{margin-top:10px;font-size:14px;color:var(--green-dark);font-weight:600}
+  /* features */
+  .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:40px}
+  @media(max-width:860px){.feat-grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.feat-grid{grid-template-columns:1fr}}
+  .feat{border:1px solid #e9edec;border-radius:var(--radius);padding:26px;transition:box-shadow .2s}
+  .feat:hover{box-shadow:var(--shadow)}
+  .feat .ico{font-size:30px;margin-bottom:12px}
+  .feat h3{font-size:18px;margin-bottom:8px}
+  .feat p{font-size:15px;color:var(--muted)}
+  .soon{margin-top:34px;border:1px dashed #cfd9d6;border-radius:var(--radius);padding:18px 24px;font-size:14.5px;color:var(--muted)}
+  /* steps */
+  .steps{background:var(--warm)}
+  .step-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:38px}
+  @media(max-width:760px){.step-grid{grid-template-columns:1fr}}
+  .step{background:#fff;border-radius:var(--radius);padding:28px;border:1px solid #f0e8d8}
+  .step .num{width:38px;height:38px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;margin-bottom:14px}
+  .step h3{font-size:17px;margin-bottom:8px}
+  .step p{font-size:15px;color:var(--muted)}
+  /* pricing */
+  .price-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;margin-top:40px;align-items:stretch;max-width:760px;margin-left:auto;margin-right:auto}
+  @media(max-width:760px){.price-grid{grid-template-columns:1fr}}
+  .plan{border:1px solid #e9edec;border-radius:var(--radius);padding:30px;display:flex;flex-direction:column}
+  .plan.hot{border:2px solid var(--green);position:relative;box-shadow:var(--shadow)}
+  .plan .badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--amber);color:#fff;font-size:12px;font-weight:800;padding:4px 14px;border-radius:999px;letter-spacing:.4px}
+  .plan h3{font-size:19px}
+  .plan .price{font-size:38px;font-weight:900;margin:10px 0 2px}
+  .plan .price small{font-size:15px;font-weight:600;color:var(--muted)}
+  .plan .per{font-size:13.5px;color:var(--green);font-weight:700;margin-bottom:16px}
+  .plan ul{list-style:none;margin-bottom:24px;flex:1}
+  .plan li{padding:6px 0 6px 26px;position:relative;font-size:14.5px}
+  .plan li::before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:800}
+  .anchor-note{text-align:center;margin-top:26px;color:var(--muted);font-size:15px;max-width:680px;margin-left:auto;margin-right:auto}
+  /* faq */
+  details{border:1px solid #e9edec;border-radius:12px;padding:18px 22px;margin-bottom:12px}
+  summary{font-weight:700;cursor:pointer;font-size:16.5px}
+  details p{margin-top:10px;color:var(--muted);font-size:15px}
+  /* final cta */
+  .final{background:var(--green);color:#fff;text-align:center}
+  .final h2{color:#fff}
+  .final p{opacity:.9;max-width:560px;margin:0 auto 28px}
+  .final .btn-primary{background:#fff;color:var(--green)}
+  .signup{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  .signup input{padding:14px 18px;border-radius:999px;border:none;font-size:16px;min-width:280px}
+  /* footer */
+  footer{padding:42px 0;font-size:13.5px;color:var(--muted);border-top:1px solid #eee}
+  .foot{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:28px}
+  @media(max-width:760px){.foot{grid-template-columns:1fr}}
+  footer a{color:var(--muted)}
+  footer b{color:var(--ink);display:block;margin-bottom:8px;font-size:14px}
+  footer li{list-style:none;padding:3px 0}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-in">
+    <a class="logo" href="#">Do-Do</a>
+    <div class="nav-links">
+      <a href="#codzienne">Codzienność</a>
+      <a href="#funkcje">Jak pomagamy</a>
+      <a href="#jak">Jak zacząć</a>
+      <a href="#cennik">Cennik</a>
+      <a href="#faq">FAQ</a>
+      <a href="#start" class="btn btn-primary" style="padding:10px 22px;font-size:15px">Zacznij za darmo</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <h1>Dwa domy. <em>Jedno dzieciństwo.</em></h1>
+      <p>Rozejście się nigdy nie jest łatwe - dla nikogo. Ale rozstaliście się ze sobą, nie z dzieckiem. Do-Do to wspólna tablica spraw Waszej rodziny: harmonogram, decyzje, wydatki - żeby najważniejsze nigdy nie ginęło między domami.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#start">Zacznij za darmo</a>
+        <a class="btn btn-ghost" href="#codzienne">Zobacz, co zmienia</a>
+      </div>
+      <div class="hero-note">Mniej planowania. Więcej czasu razem. · Drugi rodzic dołącza bezpłatnie · Dane w UE</div>
+    </div>
+    <div class="phone" aria-hidden="true">
+      <div class="bar"></div>
+      <div class="card"><b>DO USTALENIA · SZKOŁA</b>Zgoda na wycieczkę Tomka - do piątku<span class="chip">oboje to widzicie</span></div>
+      <div class="card"><b>HARMONOGRAM</b>Środa: Tomek u taty · odbiór 15:30</div>
+      <div class="card"><b>WYDATKI</b>Buty sportowe - 380 zł<span class="chip">do rozliczenia 50/50</span></div>
+      <div class="card"><b>ZAKUPY · PRZYPOMNIENIE</b>Syrop na kaszel · podać wieczorem<span class="chip">w obu domach</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="wrap stats-grid">
+    <div class="stat"><b>77%</b><span>orzeczeń rozwodowych w Polsce to dziś wspólna opieka (2024)</span></div>
+    <div class="stat"><b>~61 tys.</b><span>rozwodów rocznie - a dzieci w nich nie wybierały</span></div>
+    <div class="stat"><b>1</b><span>wspólna tablica zamiast SMS-ów, screenshotów i domysłów</span></div>
+    <div class="stat"><b>UE</b><span>dane Waszej rodziny przechowywane w Unii, zgodnie z RODO</span></div>
+  </div>
+</div>
+
+<section id="codzienne">
+  <div class="wrap">
+    <h2>Codzienność, którą zna każdy rodzic po rozstaniu</h2>
+    <p class="sub">To nie wielkie sprawy sądowe wykańczają rodziców i dzieci. To setki drobiazgów, które co tydzień spadają między dwa domy - i nikt nie wie, po czyjej stronie wylądowały.</p>
+    <div class="scenes">
+      <div class="scene">
+        <b>„Powiedz mamie, że w piątek mam wycieczkę”</b>
+        <p>Dziecko zostaje kurierem między domami. Nosi informacje, prośby o pieniądze, czasem pretensje. To niewidzialny ciężar, który dorośli mogą z niego zdjąć.</p>
+        <p class="kid">Dla dziecka: przestaje być posłańcem dorosłych spraw.</p>
+      </div>
+      <div class="scene">
+        <b>„Myślałam, że ty go dziś odbierasz”</b>
+        <p>Sobota, 13:00, trening się skończył. Każde z Was miało w głowie inny grafik. Dziecko czeka przy bramce i uczy się, że na ustalenia dorosłych nie można liczyć.</p>
+        <p class="kid">Dla dziecka: wie, kto przyjedzie - i ma pewność, że ktoś przyjedzie.</p>
+      </div>
+      <div class="scene">
+        <b>„Czy zapłaciłeś w końcu za te buty?”</b>
+        <p>Niedopowiedziane rozliczenia wracają w najgorszych momentach - przy przekazaniu dziecka, w drzwiach, przy podniesionym głosie. A dziecko słyszy więcej, niż myślicie.</p>
+        <p class="kid">Dla dziecka: pieniądze znikają z rozmów, przy których jest obecne.</p>
+      </div>
+      <div class="scene">
+        <b>„Nikt mi nie powiedział o wizycie u dentysty”</b>
+        <p>Szkoła, zdrowie, zajęcia - informacje trafiają do jednego rodzica, a drugi dowiaduje się po fakcie. Z poczucia pominięcia rodzi się konflikt, którego nikt nie planował.</p>
+        <p class="kid">Dla dziecka: oboje rodziców jest na bieżąco - i oboje może reagować.</p>
+      </div>
+    </div>
+
+    <div class="voice">
+      <p>„Tata nie jest gorszym rodzicem, a dziecko nie jest towarem.”</p>
+      <cite>Marcin Nowak, <a href="https://dzielnytata.pl/" target="_blank" rel="noopener">Stowarzyszenie Dzielny Tata</a> - organizacja wspierająca ojców w aktywnym rodzicielstwie po rozstaniu</cite>
+    </div>
+
+    <p class="sub" style="max-width:760px">W tych codziennych scenach nie chodzi o to, kto wygrał. Chodzi o to, że <b>oboje jesteście rodzicami w pełni</b> - a dziecko potrzebuje Was obojga: poinformowanych, obecnych i niewciąganych w dorosłe rozliczenia. Dokładnie tak stawiają sprawę eksperci.</p>
+
+    <div class="voice green">
+      <p>Potrzeby dziecka powinny znaleźć się w centrum uwagi rozstających się rodziców - to główny cel „Standardów pomocy dziecku w sytuacji rozstania rodziców”, opracowanych przez Komitet Ochrony Praw Dziecka wspólnie z ośmioma organizacjami pomagającymi rodzinie.</p>
+      <cite>Bezpłatny poradnik i kontakty do psychologów, mediatorów i prawników: <a href="http://standardyrozstania.pl/" target="_blank" rel="noopener">standardyrozstania.pl</a> · <a href="https://kopd.pl/" target="_blank" rel="noopener">kopd.pl</a></cite>
+    </div>
+  </div>
+</section>
+
+<section class="steps" style="padding:60px 0">
+  <div class="wrap" style="text-align:center">
+    <h2>Zgoda co do jednego: dobro dziecka</h2>
+    <p class="sub" style="margin:0 auto">Możecie się różnić we wszystkim - ale w jednym jesteście po tej samej stronie: chcecie, żeby Wasze dziecko było bezpieczne i spokojne. Badania publikowane w „Journal of Family Psychology” pokazują, że dzieci znające swój harmonogram z wyprzedzeniem odczuwają niższy poziom lęku. Przewidywalność i mniej konfliktów między rodzicami to nie wygoda - to realny wkład w spokojne dzieciństwo. Do-Do porządkuje właśnie to, co najczęściej psuje spokój: ustalenia, terminy i pieniądze.</p>
+  </div>
+</section>
+
+<section id="funkcje" style="padding-top:64px">
+  <div class="wrap">
+    <h2>Jak pomagamy - dziś, w aplikacji</h2>
+    <p class="sub">Bez obietnic na wyrost: to funkcje, które działają teraz. Każda służy jednemu - żeby logistyka rozstania nie spadała na dziecko.</p>
+    <div class="feat-grid">
+      <div class="feat"><div class="ico">🗂️</div><h3>Wspólna tablica spraw</h3><p>Szkoła, zdrowie, wydatki, sprawy bieżące - jako karty w trzech kolumnach: do ustalenia, moje, zrobione. Oboje widzicie ten sam stan rzeczy, nic nie ginie w SMS-ach.</p></div>
+      <div class="feat"><div class="ico">📅</div><h3>Harmonogram opieki</h3><p>Ustalacie grafik opieki przy konfiguracji rodziny - i oboje patrzycie na tę samą wersję. Dziecko wie, gdzie będzie jutro, a „myślałam, że ty odbierasz” przestaje się zdarzać.</p></div>
+      <div class="feat"><div class="ico">💳</div><h3>Wydatki na dziecko</h3><p>Karta wydatku zamiast pretensji w drzwiach. Kwota, czego dotyczy, status rozliczenia - pieniądze załatwiacie w aplikacji, nie przy dziecku.</p></div>
+      <div class="feat"><div class="ico">🛒</div><h3>Wspólna lista zakupów</h3><p>Syrop, zeszyty, strój na WF - jedna lista dla dwóch domów. To, czego dziecko potrzebuje, jest kupione raz i na pewno.</p></div>
+      <div class="feat"><div class="ico">⏰</div><h3>Przypomnienia</h3><p>Lek do podania, zgoda do podpisania, termin u lekarza. Przypomni się temu rodzicowi, u którego dziecko właśnie jest.</p></div>
+      <div class="feat"><div class="ico">✉️</div><h3>Wiadomości przy sprawach</h3><p>Rozmowa przypięta do konkretnej karty - o wycieczce przy wycieczce, o butach przy butach. Rzeczowo, bez odgrzebywania starych wątków.</p></div>
+    </div>
+    <div class="soon"><b>Uczciwie o tym, co przed nami:</b> pracujemy nad asystentem AI znającym kontekst Waszej rodziny, profilami dzieci (alergie, leki, lekarze), trybem przekazania opieki i rozliczeniami BLIK. Pokażemy je, gdy będą gotowe - nie wcześniej.</div>
+  </div>
+</section>
+
+<section id="jak" class="steps">
+  <div class="wrap">
+    <h2>Start w 3 minuty - drugi rodzic bez opłat</h2>
+    <p class="sub">Najtrudniejszy moment to zaproszenie drugiego rodzica. Dlatego zrobiliśmy go najprostszym - i najbardziej neutralnym.</p>
+    <div class="step-grid">
+      <div class="step"><div class="num">1</div><h3>Konfigurujesz rodzinę</h3><p>Dodajesz dziecko, harmonogram opieki i pierwsze sprawy. Mniej niż 3 minuty - od razu widać, co ogarnięte, a co do ustalenia.</p></div>
+      <div class="step"><div class="num">2</div><h3>Zapraszasz drugiego rodzica</h3><p>Jedno zaproszenie e-mail: „Zebrałam sprawy Tomka w jednym miejscu - zajrzyj, wszystko już jest.” Bez oskarżeń, bez negocjacji, bez karty płatniczej.</p></div>
+      <div class="step"><div class="num">3</div><h3>Patrzycie na to samo</h3><p>Tablica, harmonogram, wydatki - jedna wersja rzeczywistości. Jedna subskrypcja obejmuje Was oboje, a dziecko przestaje być posłańcem.</p></div>
+    </div>
+    <div class="voice" style="margin-top:38px;background:#fff">
+      <p>„Jeśli chociaż jedna osoba skorzysta z naszej pomocy, z naszego wsparcia, to warto to robić.”</p>
+      <cite>Dominika Hapek, prezeska <a href="https://fundacja.sama-mama.pl/" target="_blank" rel="noopener">Fundacji Sama Mama</a> - wsparcie psychologiczne, prawne i grupy wsparcia dla mam w rozstaniu. Z tej samej myśli wyrosło Do-Do: jeden spokojniejszy dom dziecka to już powód, by próbować.</cite>
+    </div>
+  </div>
+</section>
+
+<section id="cennik">
+  <div class="wrap">
+    <h2>Jedna cena. Oboje rodziców.</h2>
+    <p class="sub">Inaczej niż w aplikacjach zagranicznych - u nas subskrypcja obejmuje całą rodzinę. Bo dziecko ma dwoje rodziców, a nie dwóch klientów.</p>
+    <div class="price-grid">
+      <div class="plan">
+        <h3>Za darmo</h3>
+        <div class="price">0 zł</div>
+        <div class="per">na zawsze</div>
+        <ul>
+          <li>Pełny dostęp dla zaproszonego rodzica - bez limitu czasu</li>
+          <li>Wspólna tablica spraw (podstawowy zakres)</li>
+          <li>Harmonogram opieki</li>
+          <li>Pierwsze wydatki i lista zakupów</li>
+        </ul>
+        <a class="btn btn-ghost" href="#start">Zacznij za darmo</a>
+      </div>
+      <div class="plan hot">
+        <div class="badge">DLA CAŁEJ RODZINY</div>
+        <h3>Standard</h3>
+        <div class="price">35 zł<small>/mies.</small></div>
+        <div class="per">za całą rodzinę · 299 zł/rok (~29% taniej)</div>
+        <ul>
+          <li>Wszystko bez limitów - dla obojga rodziców</li>
+          <li>Tablica spraw: szkoła, zdrowie, wydatki, sprawy bieżące</li>
+          <li>Wydatki z rozliczeniami i pełna lista zakupów</li>
+          <li>Przypomnienia i wiadomości przy sprawach</li>
+          <li>Tryb jasny/ciemny, aplikacja na telefon (PWA)</li>
+          <li>Dane w UE, zgodność z RODO</li>
+        </ul>
+        <a class="btn btn-primary" href="#start">Wybieram Standard</a>
+      </div>
+    </div>
+    <p class="anchor-note">Dla porównania: Librus kosztuje ok. 35 zł/mies. i ogarnia tylko szkołę. Godzina u prawnika rodzinnego to 300-500 zł - jedna kłótnia, do której nie doszło, spłaca rok Do-Do. A spokój dziecka nie ma ceny.</p>
+  </div>
+</section>
+
+<section id="faq" style="padding-top:0">
+  <div class="wrap">
+    <h2>Częste pytania</h2>
+    <details>
+      <summary>Co jeśli drugi rodzic nie będzie chciał używać aplikacji?</summary>
+      <p>To najczęstsza obawa - i dlatego zaproszenie jest maksymalnie proste i neutralne: drugi rodzic dostaje e-mail z gotową tablicą rodziny i nigdy nie musi nic płacić, bo jedna subskrypcja obejmuje Was oboje. Pomaga też neutralna rama: „mediator polecił, żebyśmy spróbowali”. A jeśli zaczniecie w pojedynkę - tablica i tak porządkuje Twoją połowę spraw.</p>
+    </details>
+    <details>
+      <summary>Czym Do-Do różni się od Messengera, kalendarza Google i Excela?</summary>
+      <p>Tamte narzędzia nie mają wspólnego kontekstu: Wasze kalendarze to dwa osobne światy, ustalenia toną w wątkach, a Excel nie przypomni o syropie. Do-Do to jedno miejsce, w którym oboje widzicie te same sprawy, terminy i rozliczenia - a dziecko nie musi niczego „przekazywać”.</p>
+    </details>
+    <details>
+      <summary>Czy nadaje się dla rodziców, którzy nie mieli ślubu?</summary>
+      <p>Tak. Do-Do jest dla każdych dwojga rodziców prowadzących dziecko w dwóch domach - po rozwodzie, po rozstaniu, bez ślubu. Nie pytamy o status, pytamy o harmonogram.</p>
+    </details>
+    <details>
+      <summary>Kto widzi dane mojej rodziny?</summary>
+      <p>Tylko Wy oboje. Dane są przechowywane w Unii Europejskiej zgodnie z RODO. Nie sprzedajemy danych i nie wyświetlamy reklam - płacicie za produkt, a nie sobą.</p>
+    </details>
+    <details>
+      <summary>Gdzie szukać wsparcia poza aplikacją?</summary>
+      <p>Aplikacja porządkuje logistykę - ale rozstanie to też emocje, na które warto mieć ludzi, nie narzędzia. Polecamy bezpłatny poradnik „Standardy pomocy dziecku w sytuacji rozstania rodziców” (standardyrozstania.pl), wsparcie Fundacji Sama Mama dla mam (fundacja.sama-mama.pl) i Stowarzyszenia Dzielny Tata dla ojców (dzielnytata.pl). Te organizacje działają niezależnie od Do-Do - łączy nas jedno: dobro dziecka na pierwszym miejscu.</p>
+    </details>
+  </div>
+</section>
+
+<section id="start" class="final">
+  <div class="wrap">
+    <h2>Rozstanie to fakt.<br>Spokojne dzieciństwo to Wasza decyzja.</h2>
+    <p>Skonfiguruj rodzinę w 3 minuty i wyślij jedno zaproszenie. Mniej planowania, więcej czasu razem - a dziecko zyskuje od pierwszego dnia.</p>
+    <form class="signup" action="#" method="post" onsubmit="alert('Tu podłącz zapis (np. Supabase / mailing).');return false;">
+      <input type="email" required placeholder="Twój adres e-mail" aria-label="Adres e-mail">
+      <button class="btn btn-primary" type="submit">Zacznij za darmo</button>
+    </form>
+    <p style="font-size:13px;opacity:.75;margin-top:14px">Bez karty. Drugi rodzic dołącza bezpłatnie.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div>
+      <b style="color:var(--green)">Do-Do</b>
+      Dobro dziecka. Zawsze na pierwszym miejscu.<br>
+      © 2026 Do-Do · Dane w UE · RODO
+    </div>
+    <div>
+      <b>Aplikacja</b>
+      <li><a href="#funkcje">Jak pomagamy</a></li>
+      <li><a href="#cennik">Cennik</a></li>
+      <li><a href="#">Polityka prywatności</a></li>
+      <li><a href="#">Regulamin</a></li>
+    </div>
+    <div>
+      <b>Wiedza i wsparcie</b>
+      <li><a href="http://standardyrozstania.pl/" target="_blank" rel="noopener">Standardy pomocy dziecku (KOPD)</a></li>
+      <li><a href="https://fundacja.sama-mama.pl/" target="_blank" rel="noopener">Fundacja Sama Mama</a></li>
+      <li><a href="https://dzielnytata.pl/" target="_blank" rel="noopener">Stowarzyszenie Dzielny Tata</a></li>
+      <li><a href="#">Dla mediatorów</a></li>
+    </div>
+  </div>
+</footer>
+<!-- Uwaga przed publikacją: cytaty pochodzą z publicznych wypowiedzi/stron organizacji i są linkowane jako źródła wiedzy,
+     nie jako rekomendacja produktu. Przed launchem: zapytać organizacje o zgodę/partnerstwo i zweryfikować aktualność cytatów.
+     Cytowanie Journal of Family Psychology wymaga wskazania konkretnego artykułu. -->
+</body>
+</html>
