@@ -1,5 +1,5 @@
-const APP_VERSION = "0.6.7";
-const APP_VERSION_DATE = "2026-06-09";
+const APP_VERSION = "0.7.1";
+const APP_VERSION_DATE = "2026-06-10";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
 // To add a new market: add an entry to LOCALE_CONFIGS and add the corresponding
@@ -350,6 +350,13 @@ const elements = {
   inviteEmailInput: document.querySelector("#inviteEmailInput"),
   invitePasswordInput: document.querySelector("#invitePasswordInput"),
   inviteError: document.querySelector("#inviteError"),
+  invitePreviewBtn: document.querySelector("#invitePreviewBtn"),
+  guestPreviewScreen: document.querySelector("#guestPreviewScreen"),
+  guestHero: document.querySelector("#guestHero"),
+  guestCardList: document.querySelector("#guestCardList"),
+  guestJoinBtn: document.querySelector("#guestJoinBtn"),
+  guestBackBtn: document.querySelector("#guestBackBtn"),
+  guestError: document.querySelector("#guestError"),
   verifyEmailScreen: document.querySelector("#verifyEmailScreen"),
   verifyEmailHint: document.querySelector("#verifyEmailHint"),
   verifyResendButton: document.querySelector("#verifyResendButton"),
@@ -513,6 +520,9 @@ function bindEvents() {
     event.preventDefault();
     acceptInviteWithPassword(elements.inviteEmailInput?.value.trim(), elements.invitePasswordInput?.value);
   });
+  elements.invitePreviewBtn?.addEventListener("click", showGuestPreview);
+  elements.guestJoinBtn?.addEventListener("click", exitGuestPreview);
+  elements.guestBackBtn?.addEventListener("click", exitGuestPreview);
   elements.onboardingForm?.addEventListener("submit", completeOnboarding);
   elements.onboardingAddChild?.addEventListener("click", () => showToast("Another child can be added from Settings"));
   elements.onboardingSkipPet?.addEventListener("click", () => {
@@ -837,6 +847,91 @@ function showInviteError(message) {
 }
 
 function clearInviteError() { showInviteError(""); }
+
+// ─── SEG-13: Read-only guest preview (no account) ─────────────────────────────
+
+async function showGuestPreview() {
+  const token = pendingInviteToken;
+  if (!token || !elements.guestPreviewScreen) return;
+  const tFn = window.t || ((k) => k);
+
+  if (elements.invitePreviewBtn) elements.invitePreviewBtn.disabled = true;
+
+  let data = null;
+  try {
+    const res = await fetch(`/api/guest-view?token=${encodeURIComponent(token)}`);
+    if (res.ok) data = await res.json();
+  } catch { /* handled below */ }
+
+  if (elements.invitePreviewBtn) elements.invitePreviewBtn.disabled = false;
+
+  if (!data) {
+    showInviteError(tFn("guest.error"));
+    return;
+  }
+
+  // Hero: prefer children names (child-centric framing), fall back to inviter name
+  const heroH1 = elements.guestHero?.querySelector("h1");
+  if (heroH1) {
+    const kids = (data.children || []).filter(Boolean);
+    heroH1.textContent = kids.length > 0
+      ? tFn("guest.hero_title_kids", { kids: kids.join(", ") })
+      : tFn("guest.hero_title", { name: data.inviterName || "Do-Do" });
+  }
+
+  renderGuestCards(data.cards || []);
+
+  if (elements.inviteScreen) elements.inviteScreen.hidden = true;
+  elements.guestPreviewScreen.hidden = false;
+}
+
+function renderGuestCards(cards) {
+  const list = elements.guestCardList;
+  if (!list) return;
+  const tFn = window.t || ((k) => k);
+  list.innerHTML = "";
+
+  if (cards.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "guest-empty";
+    empty.textContent = tFn("guest.empty");
+    list.appendChild(empty);
+    return;
+  }
+
+  cards.forEach((card) => {
+    const row = document.createElement("div");
+    row.className = "guest-card-row";
+
+    const title = document.createElement("strong");
+    title.textContent = card.title || "";
+
+    const meta = document.createElement("span");
+    const parts = [];
+    if (card.child) parts.push(card.child);
+    if (card.dueAt) {
+      try {
+        parts.push(`${tFn("guest.due")}: ${new Date(card.dueAt).toLocaleDateString()}`);
+      } catch { /* skip bad dates */ }
+    }
+    if (card.amount != null && card.amount !== "") parts.push(String(card.amount));
+    meta.textContent = parts.join(" · ");
+
+    const status = document.createElement("em");
+    status.className = `guest-card-status guest-status-${card.status || "todo"}`;
+    status.textContent = tFn(`status.${card.status || "todo"}`);
+
+    row.appendChild(title);
+    if (parts.length) row.appendChild(meta);
+    row.appendChild(status);
+    list.appendChild(row);
+  });
+}
+
+function exitGuestPreview() {
+  if (elements.guestPreviewScreen) elements.guestPreviewScreen.hidden = true;
+  if (elements.inviteScreen) elements.inviteScreen.hidden = false;
+}
 
 async function chooseAuthProvider(provider) {
   if (provider === "Google") {

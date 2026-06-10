@@ -1,4 +1,4 @@
-before commiting always check if the change has been done and if it works
+before commiting always check if the change has been done and if it works and does not break anything else 
 
 ## REQUIRED: Bump version on every push
 
@@ -12,4 +12,4 @@ const APP_VERSION_DATE = "YYYY-MM-DD";  // today's date
 Version is displayed prominently in Settings so Bart can always identify what build he is reviewing.
 Version format: MAJOR.MINOR.PATCH - increment MINOR for each completed segment, PATCH for fixes/small additions.
 
-Current: v0.6.7 (2026-06-09)
+Current: v0.7.1 (2026-06-10)

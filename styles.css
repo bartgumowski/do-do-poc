@@ -5762,7 +5762,7 @@ textarea {
   }
 }
 
-@media (min-width: 761px) {
+@media (min-width: 761px) and (max-width: 1080px) {
   .app-shell {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -7711,4 +7711,113 @@ html[data-theme="dark"] .custody-dialog-preview {
   border-color: var(--ink);
   outline: 2px solid var(--paper);
   outline-offset: -4px;
+}
+
+/* ─── SEG-13: Guest preview (read-only invite, no account) ─────────────────── */
+
+.guest-preview-link {
+  display: block;
+  width: 100%;
+  margin: 14px 0 0;
+  padding: 10px;
+  background: none;
+  border: none;
+  color: var(--accent-strong, var(--ink));
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.guest-preview-note {
+  margin: 2px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.guest-preview-phone {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.guest-banner {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md, 16px);
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.guest-card-list {
+  flex: 1;
+  min-height: 80px;
+  overflow-y: auto;
+  margin: 8px 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guest-card-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md, 16px);
+  background: var(--surface-card, var(--paper));
+  border: 1px solid var(--line);
+}
+
+.guest-card-row strong {
+  flex: 1 1 100%;
+  font-weight: 800;
+}
+
+.guest-card-row span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.guest-card-status {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--soft);
+  color: var(--muted);
+}
+
+.guest-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 24px 0;
+}
+
+.guest-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.guest-actions .auth-switch-button {
+  width: 100%;
+}
+
+.guest-privacy-line {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.guest-privacy-line a {
+  color: inherit;
+  font-weight: 700;
 }

@@ -15,7 +15,7 @@ Version format: MAJOR.MINOR.PATCH
 - Increment MINOR for each completed release segment (SEG-xx)
 - Increment PATCH for hotfixes, small additions, and polish pushes
 
-Current: v0.6.2 (2026-06-08)
+Current: v0.6.7 (2026-06-09)
 
 ## CRITICAL: Curly quote bug - check before every commit
 

@@ -2,6 +2,56 @@
 
 ---
 
+## v0.6.7 - 2026-06-09 - Custody calendar: schedule dialog, day overrides, desktop view
+
+### Parenting schedule dialog
+- "Parenting schedule" / "Set up parenting schedule" button added to the calendar header - opens a `<dialog>` (same modal pattern as card editing) with all schedule settings in one place
+- Dialog fields: enable/disable toggle, schedule type selector, reference start date, colour pickers for each parent (6 palette options each), live colour preview
+- Accessible from the calendar at any time without going into Settings
+
+### Per-day overrides with handover time
+- Agenda panel now shows a **custody strip** for the selected day: who has the kids, colour dot, and three action chips - **Mine / [Co-parent name] / Split**
+- Clicking Mine or Co-parent overrides that specific day immediately, stored as an exception on top of the base schedule
+- Clicking **Split** expands an inline time picker - enter the handover time (e.g. 15:00) and confirm; the day shows a diagonal two-colour gradient in the month grid and "Handover HH:MM" label in the agenda
+- An **overridden** badge appears on days that differ from the base schedule; a **Reset** chip reverts to the automatic schedule
+- Override storage uses an `overrides` map inside `custody-schedule-v1` localStorage key, keyed by `YYYY-MM-DD`
+
+### Week overview strip (agenda panel)
+- 7-tile week strip in the agenda panel shows the whole selected week at a glance: custody colour bar, weekday label, day number, event count badge
+- Click any tile to jump to that day without navigating the month grid
+
+### Desktop calendar improvements
+- Day cells are taller (60px min-height, was 48px) and slightly less rounded on desktop
+- Cell gap tightened to 6px for a denser grid
+
+### Palette-matched custody colours
+- My days: teal tint `rgba(101, 214, 198, 0.2)` - matches the app accent, event dots, privacy note
+- Co-parent days: warm slate `rgba(118, 128, 138, 0.14)` - matches the muted/busy colour used for work calendar blocks
+- Split days render as a diagonal gradient of both colours in the month grid
+
+---
+
+## v0.6.6 - 2026-06-09 - Bug fixes: cookie banner, card dialog buttons, custody calendar foundation
+
+### Cookie banner - two bugs fixed
+- **"Got it" not closing the banner** - root cause: `.cookie-banner { display: flex }` in CSS overrides the `[hidden]` HTML attribute (author styles beat browser UA defaults). Fixed with `.cookie-banner[hidden] { display: none !important; }`.
+- **Unreadable in dark mode** - banner used `background: var(--ink)` which flips to near-white in dark mode while text was hardcoded white. Fixed with a hardcoded `#171918` background that stays dark in all themes.
+
+### Card dialog buttons
+- `.card-dialog .primary-button` now uses `#171918`/white - matches the black Complete button on board cards, not teal
+- `.card-dialog .secondary-button` uses transparent/wireframe style matching board card ghost buttons
+- Dark mode: primary inverts to `var(--ink)` on dark surface
+- Applies to `card-dialog` and `reminder-dialog`
+
+### Custody / parenting schedule (foundation)
+- New **Parenting schedule** section in Settings: enable toggle, schedule type (7-7, 2-2-3, 5-2), reference start date, colour pickers per parent
+- Calendar month and week views tint each day cell based on the active schedule
+- Month view shows a My days / Co-parent days legend above the grid when enabled
+- `getCustodyOwner()`, `getCustodyClass()`, `getCustodySchedule()`, `saveCustodySchedule()`, `applyCustodyColors()` helpers added to `features.js`
+- Colours set as CSS custom properties (`--custody-mine-bg`, `--custody-co-bg`, etc.) driven by saved schedule
+
+---
+
 ## v0.6.3 - 2026-06-08 - i18n: English, German, Polish + visible version in Settings
 
 ### Internationalisation (i18n)
