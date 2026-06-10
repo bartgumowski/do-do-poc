@@ -3662,17 +3662,7 @@ textarea:focus {
   transform: translateX(-50%) translateY(0);
 }
 
-@media (min-width: 1081px) {
-  .phone-tabbar {
-    display: none;
-  }
-  .sidebar {
-    display: flex;
-  }
-  .app-shell {
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
-}
+/* sidebar intentionally hidden on all screen sizes - bottom tabbar used instead */
 
 @media (max-width: 1080px) {
   .app-shell {
