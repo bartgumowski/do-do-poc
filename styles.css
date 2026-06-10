@@ -7014,11 +7014,7 @@ html[data-theme="dark"] .notif-prompt {
   font-weight: 600;
 }
 
-/* Sidebar needs flex-column so version badge sticks to bottom */
-.sidebar {
-  display: flex;
-  flex-direction: column;
-}
+/* flex-direction: column already set in base .sidebar rule */
 
 /* ─── Card type badge ─────────────────────────────────────────────────────── */
 
