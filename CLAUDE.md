@@ -1,5 +1,7 @@
 before commiting always check if the change has been done and if it works and does not break anything else 
 
+No more than 12 Serverless Functions can be added to a Deployment
+
 ## REQUIRED: Bump version on every push
 
 In `app.js` lines 1-2, update both constants before every commit:
