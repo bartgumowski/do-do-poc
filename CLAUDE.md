@@ -1,6 +1,6 @@
 before commiting always check if the change has been done and if it works and does not break anything else 
 
-No more than 12 Serverless Functions can be added to a Deployment
+For Vercel Nno more than 12 Serverless Functions can be added to a Deployment
 
 ## REQUIRED: Bump version on every push
 
@@ -14,4 +14,4 @@ const APP_VERSION_DATE = "YYYY-MM-DD";  // today's date
 Version is displayed prominently in Settings so Bart can always identify what build he is reviewing.
 Version format: MAJOR.MINOR.PATCH - increment MINOR for each completed segment, PATCH for fixes/small additions.
 
-Current: v0.8.0 (2026-06-10)
+Current: v0.8.6 (2026-06-10)

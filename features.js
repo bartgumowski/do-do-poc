@@ -1605,12 +1605,12 @@ function renderCalendarFeature(data) {
       <div class="custody-day-strip">
         <div class="custody-day-who">
           <span class="custody-day-dot-sm" style="background:${dotColor};"></span>
-          <strong>${ownerLabel || "No schedule set"}</strong>
-          ${hasOverride ? `<span class="custody-override-badge">overridden</span>` : ""}
-          ${isSplit ? `<span class="custody-split-time">Handover ${ov.time}</span>` : ""}
+          <strong>${ownerLabel || (window.t?.("cal.no_schedule") ?? "No schedule set")}</strong>
+          ${hasOverride ? `<span class="custody-override-badge">${window.t?.("cal.overridden") ?? "overridden"}</span>` : ""}
+          ${isSplit ? `<span class="custody-split-time">${window.t?.("cal.handover") ?? "Handover"} ${ov.time}</span>` : ""}
         </div>
         <div class="custody-day-actions">
-          <button class="custody-chip ${selectedOwner === "mine" ? "active" : ""}" type="button" data-custody-override="mine">Mine</button>
+          <button class="custody-chip ${selectedOwner === "mine" ? "active" : ""}" type="button" data-custody-override="mine">${window.t?.("cal.mine") ?? "Mine"}</button>
           <button class="custody-chip ${selectedOwner === "co" ? "active" : ""}" type="button" data-custody-override="co">${coparentName}</button>
           <button class="custody-chip" type="button" data-custody-override="split">Split</button>
           ${hasOverride ? `<button class="custody-chip custody-chip-reset" type="button" data-custody-override="auto">Reset</button>` : ""}
@@ -1645,19 +1645,19 @@ function renderCalendarFeature(data) {
       <div class="calendar-topline">
         <button class="round-nav" type="button" data-calendar-nav="-1" aria-label="Previous ${calendarState.view === "month" ? "month" : "week"}">‹</button>
         <div>
-          <span class="calendar-kicker">${calendarState.view}</span>
+          <span class="calendar-kicker">${window.t?.(`cal.view.${calendarState.view}`) ?? capitalize(calendarState.view)}</span>
           <strong>${formatMonthYear(calendarState.cursor)}</strong>
         </div>
         <button class="round-nav" type="button" data-calendar-nav="1" aria-label="Next ${calendarState.view === "month" ? "month" : "week"}">›</button>
       </div>
       <div class="calendar-view-switcher" aria-label="Calendar views">
         ${["month", "week", "day"].map((view) => `
-          <button class="${calendarState.view === view ? "active" : ""}" type="button" data-calendar-view="${view}">${capitalize(view)}</button>
+          <button class="${calendarState.view === view ? "active" : ""}" type="button" data-calendar-view="${view}">${window.t?.(`cal.view.${view}`) ?? capitalize(view)}</button>
         `).join("")}
       </div>
       <button class="custody-schedule-btn" type="button" id="openCustodyDialogBtn" aria-label="Edit parenting schedule">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg>
-        ${custody.enabled ? "Parenting schedule" : "Set up parenting schedule"}
+        ${custody.enabled ? (window.t?.("cal.parenting_schedule") ?? "Parenting schedule") : (window.t?.("cal.set_up_schedule") ?? "Set up parenting schedule")}
       </button>
       <div class="calendar-body">
         ${renderCalendarBody()}
@@ -1667,17 +1667,17 @@ function renderCalendarFeature(data) {
     <section class="calendar-agenda">
       <div class="agenda-heading">
         <div>
-          <span>Selected day</span>
+          <span>${window.t?.("cal.selected_day") ?? "Selected day"}</span>
           <strong>${formatAgendaDate(selectedDate)}</strong>
         </div>
-        <button class="secondary-button feature-action" data-action="Add Do">Add Do</button>
+        <button class="secondary-button feature-action" data-action="Add Do">${window.t?.("cal.add_do") ?? "Add Do"}</button>
       </div>
       ${weekOverview}
       ${custodyStrip}
       <div class="agenda-list">
         ${selectedEvents.length
           ? selectedEvents.map(renderAgendaCard).join("")
-          : `<article class="agenda-empty">No Dos on this day.</article>`}
+          : `<article class="agenda-empty">${window.t?.("cal.no_dos") ?? "No Dos on this day."}</article>`}
       </div>
     </section>
   `;
@@ -1685,7 +1685,7 @@ function renderCalendarFeature(data) {
   featureModule.querySelectorAll(".feature-action").forEach((button) => {
     button.addEventListener("click", () => {
       addCalendarEvent();
-      showFeatureToast("Do added to selected day");
+      showFeatureToast(window.t?.("cal.toast_do_added") ?? "Do added to selected day");
     });
   });
 
@@ -1795,11 +1795,11 @@ function renderMonthView() {
     <div class="custody-legend">
       <span class="custody-legend-item">
         <span class="custody-legend-dot" style="background:${custody.myColor};"></span>
-        My days
+        ${window.t?.("cal.my_days") ?? "My days"}
       </span>
       <span class="custody-legend-item">
         <span class="custody-legend-dot" style="background:${custody.coColor};"></span>
-        Co-parent days
+        ${window.t?.("cal.co_days") ?? "Co-parent days"}
       </span>
     </div>` : "";
   return `
@@ -1856,7 +1856,7 @@ function renderWeekView() {
           <button class="week-day ${key === calendarState.selected ? "selected" : ""}${weekDayConflicts.length ? " has-conflict" : ""}${custodyWeekClass ? " " + custodyWeekClass : ""}" type="button" data-calendar-day="${key}">
             <span>${weekdayLabel(date)}</span>
             <strong>${date.getDate()}${conflictTag}</strong>
-            <em>${events.length ? `${events.length} item${events.length === 1 ? "" : "s"}` : "Clear"}</em>
+            <em>${events.length ? `${events.length} ${window.t?.("cal.item") ?? "item"}${events.length === 1 ? "" : (window.t?.("cal.item_s") ?? "s")}` : (window.t?.("cal.clear") ?? "Clear")}</em>
           </button>
         `;
       }).join("")}
@@ -2065,7 +2065,7 @@ function buildCalendarEvents(baseDate) {
     return {
       cardId: item.id,
       date: toCalendarKey(date),
-      time: item.allDay ? "All day" : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      time: item.allDay ? (window.t?.("cal.all_day") ?? "All day") : date.toLocaleTimeString(_getDateLocale(), { hour: "2-digit", minute: "2-digit", hour12: false }),
       title: isBusy ? "Busy" : item.title,
       detail: isBusy ? "Private calendar - details hidden" : (item.description || "Family calendar"),
       kind: isBusy ? "busy" : "event",
@@ -2083,7 +2083,7 @@ function _cardToCalEvent(card, date) {
   return {
     cardId: card.id,
     date: toCalendarKey(date),
-    time: date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+    time: date.toLocaleTimeString(_getDateLocale(), { hour: "2-digit", minute: "2-digit", hour12: false }),
     title: card.title,
     detail: buildCalendarCardDetail(card),
     kind: calendarKindForCard(card),
@@ -2264,16 +2264,21 @@ function startOfWeek(date) {
   return addDays(date, -((date.getDay() + 6) % 7));
 }
 
+function _getDateLocale() {
+  const lang = window.getCurrentLang?.() || localStorage.getItem("do-do-lang") || (navigator.language || "en").split("-")[0];
+  return lang === "pl" ? "pl-PL" : lang === "de" ? "de-DE" : "en-US";
+}
+
 function formatMonthYear(date) {
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return date.toLocaleDateString(_getDateLocale(), { month: "long", year: "numeric" });
 }
 
 function formatAgendaDate(date) {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return date.toLocaleDateString(_getDateLocale(), { month: "short", day: "numeric" });
 }
 
 function weekdayLabel(date) {
-  return date.toLocaleDateString("en-US", { weekday: "short" });
+  return date.toLocaleDateString(_getDateLocale(), { weekday: "short" });
 }
 
 function capitalize(value) {
