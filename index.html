@@ -738,6 +738,35 @@
           <input id="reminderTimeInput" type="datetime-local" required />
         </label>
 
+        <div class="reminder-recurring-section">
+          <label class="reminder-recurring-toggle-row">
+            <span>Repeat</span>
+            <input type="checkbox" id="reminderRecurringToggle" />
+          </label>
+          <div id="reminderRecurringOptions" style="display:none;">
+            <label class="clean-field" style="margin-top:8px;">
+              <span>Frequency</span>
+              <select id="reminderRecurFreq">
+                <option value="daily">Every day</option>
+                <option value="weekly" selected>Every week</option>
+                <option value="biweekly">Every 2 weeks</option>
+                <option value="monthly">Every month</option>
+                <option value="yearly">Every year</option>
+              </select>
+            </label>
+            <div id="reminderRecurDaysRow" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+              <span style="font-size:12px;color:var(--muted);width:100%;margin-bottom:2px;">On days</span>
+              <label class="recur-day-pill"><input type="checkbox" class="reminder-recur-day" value="Mon" /> Mon</label>
+              <label class="recur-day-pill"><input type="checkbox" class="reminder-recur-day" value="Tue" /> Tue</label>
+              <label class="recur-day-pill"><input type="checkbox" class="reminder-recur-day" value="Wed" /> Wed</label>
+              <label class="recur-day-pill"><input type="checkbox" class="reminder-recur-day" value="Thu" /> Thu</label>
+              <label class="recur-day-pill"><input type="checkbox" class="reminder-recur-day" value="Fri" /> Fri</label>
+              <label class="recur-day-pill"><input type="checkbox" class="reminder-recur-day" value="Sat" /> Sat</label>
+              <label class="recur-day-pill"><input type="checkbox" class="reminder-recur-day" value="Sun" /> Sun</label>
+            </div>
+          </div>
+        </div>
+
         <div class="dialog-actions">
           <button class="ghost-button" type="button" id="clearReminderButton">Clear</button>
           <button class="primary-button" type="submit">Save</button>

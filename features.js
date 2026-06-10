@@ -1,5 +1,25 @@
 const today = new Date();
 const shoppingStorageKey = "do-do-shopping-lists-v1";
+const shoppingCustomListsKey = "do-do-shopping-custom-lists-v1";
+
+function loadCustomShoppingLists() {
+  try {
+    const raw = window.appStorage?.getItem(shoppingCustomListsKey);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveCustomShoppingLists(lists) {
+  window.appStorage?.setItem(shoppingCustomListsKey, JSON.stringify(lists));
+}
+
+function addCustomShoppingList(name) {
+  const lists = loadCustomShoppingLists();
+  const key = "custom-" + Date.now();
+  lists.push({ key, name, items: [] });
+  saveCustomShoppingLists(lists);
+  return key;
+}
 
 // ─── Custody / parenting schedule ────────────────────────────────────────────
 
@@ -780,6 +800,40 @@ function openCustodyScheduleDialog() {
   dialog.showModal();
 }
 
+// Propagate the current week's per-day overrides to all other weeks in a 2-year window.
+// Maps each day-of-week (0=Sun..6=Sat) to its override from the reference week, then
+// applies those overrides to every matching weekday across -52..+52 weeks.
+function propagateWeekSchedule(referenceWeekDays, schedule) {
+  // Build a map: dayOfWeek (0-6) -> override value (or null to clear)
+  const pattern = {};
+  referenceWeekDays.forEach((d) => {
+    const dow = d.getDay(); // 0=Sun
+    const key = toCalendarKey(d);
+    const ov = (schedule.overrides || {})[key] || null;
+    pattern[dow] = ov;
+  });
+
+  const today = new Date();
+  const newOverrides = { ...(schedule.overrides || {}) };
+
+  // Apply across 104 weeks (-52 to +52)
+  for (let w = -52; w <= 52; w++) {
+    referenceWeekDays.forEach((refDay) => {
+      const target = addDays(refDay, w * 7);
+      const k = toCalendarKey(target);
+      const ov = pattern[refDay.getDay()];
+      if (ov) {
+        newOverrides[k] = ov;
+      } else {
+        delete newOverrides[k];
+      }
+    });
+  }
+
+  const updated = { ...schedule, overrides: newOverrides };
+  saveCustodySchedule(updated);
+}
+
 window.openCustodyScheduleDialog = openCustodyScheduleDialog;
 
 function bindCustodySettings() {
@@ -964,6 +1018,15 @@ function bindAutomationSettings() {
     showFeatureToast(window.t?.("toast.lang_changed") ?? "Language updated");
   });
 
+  // Currency selector (independent of language)
+  const currencySelect = featureModule.querySelector("#currencyPreference");
+  currencySelect?.addEventListener("change", () => {
+    window.setCurrencyPreference?.(currencySelect.value);
+    showFeatureToast(`Currency set to ${currencySelect.value}`);
+    // Reload so LOCALE_CONFIG re-initializes with the new value
+    setTimeout(() => location.reload(), 800);
+  });
+
   // Siri / Shortcuts integration
   // Tapping "Install Shortcut" fetches the user's token silently, then downloads
   // a personalised .shortcut file from /api/siri-shortcut with the token pre-embedded.
@@ -1047,21 +1110,33 @@ async function renderShoppingFeature() {
 
 function _renderShoppingBoard(lists) {
   const board = featureModule.querySelector("#shoppingBoard") || featureModule;
+  const customLists = loadCustomShoppingLists();
   board.innerHTML = `
     ${renderShoppingGroup("groceries", window.t ? window.t("shopping.groceries") : "Groceries", lists.groceries)}
     ${renderShoppingGroup("other", window.t ? window.t("shopping.other") : "Other", lists.other)}
+    ${customLists.map((cl) => renderShoppingGroup(cl.key, cl.name, cl.items)).join("")}
+    <div class="shopping-add-list-row">
+      <button class="ghost-button" type="button" id="addAnotherListBtn">+ ${window.t?.("shopping.add_list") ?? "Add another list"}</button>
+    </div>
   `;
 
   board.querySelectorAll("[data-shopping-check]").forEach((input) => {
+    const id = input.dataset.shoppingCheck;
+    if (typeof id === "string" && id.startsWith("custom-")) return; // handled separately below
     input.addEventListener("change", async () => {
-      const id = input.dataset.shoppingCheck;
       const listKey = input.dataset.shoppingList;
-      if (id.startsWith(listKey + "-")) {
+      const myName = typeof getMyName === "function" ? getMyName() : "";
+      if (typeof id === "string" && id.startsWith(listKey + "-")) {
         // localStorage item
         const nextLists = loadShoppingLists();
         const list = nextLists[listKey] || [];
         const item = list.find((e) => e.id === id);
-        if (item) { item.bought = input.checked; saveShoppingLists(nextLists); }
+        if (item) {
+          item.bought = input.checked;
+          item.boughtBy = input.checked ? myName : null;
+          saveShoppingLists(nextLists);
+        }
+        _renderShoppingBoard(nextLists);
       } else {
         // Supabase item
         await window.toggleShoppingItem?.(id, input.checked);
@@ -1070,13 +1145,26 @@ function _renderShoppingBoard(lists) {
     });
   });
 
-  // Delete individual item
+  // Remove custom list
+  board.querySelectorAll("[data-shopping-remove-list]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const listKey = btn.dataset.shoppingRemoveList;
+      if (!confirm("Remove this list and all its items?")) return;
+      const cls = loadCustomShoppingLists();
+      saveCustomShoppingLists(cls.filter((l) => l.key !== listKey));
+      window.loadShoppingItems?.().then((refreshed) => _renderShoppingBoard(refreshed || loadShoppingLists()));
+    });
+  });
+
+  // Delete individual item (groceries / other - not custom lists)
   board.querySelectorAll("[data-shopping-delete]").forEach((btn) => {
+    const id = btn.dataset.shoppingDelete;
+    if (typeof id === "string" && id.startsWith("custom-")) return; // handled separately below
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      const id = btn.dataset.shoppingDelete;
-      if (id.includes("-")) {
-        // localStorage item (id format: "groceries-1234567")
+      const isLocalStorage = typeof id === "string" && /^(groceries|other)-/.test(id);
+      if (isLocalStorage) {
         const listKey = id.split("-")[0];
         const nextLists = loadShoppingLists();
         nextLists[listKey] = (nextLists[listKey] || []).filter((item) => item.id !== id);
@@ -1097,6 +1185,17 @@ function _renderShoppingBoard(lists) {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const listKey = btn.dataset.shoppingClear;
+
+      // Custom list: clear bought items from custom storage only
+      if (listKey.startsWith("custom-")) {
+        const cls = loadCustomShoppingLists();
+        const cl = cls.find((l) => l.key === listKey);
+        if (cl) { const n = (cl.items || []).filter((i) => i.bought).length; cl.items = (cl.items || []).filter((i) => !i.bought); saveCustomShoppingLists(cls); showFeatureToast(`Cleared ${n} bought item${n !== 1 ? "s" : ""}`); }
+        const refreshed = await window.loadShoppingItems?.();
+        _renderShoppingBoard(refreshed || loadShoppingLists());
+        return;
+      }
+
       // Get current lists to find bought Supabase items
       const refreshed = await window.loadShoppingItems?.();
       const current = refreshed || loadShoppingLists();
@@ -1139,6 +1238,20 @@ function _renderShoppingBoard(lists) {
       const listKey = form.dataset.shoppingAddForm;
       input.value = "";
 
+      // Custom list (localStorage only)
+      if (listKey.startsWith("custom-")) {
+        const cls = loadCustomShoppingLists();
+        const cl = cls.find((l) => l.key === listKey);
+        if (cl) {
+          cl.items = cl.items || [];
+          cl.items.push({ id: `${listKey}-${Date.now()}`, label, bought: false });
+          saveCustomShoppingLists(cls);
+        }
+        const refreshed = await window.loadShoppingItems?.();
+        _renderShoppingBoard(refreshed || loadShoppingLists());
+        return;
+      }
+
       // Try Supabase, fall back to localStorage
       const saved = await window.addShoppingItem?.(listKey, label);
       if (saved) {
@@ -1156,6 +1269,51 @@ function _renderShoppingBoard(lists) {
       showFeatureToast(`${window.t?.("toast.added") ?? "Added"} – ${groupName}`);
     });
   });
+
+  // Delete for custom-list items
+  board.querySelectorAll("[data-shopping-delete]").forEach((btn) => {
+    const id = btn.dataset.shoppingDelete;
+    if (typeof id === "string" && id.startsWith("custom-")) {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const listKey = id.split("-").slice(0, 2).join("-"); // "custom-TIMESTAMP"
+        const cls = loadCustomShoppingLists();
+        const cl = cls.find((l) => l.key === listKey);
+        if (cl) { cl.items = (cl.items || []).filter((item) => item.id !== id); saveCustomShoppingLists(cls); }
+        const refreshed = await window.loadShoppingItems?.();
+        _renderShoppingBoard(refreshed || loadShoppingLists());
+        showFeatureToast(window.t?.("toast.removed") ?? "Removed");
+      });
+    }
+  });
+
+  // Toggle for custom-list items
+  board.querySelectorAll("[data-shopping-check]").forEach((input) => {
+    const id = input.dataset.shoppingCheck;
+    if (typeof id === "string" && id.startsWith("custom-")) {
+      input.addEventListener("change", async () => {
+        const listKey = id.split("-").slice(0, 2).join("-");
+        const myName = typeof getMyName === "function" ? getMyName() : "";
+        const cls = loadCustomShoppingLists();
+        const cl = cls.find((l) => l.key === listKey);
+        if (cl) {
+          const item = (cl.items || []).find((it) => it.id === id);
+          if (item) { item.bought = input.checked; item.boughtBy = input.checked ? myName : null; }
+          saveCustomShoppingLists(cls);
+        }
+        const refreshed = await window.loadShoppingItems?.();
+        _renderShoppingBoard(refreshed || loadShoppingLists());
+      });
+    }
+  });
+
+  // "Add another list" button
+  board.querySelector("#addAnotherListBtn")?.addEventListener("click", () => {
+    const name = prompt(window.t?.("shopping.new_list_prompt") ?? "List name:");
+    if (!name || !name.trim()) return;
+    addCustomShoppingList(name.trim());
+    window.loadShoppingItems?.().then((refreshed) => _renderShoppingBoard(refreshed || loadShoppingLists()));
+  });
 }
 
 function renderShoppingGroup(key, title, items) {
@@ -1165,6 +1323,7 @@ function renderShoppingGroup(key, title, items) {
   const addPlaceholder = window.t ? window.t("shopping.add_ph") : "Add or dictate an item";
   const clearLabel = window.t ? window.t("shopping.clear_bought", { n: boughtCount }) : `Clear bought (${boughtCount})`;
   const leftLabel = window.t ? window.t("shopping.items_left", { n: remaining }) : `${remaining} left`;
+  const isCustom = key.startsWith("custom-");
   return `
     <section class="feature-panel shopping-group">
       <div class="shopping-group-header">
@@ -1172,23 +1331,8 @@ function renderShoppingGroup(key, title, items) {
         <div class="shopping-group-header-actions">
           ${boughtCount > 0 ? `<button class="shopping-clear-btn" type="button" data-shopping-clear="${key}" title="${clearLabel}">${clearLabel}</button>` : ""}
           <span>${leftLabel}</span>
+          ${isCustom ? `<button class="shopping-remove-list-btn ghost-button" type="button" data-shopping-remove-list="${key}" title="Remove list" style="font-size:11px;padding:2px 8px;color:var(--muted);">Remove list</button>` : ""}
         </div>
-      </div>
-      <div class="shopping-list">
-        ${items.map((item) => `
-          <div class="shopping-row-wrap ${item.bought ? "bought" : ""}">
-            <label class="shopping-row">
-              <input type="checkbox" data-shopping-list="${key}" data-shopping-check="${item.id}" ${item.bought ? "checked" : ""} />
-              <strong>${escapeFeatureHtml(item.label)}</strong>
-              ${item.bought && item.boughtBy ? renderShoppingBuyer(item.boughtBy) : ""}
-            </label>
-            <button class="shopping-delete-btn" type="button" data-shopping-delete="${item.id}" aria-label="Remove ${escapeFeatureHtml(item.label)}">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14">
-                <path d="M12 4 4 12M4 4l8 8"/>
-              </svg>
-            </button>
-          </div>
-        `).join("")}
       </div>
       <form class="shopping-capture" data-shopping-add-form="${key}">
         <input data-shopping-input placeholder="${addPlaceholder}" autocomplete="off" />
@@ -1200,6 +1344,22 @@ function renderShoppingGroup(key, title, items) {
         </button>
         <button class="shopping-add" type="submit" aria-label="+ ${title}">+</button>
       </form>
+      <div class="shopping-list">
+        ${items.map((item) => `
+          <div class="shopping-row-wrap ${item.bought ? "bought" : ""}">
+            <label class="shopping-row">
+              <input type="checkbox" data-shopping-list="${key}" data-shopping-check="${item.id}" ${item.bought ? "checked" : ""} />
+              <strong>${escapeFeatureHtml(item.label)}</strong>
+              ${item.boughtBy ? renderShoppingBuyer(item.boughtBy) : ""}
+            </label>
+            <button class="shopping-delete-btn" type="button" data-shopping-delete="${item.id}" aria-label="Remove ${escapeFeatureHtml(item.label)}">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14">
+                <path d="M12 4 4 12M4 4l8 8"/>
+              </svg>
+            </button>
+          </div>
+        `).join("")}
+      </div>
     </section>
   `;
 }
@@ -1223,22 +1383,54 @@ function escapeFeatureHtml(value) {
 }
 
 function renderExpensesFeature() {
-  const expenseCards = (typeof state !== "undefined" ? state.cards : [])
+  const allCards = (typeof state !== "undefined" ? state.cards : [])
     .filter((card) => card.type === "Expense" || card.topic === "Expenses")
     .sort((a, b) => new Date(a.due || 0) - new Date(b.due || 0));
+
+  // Month filter
+  const now = new Date();
+  const months = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: d.toLocaleString("default", { month: "long", year: "numeric" }) });
+  }
+  // Read selected month from dataset (persisted on featureModule)
+  const selectedMonth = featureModule.dataset.expenseMonth || months[0].value;
+  const [selYear, selMon] = selectedMonth.split("-").map(Number);
+
+  const expenseCards = allCards.filter((card) => {
+    const d = card.due ? new Date(card.due) : null;
+    if (!d) return true; // no due date - show in current month
+    return d.getFullYear() === selYear && d.getMonth() + 1 === selMon;
+  });
+
   const total = expenseCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0);
   const openCards = expenseCards.filter((card) => card.status !== "Done" && card.payment_status !== "paid");
   const paidCards = expenseCards.filter((card) => card.status === "Done" || card.payment_status === "paid");
 
   const myName = typeof getMyName === "function" ? getMyName() : "";
+  const setup = window.getOnboardingState?.() || {};
+  const coparentName = setup.parents?.coparent || "Co-parent";
+
   const balance = computeBalance(expenseCards, myName);
   const balanceAbs = Math.abs(balance);
-  const _sym = LOCALE_CONFIG?.symbol || "CHF";
+  const _sym = (window.LOCALE_CONFIG || LOCALE_CONFIG)?.symbol || "CHF";
   const balanceLabel = balance > 0.01
     ? `<span class="balance-positive">${window.t?.("expense.they_owe", { sym: _sym, amt: formatExpenseCurrency(balanceAbs) }) ?? `They owe you ${_sym} ${formatExpenseCurrency(balanceAbs)}`}</span>`
     : balance < -0.01
     ? `<span class="balance-negative">${window.t?.("expense.you_owe", { sym: _sym, amt: formatExpenseCurrency(balanceAbs) }) ?? `You owe ${_sym} ${formatExpenseCurrency(balanceAbs)}`}</span>`
     : `<span class="balance-zero">${window.t?.("expense.settled") ?? "Settled up"}</span>`;
+
+  // Per-parent paid breakdown
+  function paidByParent(name) {
+    return paidCards.reduce((sum, card) => {
+      const isPrimary = card.author === name || card.assignee === name;
+      const amt = expenseAmount(card.amount);
+      return sum + (isPrimary ? amt : 0);
+    }, 0);
+  }
+  const myPaid = paidByParent(myName);
+  const coPaid = paidCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0) - myPaid;
 
   const _t = window.t || ((k) => k);
   featureModule.innerHTML = `
@@ -1248,8 +1440,20 @@ function renderExpensesFeature() {
         <strong>${_sym} ${formatExpenseCurrency(total)}</strong>
         <p>${_t("expense.desc")}</p>
       </div>
-      <button class="primary-button" type="button" id="addExpenseButton">${_t("expense.add")}</button>
+      <div class="expense-hero-actions">
+        <button class="primary-button" type="button" id="addExpenseButton">${_t("expense.add")}</button>
+        <button class="secondary-button" type="button" id="exportExpensesButton">Export CSV</button>
+      </div>
     </section>
+
+    <div class="expense-month-filter">
+      <label style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;">
+        <span>Month:</span>
+        <select id="expenseMonthSelect" style="font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface-input);color:var(--ink);">
+          ${months.map((m) => `<option value="${m.value}" ${m.value === selectedMonth ? "selected" : ""}>${m.label}</option>`).join("")}
+        </select>
+      </label>
+    </div>
 
     <section class="expense-summary-panel">
       <div class="expense-summary-row">
@@ -1264,6 +1468,14 @@ function renderExpensesFeature() {
         <span>${_t("expense.paid")}</span>
         <strong>${paidCards.length} · ${_sym} ${formatExpenseCurrency(paidCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0))}</strong>
       </div>
+      <div class="expense-summary-row">
+        <span style="font-size:12px;color:var(--muted);">${escapeHtml(myName || "You")} paid</span>
+        <strong style="font-size:13px;">${_sym} ${formatExpenseCurrency(myPaid)}</strong>
+      </div>
+      <div class="expense-summary-row">
+        <span style="font-size:12px;color:var(--muted);">${escapeHtml(coparentName)} paid</span>
+        <strong style="font-size:13px;">${_sym} ${formatExpenseCurrency(coPaid)}</strong>
+      </div>
       <div class="expense-summary-row expense-summary-balance">
         <span>${_t("expense.balance")}</span>
         <strong>${balanceLabel}</strong>
@@ -1274,7 +1486,7 @@ function renderExpensesFeature() {
       <div class="agenda-heading">
         <div>
           <span>${_t("nav.expenses")}</span>
-          <strong>${_t("nav.expenses")}</strong>
+          <strong>${months.find((m) => m.value === selectedMonth)?.label ?? _t("nav.expenses")}</strong>
         </div>
       </div>
       <div class="upcoming-expense-list">
@@ -1287,6 +1499,15 @@ function renderExpensesFeature() {
 
   featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => openCardDialog());
 
+  featureModule.querySelector("#expenseMonthSelect")?.addEventListener("change", (e) => {
+    featureModule.dataset.expenseMonth = e.target.value;
+    renderExpensesFeature();
+  });
+
+  featureModule.querySelector("#exportExpensesButton")?.addEventListener("click", () => {
+    exportExpensesCSV(expenseCards, selectedMonth, _sym);
+  });
+
   // Expense quick-action and request-payment buttons
   featureModule.querySelectorAll("[data-expense-action]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -1297,6 +1518,31 @@ function renderExpensesFeature() {
   });
 
   window.bindUnifiedCardInteractions?.(featureModule);
+}
+
+function exportExpensesCSV(cards, monthLabel, sym) {
+  const headers = ["Title", "Details", "Amount", "Status", "Author", "Assignee", "Due", "Paid"];
+  const rows = cards.map((card) => [
+    card.title || "",
+    card.details || "",
+    card.amount || "",
+    card.payment_status || card.status || "",
+    card.author || "",
+    card.assignee || "",
+    card.due ? new Date(card.due).toLocaleDateString() : "",
+    card.payment_status === "paid" || card.status === "Done" ? "yes" : "no",
+  ]);
+  const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `expenses-${monthLabel}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showFeatureToast(`Exported ${cards.length} expenses`);
 }
 
 // Returns running balance: positive = co-parent owes me, negative = I owe them.
@@ -1619,12 +1865,14 @@ function renderCalendarFeature(data) {
   })() : "";
 
   // Week overview strip (desktop) - shows whole selected week at a glance
+  const weekStart = startOfWeek(selectedDate);
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const weekHasOverrides = weekDays.some((d) => !!(custody.overrides || {})[toCalendarKey(d)]);
+
   const weekOverview = custody.enabled ? (() => {
-    const weekStart = startOfWeek(selectedDate);
     return `
       <div class="custody-week-overview" aria-label="Week custody overview">
-        ${Array.from({ length: 7 }, (_, i) => {
-          const d = addDays(weekStart, i);
+        ${weekDays.map((d) => {
           const k = toCalendarKey(d);
           const owner = getCustodyOwner(d);
           const dotColor = owner === "mine" ? custody.myColor : owner === "co" ? custody.coColor : "transparent";
@@ -1637,7 +1885,13 @@ function renderCalendarFeature(data) {
             ${evts.length ? `<em class="custody-week-ov-count">${evts.length}</em>` : ""}
           </button>`;
         }).join("")}
-      </div>`;
+      </div>
+      ${weekHasOverrides ? `
+        <div class="custody-propagate-row">
+          <button class="ghost-button" type="button" id="propagateWeekBtn" style="font-size:12px;color:var(--muted);padding:4px 10px;">
+            Apply this week's schedule to all weeks
+          </button>
+        </div>` : ""}`;
   })() : "";
 
   featureModule.innerHTML = `
@@ -1778,6 +2032,14 @@ function renderCalendarFeature(data) {
       calendarState.selected = btn.dataset.calendarDay;
       renderCalendarFeature(data);
     });
+  });
+
+  // Propagate this week's schedule to all other weeks
+  featureModule.querySelector("#propagateWeekBtn")?.addEventListener("click", () => {
+    if (!confirm("Apply this week's day-by-day schedule to all other weeks? This will overwrite existing week overrides.")) return;
+    propagateWeekSchedule(weekDays, custody);
+    renderCalendarFeature(data);
+    showFeatureToast("Schedule applied to all weeks");
   });
 
   window.bindUnifiedCardInteractions?.(featureModule);
@@ -2425,6 +2687,17 @@ function renderSpecialPanel(moduleName, part = "all") {
               <option value="en" ${window.getCurrentLang?.() === "en" ? "selected" : ""}>English</option>
               <option value="de" ${window.getCurrentLang?.() === "de" ? "selected" : ""}>Deutsch</option>
               <option value="pl" ${window.getCurrentLang?.() === "pl" ? "selected" : ""}>Polski</option>
+            </select>
+          </label>
+          <label class="settings-select-row">
+            <span>
+              <strong>${window.t?.("settings.currency_label") ?? "Currency"}</strong>
+              <em>${window.t?.("settings.currency_hint") ?? "Used for expenses. Independent of language."}</em>
+            </span>
+            <select id="currencyPreference">
+              <option value="CHF" ${(window.getCurrencyPreference?.() || window.LOCALE_CONFIG?.currency || "CHF") === "CHF" ? "selected" : ""}>CHF - Swiss Franc</option>
+              <option value="EUR" ${(window.getCurrencyPreference?.() || window.LOCALE_CONFIG?.currency) === "EUR" ? "selected" : ""}>EUR - Euro</option>
+              <option value="PLN" ${(window.getCurrencyPreference?.() || window.LOCALE_CONFIG?.currency) === "PLN" ? "selected" : ""}>PLN - Polish Zloty</option>
             </select>
           </label>
         </div>

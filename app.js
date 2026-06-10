@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.7";
+const APP_VERSION = "0.9.0";
 const APP_VERSION_DATE = "2026-06-10";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -24,27 +24,41 @@ const LOCALE_CONFIGS = {
          stripeMonthlyKey: "STRIPE_MONTHLY_PRICE_ID",     stripeAnnualKey: "STRIPE_ANNUAL_PRICE_ID" },
 };
 
-const LOCALE_CONFIG = (() => {
-  const full = (navigator.language || "").toLowerCase();   // e.g. "de-CH", "pl-PL", "de"
-  const lang = full.split("-")[0];                         // e.g. "de", "pl"
-  const region = full.split("-")[1] || "";                 // e.g. "ch", "de", ""
+// Currency preference is now independent of language.
+// Users can override via Settings > Currency. Stored as "do-do-currency" = "PLN" | "EUR" | "CHF".
+function getCurrencyPreference() {
+  try { return localStorage.getItem("do-do-currency") || null; } catch { return null; }
+}
+function setCurrencyPreference(currencyKey) {
+  try { localStorage.setItem("do-do-currency", currencyKey); } catch {}
+}
+window.getCurrencyPreference = getCurrencyPreference;
+window.setCurrencyPreference = setCurrencyPreference;
+// Expose so features.js can read currency symbol without importing app.js internals
+window.LOCALE_CONFIG = null; // will be set after LOCALE_CONFIG is initialised below
 
-  // Also check the saved in-app language preference (set via the language selector).
-  // i18n.js runs before app.js, so window.getCurrentLang() is available here.
-  // This ensures a user who set the app to Polish sees PLN even if their browser is English.
-  const appLang = (typeof window.getCurrentLang === "function" ? window.getCurrentLang() : null)
-    || (() => { try { return localStorage.getItem("do-do-lang"); } catch { return null; } })();
-
-  if (appLang === "pl" || lang === "pl") return LOCALE_CONFIGS.pl;
-
+function _detectLocaleFromBrowser() {
+  const full = (navigator.language || "").toLowerCase();
+  const lang = full.split("-")[0];
+  const region = full.split("-")[1] || "";
+  if (lang === "pl") return LOCALE_CONFIGS.pl;
   if (lang === "de" || lang === "fr" || lang === "it" || lang === "rm") {
-    // Swiss regions use a -CH suffix; all others default to EUR
     if (region === "ch") return LOCALE_CONFIGS.chf;
     return LOCALE_CONFIGS.eur;
   }
+  return LOCALE_CONFIGS.chf;
+}
 
-  return LOCALE_CONFIGS.chf; // default for any unlisted language
+// Build LOCALE_CONFIG: saved currency wins, then browser language, then default CHF.
+// Language no longer influences currency - they are independent settings.
+const LOCALE_CONFIG = (() => {
+  const saved = getCurrencyPreference();
+  if (saved === "PLN") return LOCALE_CONFIGS.pl;
+  if (saved === "EUR") return LOCALE_CONFIGS.eur;
+  if (saved === "CHF") return LOCALE_CONFIGS.chf;
+  return _detectLocaleFromBrowser();
 })();
+window.LOCALE_CONFIG = LOCALE_CONFIG; // expose to features.js
 
 // Returns the correct Stripe price ID for the current locale and billing period.
 function getLocalePriceId(period = "monthly") {
@@ -3406,6 +3420,37 @@ function openReminderDialog(id) {
   elements.reminderTimeInput.value = card.reminder?.time
     ? toDateTimeInputValue(new Date(card.reminder.time))
     : buildReminderTime(card, elements.reminderPresetInput.value);
+
+  // Recurring fields
+  const rec = card.reminder?.recurrence || null;
+  const recurToggle = document.getElementById("reminderRecurringToggle");
+  const recurOptions = document.getElementById("reminderRecurringOptions");
+  const recurFreq = document.getElementById("reminderRecurFreq");
+  const recurDaysRow = document.getElementById("reminderRecurDaysRow");
+
+  if (recurToggle) {
+    recurToggle.checked = !!rec;
+    if (recurOptions) recurOptions.style.display = rec ? "" : "none";
+    if (rec && recurFreq) recurFreq.value = rec.freq || "weekly";
+    const showDays = rec && ["weekly", "biweekly"].includes(rec.freq);
+    if (recurDaysRow) recurDaysRow.style.display = showDays ? "" : "none";
+    if (rec?.days?.length && recurDaysRow) {
+      recurDaysRow.querySelectorAll(".reminder-recur-day").forEach((cb) => {
+        cb.checked = rec.days.includes(cb.value);
+      });
+    }
+
+    recurToggle.onchange = () => {
+      if (recurOptions) recurOptions.style.display = recurToggle.checked ? "" : "none";
+    };
+    if (recurFreq) {
+      recurFreq.onchange = () => {
+        const showD = ["weekly", "biweekly"].includes(recurFreq.value);
+        if (recurDaysRow) recurDaysRow.style.display = showD ? "" : "none";
+      };
+    }
+  }
+
   elements.reminderDialog.showModal();
 }
 
@@ -3444,11 +3489,28 @@ function saveReminder(event) {
   const id = elements.reminderCardId.value;
   const reminderDate = new Date(elements.reminderTimeInput.value);
   if (!id || Number.isNaN(reminderDate.getTime())) return;
+
+  // Read recurring fields
+  const recurToggle = document.getElementById("reminderRecurringToggle");
+  const recurFreq = document.getElementById("reminderRecurFreq");
+  const isRecurring = recurToggle?.checked || false;
+  let recurrence = null;
+  if (isRecurring && recurFreq) {
+    const freq = recurFreq.value;
+    const days = ["weekly", "biweekly"].includes(freq)
+      ? Array.from(document.querySelectorAll(".reminder-recur-day:checked")).map((cb) => cb.value)
+      : [];
+    recurrence = { freq, days };
+  }
+
   const reminder = {
     preset: elements.reminderPresetInput.value,
     time: reminderDate.toISOString(),
+    ...(recurrence ? { recurrence } : {}),
   };
-  const reminderText = `Reminder set for ${formatDate(reminder.time)}`;
+  const reminderText = recurrence
+    ? `Recurring reminder (${recurrence.freq}) set from ${formatDate(reminder.time)}`
+    : `Reminder set for ${formatDate(reminder.time)}`;
   state.cards = state.cards.map((item) => (
     item.id === id
       ? {

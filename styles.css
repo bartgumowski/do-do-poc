@@ -2778,6 +2778,62 @@ svg {
   gap: 16px;
 }
 
+.reminder-recurring-section {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.reminder-recurring-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.recur-day-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  cursor: pointer;
+  background: var(--surface);
+  transition: background 0.12s, color 0.12s;
+}
+
+.recur-day-pill:has(input:checked) {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* Shopping: add-list row */
+.shopping-add-list-row {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 16px;
+}
+
+/* Expense: hero actions row */
+.expense-hero-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Expense: month filter */
+.expense-month-filter {
+  padding: 0 0 4px;
+}
+
 .message-card-context {
   display: grid;
   gap: 5px;
