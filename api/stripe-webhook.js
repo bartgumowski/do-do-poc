@@ -42,16 +42,16 @@ module.exports = async function handler(req, res) {
   const sig = req.headers["stripe-signature"];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  // SEG-14: fail closed. Never process an unsigned webhook.
   if (!webhookSecret) {
-    console.warn("STRIPE_WEBHOOK_SECRET not set - skipping signature verification");
+    console.error("STRIPE_WEBHOOK_SECRET not set - rejecting webhook");
+    return res.status(500).json({ error: "Webhook not configured" });
   }
 
   let event;
   try {
     const rawBody = await buffer(req);
-    event = webhookSecret
-      ? stripe.webhooks.constructEvent(rawBody, sig, webhookSecret)
-      : JSON.parse(rawBody.toString());
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err) {
     console.error("Webhook signature verification failed:", err.message);
     return res.status(400).json({ error: `Webhook error: ${err.message}` });

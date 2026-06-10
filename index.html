@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="assets/dodo-icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="assets/dodo-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=20260603-dialog-v10" />
+    <link rel="stylesheet" href="styles.css?v=20260610-seg14" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body class="auth-locked">
@@ -65,7 +65,37 @@
             </div>
           </form>
         </div>
+        <button class="guest-preview-link" type="button" id="invitePreviewBtn" data-i18n="invite.preview_btn">Just looking? Preview without an account</button>
+        <p class="guest-preview-note" data-i18n="invite.preview_note">Nothing is shared back until you decide to join.</p>
         <p class="auth-error" id="inviteError" hidden></p>
+      </div>
+    </section>
+
+    <!-- SEG-13: Read-only guest preview - second parent can look without creating an account -->
+    <section class="auth-screen" id="guestPreviewScreen" aria-label="Board preview" hidden>
+      <div class="auth-phone guest-preview-phone">
+        <div class="auth-brand-row">
+          <div class="auth-avatar"><img src="assets/dodo-icon.png" alt="Do-Do" /></div>
+          <div>
+            <span>Do-Do</span>
+            <strong data-i18n="guest.badge">Read-only preview</strong>
+          </div>
+        </div>
+        <div class="guest-banner" data-i18n="guest.banner">You are viewing a read-only preview. No account was created and nothing is shared back.</div>
+        <div class="auth-hero" id="guestHero">
+          <h1></h1>
+          <p data-i18n="guest.hero_sub">This is the shared board - both parents always see the same thing.</p>
+        </div>
+        <div class="guest-card-list" id="guestCardList" aria-live="polite"></div>
+        <div class="guest-actions">
+          <button class="auth-submit" type="button" id="guestJoinBtn" data-i18n="guest.join_cta">Join the board</button>
+          <button class="auth-switch-button" type="button" id="guestBackBtn" data-i18n="guest.back">Back</button>
+        </div>
+        <p class="guest-privacy-line">
+          <span data-i18n="guest.privacy_line">Data is stored on EU servers under GDPR.</span>
+          <a href="/prywatnosc" target="_blank" rel="noopener" data-i18n="guest.privacy_link">How we protect your data</a>
+        </p>
+        <p class="auth-error" id="guestError" hidden></p>
       </div>
     </section>
 
@@ -780,9 +810,9 @@
       window.STRIPE_MONTHLY_PRICE_ID_EUR = ""; // price_xxx  EUR 7.90/mo
       window.STRIPE_ANNUAL_PRICE_ID_EUR  = ""; // price_xxx  EUR 69/yr
     </script>
-    <script src="i18n.js?v=20260608-i18n"></script>
-    <script src="supabase-data.js?v=20260608-i18n"></script>
-    <script src="app.js?v=20260608-i18n"></script>
-    <script src="features.js?v=20260608-i18n"></script>
+    <script src="i18n.js?v=20260610-seg14"></script>
+    <script src="supabase-data.js?v=20260610-seg14"></script>
+    <script src="app.js?v=20260610-seg14"></script>
+    <script src="features.js?v=20260610-seg14"></script>
   </body>
 </html>

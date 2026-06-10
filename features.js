@@ -126,7 +126,7 @@ async function _fetchConflictSuggestion(idA, idB) {
     if (!cardA || !cardB) return;
     const res = await fetch("/api/ai", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await window.getAuthHeader()) },
       body: JSON.stringify({ action: "suggest-resolution", cardA, cardB }),
     });
     if (!res.ok) return;
@@ -568,8 +568,8 @@ function switchModule(moduleName) {
   cardsModule.classList.remove("hidden");
   cardsModule.classList.add("cards-content-hidden");
   featureModule.classList.remove("hidden");
-  topbarEyebrow.textContent = data.eyebrow;
-  topbarTitle.textContent = data.title;
+  topbarEyebrow.textContent = window.t?.("nav." + moduleName) ?? data.eyebrow;
+  topbarTitle.textContent = window.t?.("module.title." + moduleName) ?? data.title;
   if (topbar) topbar.style.display = ""; // restore for modules that need a title
   topbarActions?.classList.add("hidden");
   renderFeature(moduleName, data);
@@ -915,7 +915,7 @@ function bindAutomationSettings() {
     try {
       const res = await fetch("/api/apple-calendar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await window.getAuthHeader()) },
         body: JSON.stringify({ email, appPassword: password, action: "fetchBusy" }),
       });
       if (!res.ok) {
@@ -962,6 +962,51 @@ function bindAutomationSettings() {
     const newLang = langSelect.value;
     window.setLanguage?.(newLang);
     showFeatureToast(window.t?.("toast.lang_changed") ?? "Language updated");
+  });
+
+  // Siri / Shortcuts integration
+  // Tapping "Install Shortcut" fetches the user's token silently, then downloads
+  // a personalised .shortcut file from /api/siri-shortcut with the token pre-embedded.
+  // iOS opens the file directly in Shortcuts - zero manual configuration needed.
+
+  const siriSetupBtn = featureModule.querySelector("#siriSetupButton");
+  const siriBadge = featureModule.querySelector("#siriBadge");
+  const siriStatusLabel = featureModule.querySelector("#siriStatusLabel");
+  const siriHelpText = featureModule.querySelector("#siriHelpText");
+
+  siriSetupBtn?.addEventListener("click", async () => {
+    siriSetupBtn.disabled = true;
+    siriSetupBtn.textContent = "Loading...";
+    try {
+      const { data: { session } } = await window.supabaseClient.auth.getSession();
+      const jwt = session?.access_token;
+      if (!jwt) {
+        showFeatureToast("Sign in first");
+        siriSetupBtn.disabled = false;
+        siriSetupBtn.textContent = "Install Shortcut";
+        return;
+      }
+      // Get the user's personal token
+      const tokenRes = await fetch("/api/siri-token", {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      if (!tokenRes.ok) throw new Error("Token fetch failed");
+      const { token } = await tokenRes.json();
+
+      // Trigger download of the personalised .shortcut file
+      // iOS Safari will offer to open it directly in Shortcuts
+      window.location.href = `/api/siri-shortcut?token=${encodeURIComponent(token)}`;
+
+      if (siriBadge) { siriBadge.textContent = "Installed"; siriBadge.className = "feature-badge badge-connected"; }
+      if (siriStatusLabel) siriStatusLabel.textContent = "Shortcut installed - say \"Hey Siri, Add to Do-Do\"";
+      if (siriHelpText) siriHelpText.style.display = "";
+      siriSetupBtn.textContent = "Reinstall";
+      siriSetupBtn.disabled = false;
+    } catch (err) {
+      showFeatureToast("Could not set up Siri - try again");
+      siriSetupBtn.disabled = false;
+      siriSetupBtn.textContent = "Install Shortcut";
+    }
   });
 }
 
@@ -1311,8 +1356,8 @@ function renderExpenseCard(card) {
     <article class="expense-preview-card" data-card-id="${card.id}">
       <div class="expense-card-top">
         <div>
-          <strong class="expense-card-title">${card.title || "Expense"}</strong>
-          ${card.details ? `<span class="expense-card-detail">${card.details}</span>` : ""}
+          <strong class="expense-card-title">${escapeHtml(card.title || "Expense")}</strong>
+          ${card.details ? `<span class="expense-card-detail">${escapeHtml(card.details)}</span>` : ""}
         </div>
         <div class="expense-card-meta">
           ${amount}
@@ -1505,8 +1550,8 @@ function renderRealMessage(msg, currentUserId) {
     <article class="message-card ${own ? "own-message" : ""}">
       <div class="message-avatar ${own ? "parent-a-mini" : "parent-b-mini"}">${initial}</div>
       <div>
-        <div class="message-meta"><strong>${name}</strong><span>${time}</span></div>
-        <p>${msg.body}</p>
+        <div class="message-meta"><strong>${escapeHtml(name)}</strong><span>${time}</span></div>
+        <p>${escapeHtml(msg.body)}</p>
         <div class="message-reactions">
           <button type="button">OK</button>
           <button type="button">Noted</button>
@@ -1924,9 +1969,9 @@ function renderUniversalFeatureCard(card, className = "", showActions = true) {
   }
   return `
     <article class="card ${className}" data-card-id="${card.id}">
-      <div class="card-state-row"><span>${formatDate(card.due)}</span><span>${card.status}</span></div>
-      <div class="card-top"><h3 class="card-title">${card.title}</h3></div>
-      <p class="card-details">${card.details}</p>
+      <div class="card-state-row"><span>${formatDate(card.due)}</span><span>${escapeHtml(card.status)}</span></div>
+      <div class="card-top"><h3 class="card-title">${escapeHtml(card.title)}</h3></div>
+      <p class="card-details">${escapeHtml(card.details)}</p>
     </article>
   `;
 }
@@ -2314,38 +2359,39 @@ function renderSpecialPanel(moduleName, part = "all") {
               ${CUSTODY_COLORS.map(c => `<button type="button" class="custody-swatch${cs[target] === c.value ? " active" : ""}" data-custody-color="${c.value}" style="background:${c.value};" title="${c.label}" aria-label="${c.label}"></button>`).join("")}
             </div>
           </div>`;
+        const _ct = window.t || ((k) => k);
         return `
         <section class="feature-panel custody-settings">
-          <h3>Parenting schedule</h3>
-          <p class="feature-note" style="margin:0 0 12px;font-size:13px;color:var(--muted);">Colour-code calendar days to show who has the kids.</p>
+          <h3>${_ct("custody.heading")}</h3>
+          <p class="feature-note" style="margin:0 0 12px;font-size:13px;color:var(--muted);">${_ct("custody.desc")}</p>
           <div class="settings-control-list">
             <label class="settings-toggle-row">
               <span>
-                <strong>Show custody calendar</strong>
-                <em>Highlight which days belong to each parent.</em>
+                <strong>${_ct("custody.show")}</strong>
+                <em>${_ct("custody.show_hint")}</em>
               </span>
               <input type="checkbox" id="custodyEnabledToggle" ${cs.enabled ? "checked" : ""} />
             </label>
             <label class="settings-select-row">
               <span>
-                <strong>Schedule type</strong>
-                <em>Choose your custody arrangement.</em>
+                <strong>${_ct("custody.type")}</strong>
+                <em>${_ct("custody.type_hint")}</em>
               </span>
               <select id="custodyType">
-                <option value="7-7" ${cs.type === "7-7" ? "selected" : ""}>Alternating weeks (7-7)</option>
-                <option value="2-2-3" ${cs.type === "2-2-3" ? "selected" : ""}>2-2-3 rotation</option>
-                <option value="5-2" ${cs.type === "5-2" ? "selected" : ""}>Weekdays mine / weekends co-parent</option>
+                <option value="7-7" ${cs.type === "7-7" ? "selected" : ""}>${_ct("custody.7_7")}</option>
+                <option value="2-2-3" ${cs.type === "2-2-3" ? "selected" : ""}>${_ct("custody.2_2_3")}</option>
+                <option value="5-2" ${cs.type === "5-2" ? "selected" : ""}>${_ct("custody.5_2")}</option>
               </select>
             </label>
             <label class="settings-select-row" id="custodyRefDateRow" ${cs.type === "5-2" ? 'style="display:none"' : ""}>
               <span>
-                <strong>My schedule starts</strong>
-                <em>First day of your current custody period.</em>
+                <strong>${_ct("custody.starts")}</strong>
+                <em>${_ct("custody.starts_hint")}</em>
               </span>
               <input type="date" id="custodyReferenceDate" value="${cs.referenceDate || new Date().toISOString().slice(0,10)}" style="max-width:160px;" />
             </label>
-            ${swatchRow("myColor", cs.myColor, "My days colour")}
-            ${swatchRow("coColor", cs.coColor, "Co-parent days colour")}
+            ${swatchRow("myColor", cs.myColor, _ct("custody.my_color"))}
+            ${swatchRow("coColor", cs.coColor, _ct("custody.co_color"))}
           </div>
         </section>`;
       })() : ""}
@@ -2379,28 +2425,31 @@ function renderSpecialPanel(moduleName, part = "all") {
         </div>
       </section>
       ` : ""}
-      ${part === "all" || part === "automation" ? `
+      ${part === "all" || part === "automation" ? (() => {
+        const _at = window.t || ((k) => k);
+        const providerName = automation.familyCalendarProvider === "outlook" ? "Outlook" : "Google";
+        return `
       <section class="feature-panel automation-settings">
-        <h3>Automation</h3>
+        <h3>${_at("settings.automation")}</h3>
         <div class="settings-control-list">
           <label class="settings-toggle-row">
             <span>
-              <strong>Automate all reminders</strong>
-              <em>Cards with a date get a reminder automatically.</em>
+              <strong>${_at("auto.remind_toggle")}</strong>
+              <em>${_at("auto.remind_toggle_hint")}</em>
             </span>
             <input type="checkbox" id="autoRemindersToggle" ${automation.automateReminders ? "checked" : ""} />
           </label>
           <label class="settings-toggle-row">
             <span>
-              <strong>Sync family calendar</strong>
-              <em>Dated Dos sync to the selected shared calendar for this family workspace.</em>
+              <strong>${_at("auto.family_cal")}</strong>
+              <em>${_at("auto.family_cal_hint")}</em>
             </span>
             <input type="checkbox" id="familyCalendarToggle" ${automation.syncFamilyCalendar ? "checked" : ""} />
           </label>
           <label class="settings-select-row">
             <span>
-              <strong>Shared calendar provider</strong>
-              <em>Use Google Calendar or Outlook as the family's main calendar sync.</em>
+              <strong>${_at("auto.family_cal_provider")}</strong>
+              <em>${_at("auto.family_cal_provider_hint")}</em>
             </span>
             <select id="familyCalendarProvider">
               <option value="google" ${automation.familyCalendarProvider === "google" ? "selected" : ""}>Google Calendar</option>
@@ -2409,8 +2458,8 @@ function renderSpecialPanel(moduleName, part = "all") {
           </label>
           <label class="settings-select-row">
             <span>
-              <strong>Global reminder time</strong>
-              <em>Used for new cards and automatic calendar reminders.</em>
+              <strong>${_at("auto.global_reminder")}</strong>
+              <em>${_at("auto.global_reminder_hint")}</em>
             </span>
             <select id="globalReminderPreset">
               ${leadTimes.map(([value, label]) => `<option value="${value}" ${automation.defaultReminderPreset === value ? "selected" : ""}>${label}</option>`).join("")}
@@ -2418,47 +2467,47 @@ function renderSpecialPanel(moduleName, part = "all") {
           </label>
           <label class="settings-select-row">
             <span>
-              <strong>Reminder delivery</strong>
-              <em>Choose whether reminders stay in your calendar or also appear inside Do-Do.</em>
+              <strong>${_at("auto.delivery")}</strong>
+              <em>${_at("auto.delivery_hint")}</em>
             </span>
             <select id="reminderDelivery">
-              <option value="calendar-only" ${automation.reminderDelivery === "calendar-only" ? "selected" : ""}>Calendar only</option>
-              <option value="calendar-and-app" ${automation.reminderDelivery !== "calendar-only" ? "selected" : ""}>Calendar + Do-Do</option>
+              <option value="calendar-only" ${automation.reminderDelivery === "calendar-only" ? "selected" : ""}>${_at("auto.delivery_cal_only")}</option>
+              <option value="calendar-and-app" ${automation.reminderDelivery !== "calendar-only" ? "selected" : ""}>${_at("auto.delivery_cal_app")}</option>
             </select>
           </label>
         </div>
       </section>
       <section class="feature-panel google-calendar-connection">
         <div class="feature-panel-header">
-          <h3>Calendar connections</h3>
-          <button class="secondary-button feature-action" data-action="Connect family calendar">Connect</button>
+          <h3>${_at("auto.cal_connections")}</h3>
+          <button class="secondary-button feature-action" data-action="Connect family calendar">${_at("auto.connect_btn")}</button>
         </div>
         <div class="settings-connection-list">
           <div class="settings-connection-row">
             <span>
-              <strong>Family calendar</strong>
-              <em>${automation.syncFamilyCalendar ? `Ready to sync dated Dos to ${automation.familyCalendarProvider === "outlook" ? "Outlook" : "Google"} Calendar.` : "Choose Google or Outlook and connect the family's main calendar."}</em>
+              <strong>${_at("auto.family_cal_label")}</strong>
+              <em>${automation.syncFamilyCalendar ? _at("auto.family_cal_ready", { provider: providerName }) : _at("auto.family_cal_connect_hint")}</em>
             </span>
-            <b id="gcalTokenStatusBadge">${automation.syncFamilyCalendar ? "On" : "Connect"}</b>
+            <b id="gcalTokenStatusBadge">${automation.syncFamilyCalendar ? _at("auto.on") : _at("auto.connect_btn")}</b>
           </div>
           <div class="settings-connection-row">
             <span>
-              <strong>Family privacy boundary</strong>
-              <em>Every family is a separate workspace. No other family can access its Dos, messages, or calendar.</em>
+              <strong>${_at("auto.privacy")}</strong>
+              <em>${_at("auto.privacy_hint")}</em>
             </span>
-            <b>Isolated</b>
+            <b>${_at("auto.isolated")}</b>
           </div>
           <div class="settings-connection-row">
             <span>
-              <strong>Private work availability</strong>
-              <em>Optional. Import busy blocks only. Titles, attendees, notes, and work-calendar details stay private.</em>
+              <strong>${_at("auto.work_cal")}</strong>
+              <em>${_at("auto.work_cal_hint")}</em>
             </span>
             <input type="checkbox" id="workCalendarToggle" ${automation.syncWorkCalendar ? "checked" : ""} />
           </div>
           <div class="settings-connection-row">
             <span>
-              <strong>Work calendar provider</strong>
-              <em>Connect Google or Microsoft Outlook for private conflict visibility.</em>
+              <strong>${_at("auto.work_provider")}</strong>
+              <em>${_at("auto.work_provider_hint")}</em>
             </span>
             <select id="workCalendarProvider">
               <option value="google" ${automation.workCalendarProvider === "google" ? "selected" : ""}>Google Calendar</option>
@@ -2467,20 +2516,20 @@ function renderSpecialPanel(moduleName, part = "all") {
           </div>
           <div class="settings-connection-row work-calendar-connect-row">
             <span>
-              <strong>Connect work calendars</strong>
-              <em>You can connect either provider or both. Imported items remain busy-only blocks.</em>
+              <strong>${_at("auto.work_connect")}</strong>
+              <em>${_at("auto.work_connect_hint")}</em>
             </span>
             <div class="calendar-connect-actions">
-              <button class="secondary-button ${workCalendarConnections.includes("google") ? "connected" : ""}" type="button" data-connect-work-provider="google">${workCalendarConnections.includes("google") ? "Google connected" : "Connect Google"}</button>
-              <button class="secondary-button ${workCalendarConnections.includes("outlook") ? "connected" : ""}" type="button" data-connect-work-provider="outlook">${workCalendarConnections.includes("outlook") ? "Outlook connected" : "Connect Microsoft"}</button>
+              <button class="secondary-button ${workCalendarConnections.includes("google") ? "connected" : ""}" type="button" data-connect-work-provider="google">${workCalendarConnections.includes("google") ? "Google connected" : _at("auto.connect_btn") + " Google"}</button>
+              <button class="secondary-button ${workCalendarConnections.includes("outlook") ? "connected" : ""}" type="button" data-connect-work-provider="outlook">${workCalendarConnections.includes("outlook") ? "Outlook connected" : _at("auto.connect_btn") + " Microsoft"}</button>
             </div>
           </div>
           <div class="settings-connection-row">
             <span>
-              <strong>Shared from work calendar</strong>
-              <em>Only occupied time ranges become visible inside the family calendar.</em>
+              <strong>${_at("auto.work_shared")}</strong>
+              <em>${_at("auto.work_shared_hint")}</em>
             </span>
-            <b>Busy only</b>
+            <b>${_at("auto.busy_only")}</b>
           </div>
         </div>
       </section>
@@ -2490,7 +2539,7 @@ function renderSpecialPanel(moduleName, part = "all") {
           <h3>Apple Calendar (iCloud)</h3>
           <span class="feature-badge ${appleCalStatus.connected ? "badge-connected" : "badge-pending"}">${appleCalStatus.connected ? "Connected" : "Not connected"}</span>
         </div>
-        <p class="feature-note">iPhone users: connect iCloud Calendar to see your busy blocks and sync Do-Do events. Requires an app-specific password from <a href="https://appleid.apple.com" target="_blank" rel="noopener">appleid.apple.com</a> → Security → App-Specific Passwords.</p>
+        <p class="feature-note">iPhone users: connect iCloud Calendar to see your busy blocks and sync Do-Do events. Requires an app-specific password from <a href="https://appleid.apple.com" target="_blank" rel="noopener">appleid.apple.com</a> - Security - App-Specific Passwords.</p>
         ${appleCalStatus.connected
           ? `<div class="settings-connection-row">
                <span><strong>Connected as</strong><em>${appleCalStatus.email}</em></span>
@@ -2533,8 +2582,32 @@ function renderSpecialPanel(moduleName, part = "all") {
             <b class="status-pending" id="coParentCalStatus">Checking...</b>
           </div>
         </div>
+      </section>`;
+      })() : ""}
+      ${/* SEG-14: Siri parked - /api/siri-* endpoints are not deployed (Vercel
+            Hobby 12-function limit). Re-enable with SEG-12 iOS wrapper. */ ""}
+      ${false && (part === "all" || part === "siri") ? `
+      <section class="feature-panel siri-integration-section">
+        <div class="feature-panel-header">
+          <h3>Siri &amp; Voice Shortcuts</h3>
+          <span class="feature-badge badge-pending" id="siriBadge">Set up</span>
+        </div>
+        <p class="feature-note">Say <em>"Hey Siri, Add to Do-Do"</em> to create a card hands-free.</p>
+        <div class="settings-control-list">
+          <div class="settings-connection-row">
+            <span>
+              <strong>Set up Siri</strong>
+              <em id="siriStatusLabel">Tap to install your personal shortcut - no configuration needed.</em>
+            </span>
+            <button class="primary-button" id="siriSetupButton" type="button">Install Shortcut</button>
+          </div>
+        </div>
+        <p class="feature-note" id="siriHelpText" style="display:none;margin-top:8px;">
+          <strong>One-time:</strong> if iOS asks about untrusted shortcuts, go to iPhone Settings &rarr; Shortcuts &rarr; Allow Untrusted Shortcuts, then come back and tap Install again.
+        </p>
       </section>
       ` : ""}
+
       ${part === "all" || part === "vaccine" ? renderVaccinePanel() : ""}
     `;
   }
@@ -2689,7 +2762,7 @@ function renderSettingsFeature() {
           <article class="feature-item feature-item-editable">
             <div class="feature-item-main">
               <strong>${escapeHtml(coparentName)}</strong>
-              <span style="color:var(--muted);font-size:12px;">Co-parent name (local)</span>
+              <span style="color:var(--muted);font-size:12px;">${_st("settings.coparent_name")}</span>
             </div>
             <button class="icon-button icon-button-sm" id="editCoparentNameBtn" aria-label="Edit co-parent name">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -2731,26 +2804,26 @@ function renderSettingsFeature() {
       <section class="feature-panel" id="invitePanel">
         <h3>${_st("settings.coparent")}</h3>
         <div class="feature-items" id="invitePanelContent">
-          <p class="feature-empty" style="font-size:13px;color:var(--muted);">Checking connection...</p>
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_st("settings.checking")}</p>
         </div>
       </section>
 
       <section class="feature-panel" id="subscriptionPanel">
         <h3>${_st("settings.subscription")}</h3>
         <div class="feature-items" id="subscriptionPanelContent">
-          <p class="feature-empty" style="font-size:13px;color:var(--muted);">Loading...</p>
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_st("settings.loading")}</p>
         </div>
       </section>
 
       <section class="feature-panel share-panel">
         <div class="feature-panel-header">
-          <h3>Share Do-Do</h3>
+          <h3>${_st("share.heading")}</h3>
         </div>
-        <p class="feature-note">Know someone juggling shared responsibilities? Send them the link.</p>
+        <p class="feature-note">${_st("share.desc")}</p>
         <div class="share-actions">
-          <button class="secondary-button" id="shareWhatsAppButton">Share via WhatsApp</button>
-          <button class="secondary-button" id="shareEmailButton">Share via email</button>
-          <button class="ghost-button" id="shareCopyButton">Copy link</button>
+          <button class="secondary-button" id="shareWhatsAppButton">${_st("share.whatsapp")}</button>
+          <button class="secondary-button" id="shareEmailButton">${_st("share.email_btn")}</button>
+          <button class="ghost-button" id="shareCopyButton">${_st("settings.copy_link")}</button>
         </div>
       </section>
 
@@ -2775,7 +2848,7 @@ function renderSettingsFeature() {
       <section class="feature-panel" id="notifPrefsPanel">
         <h3>${_st("settings.notifications")}</h3>
         <div class="feature-items" id="notifPrefsContent">
-          <p class="feature-empty" style="font-size:13px;color:var(--muted);">Loading...</p>
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_st("settings.loading")}</p>
         </div>
       </section>
 
@@ -2978,11 +3051,10 @@ async function renderSubscriptionPanel() {
       const btn = panel.querySelector("#manageSubBtn");
       if (btn) { btn.disabled = true; btn.textContent = "Opening..."; }
       try {
-        const userId = window.getCurrentUserId?.() || "";
-        const res = await fetch("/api/stripe-portal", {
+        const res = await fetch("/api/stripe-checkout", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId }),
+          headers: { "Content-Type": "application/json", ...(await window.getAuthHeader()) },
+          body: JSON.stringify({ action: "portal" }),
         });
         const data = await res.json();
         if (data.url) { location.href = data.url; }
@@ -3023,13 +3095,14 @@ async function renderInvitePanel() {
 
   // Co-parent invite is a paid feature (free plan = single user only)
   if (!window.isPaidUser?.()) {
+    const _it = window.t || ((k) => k);
     panel.innerHTML = `
       <article class="feature-item">
         <div>
-          <strong style="display:block;margin-bottom:4px;">Invite your co-parent</strong>
-          <span style="color:var(--muted);font-size:13px;">Shared board and collaboration require the Family plan.</span>
+          <strong style="display:block;margin-bottom:4px;">${_it("invite.heading")}</strong>
+          <span style="color:var(--muted);font-size:13px;">${_it("invite.paid_desc")}</span>
         </div>
-        <button class="secondary-button" id="inviteUpgradeBtn" style="white-space:nowrap;">Upgrade</button>
+        <button class="secondary-button" id="inviteUpgradeBtn" style="white-space:nowrap;">${_it("invite.upgrade")}</button>
       </article>
     `;
     panel.querySelector("#inviteUpgradeBtn")?.addEventListener("click", () => {
@@ -3101,7 +3174,7 @@ async function renderInvitePanel() {
     ` : inviteEmail ? `
     <button id="settingsResendEmail" class="secondary-button" style="justify-self:start;min-height:36px;padding:0 14px;font-size:12px;">${_ipt("settings.resend")}</button>
     ` : `
-    <p style="margin:0;font-size:13px;color:var(--muted);">Add your co-parent's email in onboarding to send an invite.</p>
+    <p style="margin:0;font-size:13px;color:var(--muted);">${_ipt("invite.no_email")}</p>
     `}
   `;
 
@@ -3114,12 +3187,12 @@ async function renderInvitePanel() {
   panel.querySelector("#settingsResendEmail")?.addEventListener("click", async () => {
     const btn = panel.querySelector("#settingsResendEmail");
     btn.disabled = true;
-    btn.textContent = "Sending...";
+    btn.textContent = window.t?.("invite.sending") ?? "Sending...";
     try {
       const link = pendingLink || `${window.location.origin}/invite/unknown`;
       const res = await fetch("/api/invite-email", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await window.getAuthHeader()) },
         body: JSON.stringify({
           toEmail: inviteEmail,
           fromName: setup.parents?.primary || null,

@@ -129,6 +129,24 @@ Add App Store wrapper in v2 once product is stable and revenue justifies 30% cut
 
 ---
 
+---
+
+## 10.5 Relationship to SEG-11 and SEG-12
+
+**SEG-11 (Siri Shortcuts - PWA):** Already done (v0.6.10). Users can install a personalised
+shortcut from Settings > Siri. Works without any native wrapper. Use this as the interim solution.
+
+**SEG-12 (Native iOS Wrapper):** A pure Swift WKWebView wrapper that adds native SiriKit
+(`INAddTasksIntent`) and App Store presence without rewriting the app. Zero-setup Siri -
+user just says "Hey Siri, Add to Do-Do" with no Shortcuts installation required.
+See `SEG-12-ios-native-wrapper.md`.
+
+If building an iOS native wrapper, choose between:
+- **Capacitor (this SEG):** iOS + Android, more ecosystem support, npm-based
+- **Pure Swift (SEG-12):** iOS only, lighter, no framework dependency, full control
+
+---
+
 ## Acceptance criteria for all of 10.x
 - [ ] Custom install banner appears on second visit on mobile
 - [ ] iOS: tapping banner shows "Add to Home Screen" instructions

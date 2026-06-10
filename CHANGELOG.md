@@ -2,6 +2,71 @@
 
 ---
 
+## v0.8.0 - 2026-06-10 - SEG-14: Security hardening (Critical + High audit fixes)
+
+Implements the Critical/High findings from CODE-AUDIT-2026-06-10.md.
+
+### Authentication on service-role endpoints (C1)
+
+- **New `api/_auth.js`** shared `requireUser()` helper - verifies the Supabase JWT from the `Authorization` header. Underscore prefix means Vercel does not deploy it as a function (count stays at 12).
+- **`/api/stripe-checkout`** (create + expense + portal): requires a signed-in user. `userId`/`pairId` are derived server-side from the verified token, never from the request body. Expense payment requests are rejected (403) if the card does not belong to the caller's pair.
+- **`/api/stripe-portal` removed** - merged into `/api/stripe-checkout` as `action: "portal"` to free a function slot for `guest-view.js` (Hobby 12-function limit unchanged).
+- **`/api/push-subscribe`**: requires auth; `user_id` from token; DELETE scoped to the caller's own subscriptions.
+- **`/api/apple-calendar`**: requires a signed-in user (no longer an open CalDAV proxy).
+- Client: new `getAuthHeader()` helper in `app.js`; all callers send the JWT.
+
+### Stripe webhook fails closed (C2)
+
+- `/api/stripe-webhook` now rejects all events if `STRIPE_WEBHOOK_SECRET` is unset. Unsigned payloads are never parsed.
+
+### Stored XSS fixes + security headers (C3)
+
+- `escapeHtml()` applied to message bodies and sender names (`renderRealMessage`), expense card title/details, and the universal card fallback renderer in `features.js`.
+- Payment-request and invite emails escape user-supplied names/titles.
+- `vercel.json`: Content-Security-Policy, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Strict-Transport-Security, Permissions-Policy on all routes.
+
+### AI + email relay locked down (H1)
+
+- `/api/ai`: requires auth, 2000-char input cap, CORS removed (same-origin only).
+- `/api/invite-email`: requires auth (closes open mail relay); `inviteLink` must match our own `/invite/<token>` URL shape; sender name escaped and length-capped.
+- CORS `*` removed across all API functions.
+
+### Siri parked (H3/H4)
+
+- Siri Settings section hidden; `/api/siri-*` endpoints remain undeployed. The shortcut wrote to a legacy `cards` table and used a non-revocable HMAC token - will be redone properly with SEG-12 (iOS wrapper).
+
+### iCloud credentials (H2, partial)
+
+- Apple Calendar credentials moved from localStorage to sessionStorage (cleared when the browser closes), with one-time migration. Server-side encrypted storage tracked for a later segment.
+
+### Also ships (previously local-only)
+
+- v0.7.0 guest preview (`/api/guest-view`), `prywatnosc.html`, custody calendar, cookie banner fix, and v0.7.1 card dialog buttons now reach production in this push.
+
+---
+
+## v0.7.0 - 2026-06-09 - SEG-13: Guest preview + plain-Polish privacy page (GTM risk mitigation)
+
+Mitigates GTM-Poland risks #1 (two-sided activation) and #4 (trust in sensitive data).
+
+### Read-only guest preview (no account)
+
+- **"Preview without an account"** button on the invite screen. The second parent can see the real shared board read-only before deciding to join - no signup, no password, no Supabase session. Neutral, no-pressure copy: "Nothing is shared back until you decide to join."
+- **New API `/api/guest-view.js`** - GET with invite token. Validates token (must exist, not yet accepted), returns sanitized snapshot only: inviter name, children names, up to 50 recent cards with limited fields (title, type, status, child, due date, amount). Card bodies, messages, receipts, metadata, and row IDs are never exposed. `Cache-Control: no-store`.
+- **Guest preview screen** - read-only banner, child-centric hero ("Shared board for Ava"), card list reusing app styling, "Join the board" CTA back to invite, privacy line linking /prywatnosc.
+- **i18n** - all guest strings added in en / de / pl (`invite.preview_*`, `guest.*`).
+
+### Plain-Polish privacy page
+
+- **New page `prywatnosc.html`** (served at `/prywatnosc` via cleanUrls). Plain Polish, no legalese. Answers a sceptical co-parent's actual questions: what the other parent sees, tamper-proof history, EU servers + RODO, who never sees the data (no ads, no sale), export/delete rights, court-friendly exports. Linked from guest preview and legal.html nav.
+
+### Fixes
+
+- **package.json dependencies** - api routes required `@supabase/supabase-js`, `stripe`, and `resend` but none were declared (only `vercel`). Added all three so serverless functions resolve on deploy.
+- **Plan doc** - `plan/SEG-13-risk-mitigation.md` added.
+
+---
+
 ## v0.6.7 - 2026-06-09 - Custody calendar: schedule dialog, day overrides, desktop view
 
 ### Parenting schedule dialog

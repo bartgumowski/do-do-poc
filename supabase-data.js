@@ -379,7 +379,7 @@ async function saveOnboardingToSupabase(setup, userId) {
         try {
           const emailRes = await fetch("/api/invite-email", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...((await window.getAuthHeader?.()) || {}) },
             body: JSON.stringify({
               toEmail: inviteEmail,
               fromName: setup.parents?.primary || null,
@@ -955,7 +955,7 @@ async function initAppleCalendar() {
   try {
     const res = await fetch("/api/apple-calendar", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...((await window.getAuthHeader?.()) || {}) },
       body: JSON.stringify({ ...creds, action: "fetchBusy" }),
     });
     if (!res.ok) return;
@@ -989,7 +989,7 @@ async function pushCardToAppleCalendar(card) {
   try {
     const res = await fetch("/api/apple-calendar", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...((await window.getAuthHeader?.()) || {}) },
       body: JSON.stringify({
         ...creds,
         action: "createEvent",
@@ -1020,7 +1020,7 @@ async function deleteCardFromAppleCalendar(card) {
   try {
     await fetch("/api/apple-calendar", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...((await window.getAuthHeader?.()) || {}) },
       body: JSON.stringify({ email: creds.email, appPassword: creds.appPassword, action: "deleteEvent", event: { uid } }),
     });
   } catch (err) {
@@ -1028,12 +1028,17 @@ async function deleteCardFromAppleCalendar(card) {
   }
 }
 
+// SEG-14: credentials now live in sessionStorage (cleared when the browser
+// closes) instead of localStorage. Migrates + removes any old localStorage copy.
+// Proper fix (server-side encrypted store) tracked for a later segment.
 function saveAppleCalCredentials(email, appPassword) {
-  localStorage.setItem(APPLE_CAL_KEY, JSON.stringify({ email, appPassword }));
+  sessionStorage.setItem(APPLE_CAL_KEY, JSON.stringify({ email, appPassword }));
+  try { localStorage.removeItem(APPLE_CAL_KEY); } catch {}
 }
 
 function clearAppleCalCredentials() {
-  localStorage.removeItem(APPLE_CAL_KEY);
+  sessionStorage.removeItem(APPLE_CAL_KEY);
+  try { localStorage.removeItem(APPLE_CAL_KEY); } catch {}
   appleCalBusySlots = [];
   _emitCalendarUpdate();
 }
@@ -1045,7 +1050,13 @@ function getAppleCalConnectionStatus() {
 
 function _getAppleCalCredentials() {
   try {
-    const raw = localStorage.getItem(APPLE_CAL_KEY);
+    // One-time migration from the old localStorage location
+    const legacy = localStorage.getItem(APPLE_CAL_KEY);
+    if (legacy && !sessionStorage.getItem(APPLE_CAL_KEY)) {
+      sessionStorage.setItem(APPLE_CAL_KEY, legacy);
+      localStorage.removeItem(APPLE_CAL_KEY);
+    }
+    const raw = sessionStorage.getItem(APPLE_CAL_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;

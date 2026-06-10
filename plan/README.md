@@ -46,6 +46,7 @@ Every file contains the problem, implementation approach, acceptance criteria, a
 | `STRIPE_MONTHLY_PRICE_ID` | `index.html` (client-side) | Set `window.STRIPE_MONTHLY_PRICE_ID` in index.html |
 | `STRIPE_ANNUAL_PRICE_ID` | `index.html` (client-side) | Set `window.STRIPE_ANNUAL_PRICE_ID` in index.html |
 | `APP_BASE_URL` | `/api/stripe-expense-payment` | Set to `https://do-do.app` |
+| `SIRI_TOKEN_SECRET` | `/api/siri-token`, `/api/siri-add`, `/api/siri-shortcut` | Random 32+ char secret - generate with `openssl rand -hex 32`. Set in Vercel Production. |
 
 ---
 
@@ -78,6 +79,8 @@ Note: if `git add` fails with a lock error, remove `.git/index.lock` in Finder f
 | 08 | Co-parent Onboarding | Done - invite screen with children names, parent name editing, children Supabase sync, invite link recovery | v0.6.1 |
 | 09 | Legal, Privacy and GDPR | Done - account deletion API, data export API, legal.html finalized, cookie banner | v0.6.2 |
 | 10 | App Store and Distribution | Not started | - |
+| 11 | Siri / Voice Shortcuts (PWA) | Done - per-user HMAC tokens, personalised .shortcut file download, Settings UI | v0.6.10 |
+| 12 | Native iOS Wrapper (SiriKit + App Store) | Not started - see SEG-12-ios-native-wrapper.md | - |
 
 ---
 

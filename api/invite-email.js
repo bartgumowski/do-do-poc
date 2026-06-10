@@ -1,15 +1,21 @@
 // Vercel serverless function - sends invite email via Resend
 // Get a free API key at resend.com (3000 emails/month free)
+// Auth (SEG-14): Authorization: Bearer <supabase_jwt> required (closes open mail relay).
+// inviteLink must point at our own /invite/ route (no arbitrary links via our domain).
 
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") return res.status(200).end();
+const { requireUser } = require("./_auth");
+
+const INVITE_LINK_RE = /^https:\/\/(do-do\.app|[a-z0-9-]+\.vercel\.app|localhost(:\d+)?)\/invite\/[A-Za-z0-9_-]+$/;
+
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
+
+  const user = await requireUser(req, res);
+  if (!user) return;
 
   const { toEmail, fromName, inviteLink } = req.body || {};
   if (!toEmail || !inviteLink) return res.status(400).json({ error: "Missing toEmail or inviteLink" });
+  if (!INVITE_LINK_RE.test(inviteLink)) return res.status(400).json({ error: "Invalid invite link" });
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -17,7 +23,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ sent: false, reason: "no_email_service", inviteLink });
   }
 
-  const senderName = fromName || "Your co-parent";
+  const senderName = String(fromName || "Your co-parent")
+    .slice(0, 80)
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   const html = `
     <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
       <div style="background: #65d6c6; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
@@ -63,4 +71,4 @@ export default async function handler(req, res) {
     console.error("invite-email error:", err);
     return res.status(200).json({ sent: false, reason: "error", inviteLink });
   }
-}
+};

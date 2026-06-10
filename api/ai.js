@@ -1,16 +1,17 @@
 // Consolidated AI endpoint - handles interpret, suggest-resolution, summary
 // POST body must include { action: "interpret" | "suggest-resolution" | "summary", ...params }
+// Auth (SEG-14): Authorization: Bearer <supabase_jwt> required. Same-origin only (no CORS).
 
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+const { requireUser } = require("./_auth");
 
-  if (req.method === "OPTIONS") return res.status(200).end();
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "AI not configured" });
+
+  const user = await requireUser(req, res);
+  if (!user) return;
 
   const { action, ...params } = req.body || {};
 
@@ -18,6 +19,7 @@ export default async function handler(req, res) {
   if (action === "interpret") {
     const { text, childNames, parentAName, parentBName } = params;
     if (!text?.trim()) return res.status(400).json({ error: "No text provided" });
+    if (text.length > 2000) return res.status(400).json({ error: "Text too long (max 2000 chars)" });
 
     const peopleContext = [
       parentAName ? `Parent A is named ${parentAName}` : null,
@@ -211,4 +213,4 @@ Write a natural, concise briefing. Be direct and practical. No emojis. Start wit
   }
 
   return res.status(400).json({ error: "Unknown action" });
-}
+};

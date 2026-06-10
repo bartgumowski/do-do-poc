@@ -18,13 +18,15 @@
 
 const CALDAV_BASE = "https://caldav.icloud.com";
 
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+const { requireUser } = require("./_auth");
 
-  if (req.method === "OPTIONS") return res.status(200).end();
+module.exports = async function handler(req, res) {
+  // SEG-14: same-origin only (no CORS) + requires a signed-in Do-Do user,
+  // so this is no longer an open CalDAV proxy for arbitrary iCloud accounts.
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const user = await requireUser(req, res);
+  if (!user) return;
 
   const { email, appPassword, action, event } = req.body || {};
 

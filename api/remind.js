@@ -40,9 +40,7 @@ function isInQuietHours(quietFrom, quietTo, userTimezone) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  if (req.method === "OPTIONS") return res.status(200).end();
-
+  // SEG-14: no CORS - cron-invoked, same-origin only.
   // Allow GET (cron) and POST (manual trigger)
   if (req.method !== "GET" && req.method !== "POST") return res.status(405).end();
 

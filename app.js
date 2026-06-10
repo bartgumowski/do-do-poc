@@ -1,4 +1,4 @@
-const APP_VERSION = "0.7.1";
+const APP_VERSION = "0.8.0";
 const APP_VERSION_DATE = "2026-06-10";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -74,6 +74,18 @@ const supabaseClient = window.supabase?.createClient?.(supabaseUrl, supabaseAnon
   },
 }) || null;
 let currentAuthSession = null;
+
+// SEG-14: auth header helper for calls to our own /api endpoints.
+// Returns { Authorization: "Bearer <jwt>" } or {} when signed out.
+async function getAuthHeader() {
+  try {
+    const token = (await supabaseClient?.auth?.getSession())?.data?.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+window.getAuthHeader = getAuthHeader;
 const defaultAutomationSettings = {
   automateReminders: false,
   syncFamilyCalendar: false,
@@ -296,15 +308,13 @@ function showUpgradePrompt(reason) {
     btn.disabled = true;
     try {
       const priceId = getLocalePriceId("monthly");
-      const userId = window.getCurrentUserId?.() || "";
-      const pairId = window.getCurrentPairId?.() || "";
       if (!priceId) { showToast("Stripe not configured yet"); modal.close(); return; }
       const res = await fetch("/api/stripe-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
         body: JSON.stringify({
           action: "create",
-          priceId, userId, pairId,
+          priceId,
           successUrl: location.origin + "/#board?checkout=success",
           cancelUrl: location.origin + "/#settings",
         }),
@@ -1429,7 +1439,7 @@ async function fetchAiDailySummary() {
     const setup = getOnboardingState() || {};
     const res = await fetch("/api/ai", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
       body: JSON.stringify({
         action: "summary",
         cards: state.cards.slice(0, 20),
@@ -1988,7 +1998,7 @@ async function requestExpensePayment(cardId, amount, currency, description) {
   try {
     const res = await fetch("/api/stripe-checkout", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
       body: JSON.stringify({
         action: "expense",
         cardId,
@@ -2274,7 +2284,7 @@ async function callAiInterpret(text) {
 
     const res = await fetch("/api/ai", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
       body: JSON.stringify({ action: "interpret", ...body }),
     });
 
@@ -4229,9 +4239,8 @@ async function subscribeToPush() {
     const auth = btoa(String.fromCharCode(...new Uint8Array(sub.getKey("auth"))));
     await fetch("/api/push-subscribe", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
       body: JSON.stringify({
-        user_id: currentAuthSession.user.id,
         endpoint: sub.endpoint,
         p256dh,
         auth,
@@ -4252,7 +4261,7 @@ async function unsubscribeFromPush() {
     if (sub) {
       await fetch("/api/push-subscribe", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
         body: JSON.stringify({ endpoint: sub.endpoint }),
       });
       await sub.unsubscribe();

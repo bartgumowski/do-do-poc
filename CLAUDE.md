@@ -12,4 +12,4 @@ const APP_VERSION_DATE = "YYYY-MM-DD";  // today's date
 Version is displayed prominently in Settings so Bart can always identify what build he is reviewing.
 Version format: MAJOR.MINOR.PATCH - increment MINOR for each completed segment, PATCH for fixes/small additions.
 
-Current: v0.7.1 (2026-06-10)
+Current: v0.8.0 (2026-06-10)

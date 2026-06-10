@@ -1,8 +1,11 @@
 // Consolidated Stripe checkout endpoint
 // POST body must include { action: "create" | "expense", ...params }
+// Auth (SEG-14): Authorization: Bearer <supabase_jwt> required.
+// userId/pairId are derived server-side from the verified token, never from the body.
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require("@supabase/supabase-js");
+const { requireUser } = require("./_auth");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -15,34 +18,51 @@ function baseUrl(req) {
   return url.startsWith("http") ? url : `https://${url}`;
 }
 
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: "Stripe not configured" });
 
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const userId = user.id;
+
+  // Caller's own pair, used by both actions
+  const { data: callerProfile } = await supabase
+    .from("profiles")
+    .select("pair_id, stripe_customer_id, display_name")
+    .eq("id", userId)
+    .maybeSingle();
+  const pairId = callerProfile?.pair_id || null;
+
   const { action, ...params } = req.body || {};
 
   // ── create subscription checkout ──────────────────────────────────────────
   if (action === "create") {
-    const { priceId, userId, pairId, successUrl, cancelUrl } = params;
-    if (!priceId || !userId || !pairId) {
-      return res.status(400).json({ error: "Missing required fields: priceId, userId, pairId" });
+    const { priceId, successUrl, cancelUrl } = params;
+    if (!priceId) {
+      return res.status(400).json({ error: "Missing required field: priceId" });
+    }
+    if (!pairId) {
+      return res.status(400).json({ error: "No active family workspace" });
     }
 
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("stripe_customer_id, display_name")
-        .eq("id", userId)
-        .maybeSingle();
-
-      let customerId = profile?.stripe_customer_id;
+      let customerId = callerProfile?.stripe_customer_id;
 
       if (!customerId) {
-        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
         const customer = await stripe.customers.create({
-          email: user?.email,
-          name: profile?.display_name || undefined,
+          email: user.email || undefined,
+          name: callerProfile?.display_name || undefined,
           metadata: { userId, pairId },
         });
         customerId = customer.id;
@@ -86,6 +106,11 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (cardErr || !card) return res.status(404).json({ error: "Card not found" });
+
+      // SEG-14: the card must belong to the caller's own pair
+      if (!pairId || card.pair_id !== pairId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
 
       const { data: pair } = await supabase
         .from("pairs")
@@ -132,8 +157,8 @@ module.exports = async function handler(req, res) {
     <p style="font-weight:800;font-size:20px;margin:0 0 4px">Do-Do</p>
     <p style="color:#6b7280;font-size:14px;margin:0 0 24px">Family coordination</p>
     <h1 style="font-size:28px;font-weight:800;margin:0 0 4px">${amountLabel}</h1>
-    <p style="color:#374151;margin:0 0 8px"><strong>${requester}</strong> is requesting payment for:</p>
-    <p style="font-size:18px;font-weight:700;color:#111827;margin:0 0 28px">${cardTitle}</p>
+    <p style="color:#374151;margin:0 0 8px"><strong>${escapeHtml(requester)}</strong> is requesting payment for:</p>
+    <p style="font-size:18px;font-weight:700;color:#111827;margin:0 0 28px">${escapeHtml(cardTitle)}</p>
     <a href="${paymentUrl}" style="display:inline-block;padding:14px 28px;background:#111827;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px">Pay ${amountLabel}</a>
     <p style="margin-top:24px;color:#9ca3af;font-size:13px">Secure payment via card, Apple Pay, or Google Pay. Powered by Stripe.</p>
   </div>
@@ -149,6 +174,26 @@ module.exports = async function handler(req, res) {
     } catch (err) {
       console.error("stripe-checkout/expense error:", err.message);
       return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // ── billing portal session (merged from stripe-portal.js, SEG-14) ─────────
+  // Keeps the deployed function count at 12 (Vercel Hobby limit) while adding
+  // guest-view.js. Identity comes from the verified JWT.
+  if (action === "portal") {
+    try {
+      const customerId = callerProfile?.stripe_customer_id;
+      if (!customerId) {
+        return res.status(404).json({ error: "No billing account found. Please subscribe first." });
+      }
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${baseUrl(req)}/#settings`,
+      });
+      return res.status(200).json({ url: portalSession.url });
+    } catch (err) {
+      console.error("stripe-checkout/portal error:", err.message);
+      return res.status(500).json({ error: "Could not open billing portal" });
     }
   }
 

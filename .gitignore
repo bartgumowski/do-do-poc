@@ -2,3 +2,5 @@
 .env*
 Git token.md.rtf
 plan/
+node_modules/
+.DS_Store
