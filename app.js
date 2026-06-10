@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.4";
+const APP_VERSION = "0.8.5";
 const APP_VERSION_DATE = "2026-06-10";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1618,24 +1618,25 @@ function renderCard(card) {
 }
 
 function renderUnifiedCard(card, options = {}) {
-  const actionLabel = card.type === "Expense" ? "Paid" : "Done";
+  const _t = window.t || ((k, fb) => fb || k);
+  const actionLabel = card.type === "Expense" ? _t("card.paid", "Paid") : _t("card.done", "Done");
   const isDone = card.status === "Done";
   const showActions = options.showActions !== false;
   const attributes = options.attributes || `data-card-id="${card.id}" role="button" tabindex="0"`;
   const className = ["card", "unified-card", options.className || "", isDone ? "done-card" : ""].filter(Boolean).join(" ");
 
   const dateStr = formatDate(card.due);
-  const statusLabel = isDone ? "Done"
-    : card.status === "Waiting" ? "Waiting"
-    : card.status === "Important" ? "Urgent"
-    : !card.acknowledged ? "Needs response"
+  const statusLabel = isDone ? _t("card.done", "Done")
+    : card.status === "Waiting" ? _t("card.waiting", "Waiting")
+    : card.status === "Important" ? _t("card.urgent", "Urgent")
+    : !card.acknowledged ? _t("card.needs_response", "Needs response")
     : "";
 
   return `
     <article class="${className}" ${attributes}>
       <div class="card-state-row">
         <span class="card-date-tag">${dateStr}</span>
-        ${card.type === "Vaccine" ? `<span class="card-type-badge card-type-vaccine">💉 Vaccine</span>` : ""}
+        ${card.type === "Vaccine" ? `<span class="card-type-badge card-type-vaccine">💉 ${_t("card.vaccine_badge", "Vaccine")}</span>` : ""}
         ${statusLabel ? `<span class="card-status-label${isDone ? " card-status-done" : ""}">${statusLabel}</span>` : ""}
         ${card.amount ? `<span class="card-money-tag">${escapeHtml(card.amount)}</span>` : ""}
       </div>
@@ -1656,20 +1657,20 @@ function renderUnifiedCard(card, options = {}) {
       ${showActions ? `
         <div class="quick-actions">
           <button class="quick-complete" type="button" data-quick-complete="${card.id}" ${isDone ? "disabled" : ""}>
-            ${isDone ? "Completed" : actionLabel}
+            ${isDone ? _t("card.completed", "Completed") : actionLabel}
           </button>
-          <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="do" ${isDone ? "disabled" : ""}>I'll do it</button>
-          <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="will" ${isDone ? "disabled" : ""}>Please do it</button>
-          <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="cannot" ${isDone ? "disabled" : ""}>Can't</button>
+          <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="do" ${isDone ? "disabled" : ""}>${_t("card.action.do", "I'll do it")}</button>
+          <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="will" ${isDone ? "disabled" : ""}>${_t("card.action.will", "Please do it")}</button>
+          <button class="quick-response" type="button" data-quick-response="${card.id}" data-response="cannot" ${isDone ? "disabled" : ""}>${_t("card.action.cannot", "Can't")}</button>
         </div>
         <div class="card-footer-actions">
           <button class="card-footer-btn" type="button" data-remind-card="${card.id}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
-            Reminder
+            ${_t("card.action.reminder", "Reminder")}
           </button>
           <button class="card-footer-btn" type="button" data-message-card="${card.id}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/></svg>
-            Message
+            ${_t("card.action.message", "Message")}
           </button>
         </div>
       ` : ""}

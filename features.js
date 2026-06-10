@@ -2535,53 +2535,57 @@ function renderSpecialPanel(moduleName, part = "all") {
       </section>
 
       <section class="feature-panel apple-calendar-section">
+        ${(() => { const _ac = window.t || ((k, fb) => fb || k); return `
         <div class="feature-panel-header">
-          <h3>Apple Calendar (iCloud)</h3>
-          <span class="feature-badge ${appleCalStatus.connected ? "badge-connected" : "badge-pending"}">${appleCalStatus.connected ? "Connected" : "Not connected"}</span>
+          <h3>${_ac("apple.heading", "Apple Calendar (iCloud)")}</h3>
+          <span class="feature-badge ${appleCalStatus.connected ? "badge-connected" : "badge-pending"}">${appleCalStatus.connected ? _ac("apple.connected", "Connected") : _ac("apple.not_connected", "Not connected")}</span>
         </div>
-        <p class="feature-note">iPhone users: connect iCloud Calendar to see your busy blocks and sync Do-Do events. Requires an app-specific password from <a href="https://appleid.apple.com" target="_blank" rel="noopener">appleid.apple.com</a> - Security - App-Specific Passwords.</p>
+        <p class="feature-note">${_ac("apple.note", "iPhone users: connect iCloud Calendar to see your busy blocks and sync Do-Do events. Requires an app-specific password from appleid.apple.com - Security - App-Specific Passwords.")} <a href="https://appleid.apple.com" target="_blank" rel="noopener">appleid.apple.com</a></p>
         ${appleCalStatus.connected
           ? `<div class="settings-connection-row">
-               <span><strong>Connected as</strong><em>${appleCalStatus.email}</em></span>
-               <button class="ghost-button" id="disconnectAppleCalButton">Disconnect</button>
+               <span><strong>${_ac("apple.connected_as", "Connected as")}</strong><em>${appleCalStatus.email}</em></span>
+               <button class="ghost-button" id="disconnectAppleCalButton">${_ac("apple.disconnect", "Disconnect")}</button>
              </div>`
           : `<div class="apple-cal-form">
                <label class="clean-field">
-                 iCloud email
+                 ${_ac("apple.email_label", "iCloud email")}
                  <input type="email" id="appleCalEmail" placeholder="you@icloud.com" autocomplete="off" />
                </label>
                <label class="clean-field">
-                 App-specific password
+                 ${_ac("apple.pass_label", "App-specific password")}
                  <input type="password" id="appleCalPassword" placeholder="xxxx-xxxx-xxxx-xxxx" autocomplete="new-password" />
                </label>
                <div class="section-actions">
-                 <button class="secondary-button" id="connectAppleCalButton">Connect iCloud Calendar</button>
+                 <button class="secondary-button" id="connectAppleCalButton">${_ac("apple.connect_btn", "Connect iCloud Calendar")}</button>
                </div>
              </div>`
         }
+        `; })()}
       </section>
 
       <section class="feature-panel coparent-calendar-section">
+        ${(() => { const _cc = window.t || ((k, fb) => fb || k); const _synced = automation.syncFamilyCalendar || automation.syncWorkCalendar; return `
         <div class="feature-panel-header">
-          <h3>Co-parent calendar</h3>
+          <h3>${_cc("copcal.heading", "Co-parent calendar")}</h3>
         </div>
-        <p class="feature-note">Your co-parent connects their own calendar from their device in their Do-Do settings. Once connected, their busy blocks show on your shared calendar in a different color - without exposing any event details.</p>
+        <p class="feature-note">${_cc("copcal.note", "Your co-parent connects their own calendar from their device in their Do-Do settings. Once connected, their busy blocks show on your shared calendar in a different color.")}</p>
         <div class="settings-connection-list">
           <div class="settings-connection-row">
             <span>
-              <strong>Your calendar</strong>
-              <em>${automation.syncFamilyCalendar || automation.syncWorkCalendar ? "Connected - busy blocks shared" : "Not connected"}</em>
+              <strong>${_cc("copcal.your_cal", "Your calendar")}</strong>
+              <em>${_synced ? _cc("copcal.connected_busy", "Connected - busy blocks shared") : _cc("copcal.not_connected", "Not connected")}</em>
             </span>
-            <b class="${automation.syncFamilyCalendar || automation.syncWorkCalendar ? "status-connected" : "status-pending"}">${automation.syncFamilyCalendar || automation.syncWorkCalendar ? "Active" : "Set up above"}</b>
+            <b class="${_synced ? "status-connected" : "status-pending"}">${_synced ? _cc("copcal.active", "Active") : _cc("copcal.set_up_above", "Set up above")}</b>
           </div>
           <div class="settings-connection-row">
             <span>
-              <strong>Co-parent's calendar</strong>
-              <em>Visible once they connect from their device.</em>
+              <strong>${_cc("copcal.coparent_cal", "Co-parent's calendar")}</strong>
+              <em>${_cc("copcal.visible_once", "Visible once they connect from their device.")}</em>
             </span>
-            <b class="status-pending" id="coParentCalStatus">Checking...</b>
+            <b class="status-pending" id="coParentCalStatus">${_cc("copcal.checking", "Checking...")}</b>
           </div>
         </div>
+        `; })()}
       </section>`;
       })() : ""}
       ${/* SEG-14: Siri parked - /api/siri-* endpoints are not deployed (Vercel
@@ -2621,6 +2625,7 @@ function renderSpecialPanel(moduleName, part = "all") {
 }
 
 function renderVaccinePanel() {
+  const _vt = window.t || ((k, fb) => fb || k);
   // Pull live vaccine cards from state
   const allCards = typeof window.getCards === "function" ? window.getCards() : [];
   const vaccineCards = allCards
@@ -2638,17 +2643,17 @@ function renderVaccinePanel() {
               <strong>${escapeHtml(c.title)}</strong>
               <em>Due ${dueStr}${c.details ? " · " + escapeHtml(c.details.substring(0, 40)) : ""}</em>
             </span>
-            <button class="secondary-button" type="button" data-open-vaccine="${c.id}" style="flex-shrink:0;">Open</button>
+            <button class="secondary-button" type="button" data-open-vaccine="${c.id}" style="flex-shrink:0;">${_vt("vaccine.open", "Open")}</button>
           </div>
         `;
       }).join("")
-    : `<p class="feature-empty">No vaccine cards yet. Add one to track due dates and reminders.</p>`;
+    : `<p class="feature-empty">${_vt("vaccine.empty", "No vaccine cards yet. Add one to track due dates and reminders.")}</p>`;
 
   return `
     <section class="feature-panel" id="vaccinePanelSection">
       <div class="feature-panel-header">
-        <h3>Vaccine schedule</h3>
-        <button class="secondary-button" type="button" id="addVaccineBtn">+ Add vaccine</button>
+        <h3>${_vt("vaccine.heading", "Vaccine schedule")}</h3>
+        <button class="secondary-button" type="button" id="addVaccineBtn">${_vt("vaccine.add", "+ Add vaccine")}</button>
       </div>
       <div class="budget-list" id="vaccineCardList">
         ${rows}
@@ -3022,19 +3027,20 @@ async function renderSubscriptionPanel() {
   const panel = featureModule.querySelector("#subscriptionPanelContent");
   if (!panel) return;
 
+  const _st = window.t || ((k, fb) => fb || k);
   const { status, periodEnd } = window.getSubscriptionStatus?.() || { status: "free", periodEnd: null };
   const paid = ["active", "trialing"].includes(status);
 
   const statusLabel = {
-    free: "Free plan",
-    trialing: "Family - free trial",
-    active: "Family",
-    past_due: "Family - payment past due",
-    canceled: "Canceled",
-  }[status] || "Free plan";
+    free:     _st("sub.free",     "Free plan"),
+    trialing: _st("sub.trial",    "Family - free trial"),
+    active:   _st("sub.active",   "Family"),
+    past_due: _st("sub.past_due", "Family - payment past due"),
+    canceled: _st("sub.canceled", "Canceled"),
+  }[status] || _st("sub.free", "Free plan");
 
   const renewalHtml = periodEnd
-    ? `<span style="color:var(--muted);font-size:12px;">Renews ${new Date(periodEnd).toLocaleDateString()}</span>`
+    ? `<span style="color:var(--muted);font-size:12px;">${_st("sub.renews", "Renews")} ${new Date(periodEnd).toLocaleDateString()}</span>`
     : "";
 
   if (paid) {
@@ -3044,12 +3050,12 @@ async function renderSubscriptionPanel() {
           <strong>${statusLabel}</strong>
           ${renewalHtml}
         </div>
-        <button class="secondary-button" id="manageSubBtn" style="white-space:nowrap;">Manage</button>
+        <button class="secondary-button" id="manageSubBtn" style="white-space:nowrap;">${_st("sub.manage", "Manage")}</button>
       </article>
     `;
     panel.querySelector("#manageSubBtn")?.addEventListener("click", async () => {
       const btn = panel.querySelector("#manageSubBtn");
-      if (btn) { btn.disabled = true; btn.textContent = "Opening..."; }
+      if (btn) { btn.disabled = true; btn.textContent = _st("sub.opening", "Opening..."); }
       try {
         const res = await fetch("/api/stripe-checkout", {
           method: "POST",
@@ -3062,7 +3068,7 @@ async function renderSubscriptionPanel() {
       } catch (err) {
         showFeatureToast("Portal error: " + err.message);
       } finally {
-        if (btn) { btn.disabled = false; btn.textContent = "Manage"; }
+        if (btn) { btn.disabled = false; btn.textContent = _st("sub.manage", "Manage"); }
       }
     });
   } else {
@@ -3072,15 +3078,15 @@ async function renderSubscriptionPanel() {
     panel.innerHTML = `
       <article class="feature-item" style="flex-direction:column;align-items:flex-start;gap:8px;">
         <div>
-          <strong>Free plan</strong>
+          <strong>${_st("sub.free", "Free plan")}</strong>
           <span style="display:block;color:var(--muted);font-size:13px;">
-            ${used}/${limit} Dos used
+            ${used}/${limit} ${_st("sub.dos_used", "Dos used")}
           </span>
         </div>
         <p style="font-size:13px;color:var(--muted);margin:0;">
-          Upgrade for unlimited Dos, calendar sync, AI, and co-parent collaboration.
+          ${_st("sub.upgrade_note", "Upgrade for unlimited Dos, calendar sync, AI, and co-parent collaboration.")}
         </p>
-        <button class="primary-button" id="upgradeSubBtn">Upgrade to Family - CHF 9.90/mo</button>
+        <button class="primary-button" id="upgradeSubBtn">${_st("sub.upgrade_btn", "Upgrade to Family")} - ${LOCALE_CONFIG.monthlyPrice}/mo</button>
       </article>
     `;
     panel.querySelector("#upgradeSubBtn")?.addEventListener("click", () => {

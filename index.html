@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="assets/dodo-icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="assets/dodo-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=20260610-sidebar-v2" />
+    <link rel="stylesheet" href="styles.css?v=20260610-i18n-cards" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body class="auth-locked">
@@ -370,27 +370,27 @@
             </button>
             <div class="top-mini-stats" aria-label="Quick totals">
               <button class="mini-stat" id="needsShortcut" type="button" aria-label="Show Dos needing response">
-                <span>Needs response</span>
+                <span data-i18n="stats.needs">Needs response</span>
                 <strong id="topNeeds">0</strong>
               </button>
               <button class="mini-stat" id="waitingShortcut" type="button" aria-label="Show waiting Dos">
-                <span>Waiting</span>
+                <span data-i18n="stats.waiting">Waiting</span>
                 <strong id="topWaiting">0</strong>
               </button>
               <button class="mini-stat" id="todoShortcut" type="button" aria-label="Show to do Dos">
-                <span>To do</span>
+                <span data-i18n="stats.todo">To do</span>
                 <strong id="topTodo">0</strong>
               </button>
               <button class="mini-stat" id="expensesShortcut" type="button" aria-label="Open expenses">
-                <span>Expenses</span>
+                <span data-i18n="stats.expenses">Expenses</span>
                 <strong id="topCosts">CHF 0</strong>
               </button>
               <button class="mini-stat" type="button" data-module="messages" aria-label="Open messages">
-                <span>Messages</span>
+                <span data-i18n="stats.messages">Messages</span>
                 <strong id="topMessages">0</strong>
               </button>
               <button class="mini-stat" type="button" data-module="settings" aria-label="Open reminder settings">
-                <span>Reminders</span>
+                <span data-i18n="stats.reminders">Reminders</span>
                 <strong id="topReminders">0</strong>
               </button>
             </div>
@@ -810,9 +810,9 @@
       window.STRIPE_MONTHLY_PRICE_ID_EUR = ""; // price_xxx  EUR 7.90/mo
       window.STRIPE_ANNUAL_PRICE_ID_EUR  = ""; // price_xxx  EUR 69/yr
     </script>
-    <script src="i18n.js?v=20260610-sidebar-v2"></script>
-    <script src="supabase-data.js?v=20260610-sidebar-v2"></script>
-    <script src="app.js?v=20260610-sidebar-v2"></script>
-    <script src="features.js?v=20260610-sidebar-v2"></script>
+    <script src="i18n.js?v=20260610-i18n-cards"></script>
+    <script src="supabase-data.js?v=20260610-i18n-cards"></script>
+    <script src="app.js?v=20260610-i18n-cards"></script>
+    <script src="features.js?v=20260610-i18n-cards"></script>
   </body>
 </html>

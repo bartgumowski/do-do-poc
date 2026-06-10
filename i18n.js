@@ -291,6 +291,72 @@
       // Misc
       "settings.checking":    "Checking connection...",
       "settings.loading":     "Loading...",
+
+      // Stats bar
+      "stats.needs":          "Needs response",
+      "stats.waiting":        "Waiting",
+      "stats.todo":           "To do",
+      "stats.expenses":       "Expenses",
+      "stats.messages":       "Messages",
+      "stats.reminders":      "Reminders",
+
+      // Card status labels
+      "card.done":            "Done",
+      "card.completed":       "Completed",
+      "card.waiting":         "Waiting",
+      "card.urgent":          "Urgent",
+      "card.needs_response":  "Needs response",
+      "card.paid":            "Paid",
+      "card.vaccine_badge":   "Vaccine",
+
+      // Card action buttons
+      "card.action.do":       "I'll do it",
+      "card.action.will":     "Please do it",
+      "card.action.cannot":   "Can't",
+      "card.action.reminder": "Reminder",
+      "card.action.message":  "Message",
+
+      // Apple Calendar section
+      "apple.heading":        "Apple Calendar (iCloud)",
+      "apple.connected":      "Connected",
+      "apple.not_connected":  "Not connected",
+      "apple.note":           "iPhone users: connect iCloud Calendar to see your busy blocks and sync Do-Do events. Requires an app-specific password from appleid.apple.com - Security - App-Specific Passwords.",
+      "apple.connected_as":   "Connected as",
+      "apple.disconnect":     "Disconnect",
+      "apple.email_label":    "iCloud email",
+      "apple.pass_label":     "App-specific password",
+      "apple.connect_btn":    "Connect iCloud Calendar",
+
+      // Co-parent calendar section
+      "copcal.heading":       "Co-parent calendar",
+      "copcal.note":          "Your co-parent connects their own calendar from their device in their Do-Do settings. Once connected, their busy blocks show on your shared calendar in a different color - without exposing any event details.",
+      "copcal.your_cal":      "Your calendar",
+      "copcal.connected_busy":"Connected - busy blocks shared",
+      "copcal.not_connected": "Not connected",
+      "copcal.active":        "Active",
+      "copcal.set_up_above":  "Set up above",
+      "copcal.coparent_cal":  "Co-parent's calendar",
+      "copcal.visible_once":  "Visible once they connect from their device.",
+      "copcal.checking":      "Checking...",
+
+      // Subscription section
+      "sub.free":             "Free plan",
+      "sub.trial":            "Family - free trial",
+      "sub.active":           "Family",
+      "sub.past_due":         "Family - payment past due",
+      "sub.canceled":         "Canceled",
+      "sub.renews":           "Renews",
+      "sub.manage":           "Manage",
+      "sub.opening":          "Opening...",
+      "sub.dos_used":         "Dos used",
+      "sub.upgrade_note":     "Upgrade for unlimited Dos, calendar sync, AI, and co-parent collaboration.",
+      "sub.upgrade_btn":      "Upgrade to Family",
+
+      // Vaccine section
+      "vaccine.heading":      "Vaccine schedule",
+      "vaccine.add":          "+ Add vaccine",
+      "vaccine.empty":        "No vaccine cards yet. Add one to track due dates and reminders.",
+      "vaccine.open":         "Open",
     },
 
     // ── Deutsch ────────────────────────────────────────────────────────────────
@@ -557,6 +623,72 @@
       // Misc
       "settings.checking":    "Verbindung wird geprüft…",
       "settings.loading":     "Lädt…",
+
+      // Stats bar
+      "stats.needs":          "Ausstehend",
+      "stats.waiting":        "Wartet",
+      "stats.todo":           "Zu tun",
+      "stats.expenses":       "Ausgaben",
+      "stats.messages":       "Nachrichten",
+      "stats.reminders":      "Erinnerungen",
+
+      // Card status labels
+      "card.done":            "Erledigt",
+      "card.completed":       "Abgeschlossen",
+      "card.waiting":         "Wartet",
+      "card.urgent":          "Dringend",
+      "card.needs_response":  "Antwort nötig",
+      "card.paid":            "Bezahlt",
+      "card.vaccine_badge":   "Impfung",
+
+      // Card action buttons
+      "card.action.do":       "Ich mach's",
+      "card.action.will":     "Bitte mach es",
+      "card.action.cannot":   "Kann nicht",
+      "card.action.reminder": "Erinnerung",
+      "card.action.message":  "Nachricht",
+
+      // Apple Calendar
+      "apple.heading":        "Apple Kalender (iCloud)",
+      "apple.connected":      "Verbunden",
+      "apple.not_connected":  "Nicht verbunden",
+      "apple.note":           "iPhone-Nutzer: iCloud-Kalender verbinden, um verfügbare Zeiten zu sehen. Erfordert ein App-spezifisches Passwort von appleid.apple.com - Sicherheit - App-spezifische Passwörter.",
+      "apple.connected_as":   "Verbunden als",
+      "apple.disconnect":     "Trennen",
+      "apple.email_label":    "iCloud-E-Mail",
+      "apple.pass_label":     "App-spezifisches Passwort",
+      "apple.connect_btn":    "iCloud-Kalender verbinden",
+
+      // Co-parent calendar
+      "copcal.heading":       "Kalender des anderen Elternteils",
+      "copcal.note":          "Das andere Elternteil verbindet seinen eigenen Kalender in seinen Do-Do-Einstellungen. Einmal verbunden, werden seine freien Zeiten in Ihrem gemeinsamen Kalender in einer anderen Farbe angezeigt.",
+      "copcal.your_cal":      "Dein Kalender",
+      "copcal.connected_busy":"Verbunden - freie Zeiten geteilt",
+      "copcal.not_connected": "Nicht verbunden",
+      "copcal.active":        "Aktiv",
+      "copcal.set_up_above":  "Oben einrichten",
+      "copcal.coparent_cal":  "Kalender des anderen Elternteils",
+      "copcal.visible_once":  "Sichtbar, sobald sie sich von ihrem Gerät verbinden.",
+      "copcal.checking":      "Prüfen…",
+
+      // Subscription
+      "sub.free":             "Kostenlos",
+      "sub.trial":            "Family - Testzeitraum",
+      "sub.active":           "Family",
+      "sub.past_due":         "Family - Zahlung überfällig",
+      "sub.canceled":         "Gekündigt",
+      "sub.renews":           "Verlängert sich am",
+      "sub.manage":           "Verwalten",
+      "sub.opening":          "Wird geöffnet…",
+      "sub.dos_used":         "Dos verwendet",
+      "sub.upgrade_note":     "Upgrade für unbegrenzte Dos, Kalendersync, KI und Co-Elternteil-Zusammenarbeit.",
+      "sub.upgrade_btn":      "Auf Family upgraden",
+
+      // Vaccine
+      "vaccine.heading":      "Impfplan",
+      "vaccine.add":          "+ Impfung hinzufügen",
+      "vaccine.empty":        "Noch keine Impfkarten. Füge eine hinzu, um Termine zu verfolgen.",
+      "vaccine.open":         "Öffnen",
     },
 
     // ── Polski ─────────────────────────────────────────────────────────────────
@@ -823,6 +955,72 @@
       // Misc
       "settings.checking":    "Sprawdzanie połączenia…",
       "settings.loading":     "Ładowanie…",
+
+      // Stats bar
+      "stats.needs":          "Do odpowiedzi",
+      "stats.waiting":        "Czeka",
+      "stats.todo":           "Do zrobienia",
+      "stats.expenses":       "Koszty",
+      "stats.messages":       "Wiadomości",
+      "stats.reminders":      "Przypomnienia",
+
+      // Card status labels
+      "card.done":            "Gotowe",
+      "card.completed":       "Wykonano",
+      "card.waiting":         "Czeka",
+      "card.urgent":          "Pilne",
+      "card.needs_response":  "Do odpowiedzi",
+      "card.paid":            "Zapłacono",
+      "card.vaccine_badge":   "Szczepienie",
+
+      // Card action buttons
+      "card.action.do":       "Ja to zrobię",
+      "card.action.will":     "Proszę zrób to",
+      "card.action.cannot":   "Nie mogę",
+      "card.action.reminder": "Przypomnienie",
+      "card.action.message":  "Wiadomość",
+
+      // Apple Calendar
+      "apple.heading":        "Apple Kalendarz (iCloud)",
+      "apple.connected":      "Połączono",
+      "apple.not_connected":  "Nie połączono",
+      "apple.note":           "Użytkownicy iPhone: połącz iCloud Kalendarz, aby widzieć swoje wolne bloki. Wymaga hasła aplikacji z appleid.apple.com - Bezpieczeństwo - Hasła aplikacji.",
+      "apple.connected_as":   "Połączono jako",
+      "apple.disconnect":     "Rozłącz",
+      "apple.email_label":    "E-mail iCloud",
+      "apple.pass_label":     "Hasło aplikacji",
+      "apple.connect_btn":    "Połącz iCloud Kalendarz",
+
+      // Co-parent calendar
+      "copcal.heading":       "Kalendarz współrodzica",
+      "copcal.note":          "Współrodzic łączy swój własny kalendarz w swoich ustawieniach Do-Do. Po połączeniu ich zajęte bloki są widoczne w waszym wspólnym kalendarzu w innym kolorze - bez ujawniania szczegółów wydarzeń.",
+      "copcal.your_cal":      "Twój kalendarz",
+      "copcal.connected_busy":"Połączono - zajęte bloki udostępnione",
+      "copcal.not_connected": "Nie połączono",
+      "copcal.active":        "Aktywny",
+      "copcal.set_up_above":  "Skonfiguruj powyżej",
+      "copcal.coparent_cal":  "Kalendarz współrodzica",
+      "copcal.visible_once":  "Widoczny po połączeniu z ich urządzenia.",
+      "copcal.checking":      "Sprawdzanie…",
+
+      // Subscription
+      "sub.free":             "Plan bezpłatny",
+      "sub.trial":            "Family - okres próbny",
+      "sub.active":           "Family",
+      "sub.past_due":         "Family - płatność zaległa",
+      "sub.canceled":         "Anulowano",
+      "sub.renews":           "Odnawia się",
+      "sub.manage":           "Zarządzaj",
+      "sub.opening":          "Otwieranie…",
+      "sub.dos_used":         "Dos użyte",
+      "sub.upgrade_note":     "Przejdź na wyższy plan dla nieograniczonych Dos, synchronizacji kalendarza, AI i współpracy ze współrodzicem.",
+      "sub.upgrade_btn":      "Przejdź na Family",
+
+      // Vaccine
+      "vaccine.heading":      "Harmonogram szczepień",
+      "vaccine.add":          "+ Dodaj szczepienie",
+      "vaccine.empty":        "Brak kart szczepień. Dodaj jedną, aby śledzić terminy i przypomnienia.",
+      "vaccine.open":         "Otwórz",
     },
   };
 
