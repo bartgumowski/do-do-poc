@@ -1,8 +1,9 @@
-const CACHE_NAME = "do-do-phone-v10";
+const CACHE_NAME = "do-do-phone-v11";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
+  "./supabase.js",
   "./app.js",
   "./features.js",
   "./assets/dodo-icon.png",
@@ -14,6 +15,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -22,6 +24,7 @@ self.addEventListener("activate", (event) => {
       Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
     )
   );
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener("push", (event) => {
@@ -56,7 +59,6 @@ self.addEventListener("notificationclick", (event) => {
 self.addEventListener("sync", (event) => {
   if (event.tag === "sync-cards") {
     event.waitUntil(
-      // Tell all open app windows to flush their sync queue
       self.clients.matchAll({ type: "window" }).then((clientList) => {
         clientList.forEach((client) => client.postMessage({ type: "flush-sync-queue" }));
       })
