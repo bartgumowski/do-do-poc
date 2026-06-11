@@ -876,6 +876,8 @@ function propagateWeekSchedule(referenceWeekDays, schedule) {
 }
 
 window.openCustodyScheduleDialog = openCustodyScheduleDialog;
+window.renderCalendarFeature = renderCalendarFeature;
+window.syncCalendarEventsFromCards = syncCalendarEventsFromCards;
 
 function bindCustodySettings() {
   const save = () => {

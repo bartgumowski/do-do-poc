@@ -3256,6 +3256,109 @@ svg {
   display: none;
 }
 
+/* Mini calendar picker in Add Do dialog */
+.mini-cal-picker {
+  margin-top: 10px;
+  padding: 8px 6px 6px;
+  background: var(--card-bg, #faf9f6);
+  border: 1px solid var(--border-color, #e5e2db);
+  border-radius: 10px;
+  user-select: none;
+}
+
+.mc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  padding: 0 2px;
+}
+
+.mc-month-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.mc-nav {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #888);
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+}
+
+.mc-nav:hover {
+  color: var(--accent, #1aab8b);
+}
+
+.mc-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.mc-grid th {
+  text-align: center;
+  color: var(--text-secondary, #888);
+  font-weight: 500;
+  padding: 2px 0 4px;
+}
+
+.mc-grid td {
+  text-align: center;
+  padding: 1px;
+}
+
+.mc-day {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.72rem;
+  color: var(--text-primary, #333);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mc-day:hover {
+  background: var(--bg-hover, rgba(0,0,0,0.07));
+}
+
+.mc-today {
+  font-weight: 700;
+  color: var(--accent, #1aab8b);
+}
+
+.mc-selected {
+  background: var(--accent, #1aab8b) !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.mc-clear {
+  display: block;
+  margin: 6px auto 0;
+  background: none;
+  border: none;
+  font-size: 0.72rem;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.mc-clear:hover {
+  color: var(--text-primary, #333);
+}
+
 .derived-tag {
   display: inline-flex;
   align-items: center;
@@ -4741,7 +4844,7 @@ textarea {
 
 @media (min-width: 1081px) {
   .calendar-layout {
-    grid-template-columns: minmax(300px, 2fr) minmax(340px, 3fr);
+    grid-template-columns: minmax(340px, 3fr) minmax(300px, 2fr);
     align-items: start;
     gap: 20px;
   }

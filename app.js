@@ -1,4 +1,4 @@
-const APP_VERSION = "0.9.9";
+const APP_VERSION = "0.10.0";
 const APP_VERSION_DATE = "2026-06-11";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1841,6 +1841,9 @@ function createCardFromInlineCapture(input) {
 
 function openCardDialog(id = "", focusSection = "info", prefill = {}) {
   const card = state.cards.find((item) => item.id === id);
+  // Reset mini-cal view so it snaps to selected/today month on open
+  const _mcEl = document.getElementById("miniCalPicker");
+  if (_mcEl) { delete _mcEl.dataset.viewYear; delete _mcEl.dataset.viewMonth; }
   elements.cardForm.reset();
   if (elements.voiceStatus) elements.voiceStatus.textContent = "Record what has to be done";
   elements.cardId.value = card?.id || "";
@@ -2645,6 +2648,105 @@ function renderDerivedTags() {
   elements.derivedTags.innerHTML = tagValues
     .map((value) => renderTagButton(value, "derived-tag", true))
     .join("");
+
+  renderMiniCal();
+}
+
+function renderMiniCal() {
+  const el = document.getElementById("miniCalPicker");
+  if (!el) return;
+
+  const dueVal = elements.dueInput?.value; // "YYYY-MM-DDTHH:MM"
+  const selected = dueVal ? new Date(dueVal) : null;
+  const today = new Date();
+
+  // Use stored view state or default to selected/today month
+  let viewYear = el.dataset.viewYear ? parseInt(el.dataset.viewYear) : (selected || today).getFullYear();
+  let viewMonth = el.dataset.viewMonth !== undefined ? parseInt(el.dataset.viewMonth) : (selected || today).getMonth();
+
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const dayNames = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  // Convert Sun=0 to Mon=0 system
+  let startDow = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  let cells = "";
+  let dayNum = 1;
+  for (let row = 0; row < 6; row++) {
+    cells += "<tr>";
+    for (let col = 0; col < 7; col++) {
+      const cellIndex = row * 7 + col;
+      if (cellIndex < startDow || dayNum > daysInMonth) {
+        cells += "<td></td>";
+      } else {
+        const d = new Date(viewYear, viewMonth, dayNum);
+        const isToday = d.toDateString() === today.toDateString();
+        const isSelected = selected && d.toDateString() === selected.toDateString();
+        const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+        let cls = "mc-day";
+        if (isToday) cls += " mc-today";
+        if (isSelected) cls += " mc-selected";
+        cells += `<td><button class="${cls}" type="button" data-date="${dateStr}">${dayNum}</button></td>`;
+        dayNum++;
+      }
+    }
+    cells += "</tr>";
+    if (dayNum > daysInMonth) break;
+  }
+
+  el.innerHTML = `
+    <div class="mc-header">
+      <button class="mc-nav" type="button" id="miniCalPrev">&#8249;</button>
+      <span class="mc-month-label">${monthNames[viewMonth]} ${viewYear}</span>
+      <button class="mc-nav" type="button" id="miniCalNext">&#8250;</button>
+    </div>
+    <table class="mc-grid">
+      <thead><tr>${dayNames.map((d) => `<th>${d}</th>`).join("")}</tr></thead>
+      <tbody>${cells}</tbody>
+    </table>
+    ${dueVal ? `<button class="mc-clear" type="button" id="miniCalClear">&#215; Clear date</button>` : ""}
+  `;
+  el.dataset.viewYear = viewYear;
+  el.dataset.viewMonth = viewMonth;
+
+  el.querySelector("#miniCalPrev")?.addEventListener("click", () => {
+    let m = parseInt(el.dataset.viewMonth) - 1;
+    let y = parseInt(el.dataset.viewYear);
+    if (m < 0) { m = 11; y--; }
+    el.dataset.viewMonth = m;
+    el.dataset.viewYear = y;
+    renderMiniCal();
+  });
+
+  el.querySelector("#miniCalNext")?.addEventListener("click", () => {
+    let m = parseInt(el.dataset.viewMonth) + 1;
+    let y = parseInt(el.dataset.viewYear);
+    if (m > 11) { m = 0; y++; }
+    el.dataset.viewMonth = m;
+    el.dataset.viewYear = y;
+    renderMiniCal();
+  });
+
+  el.querySelectorAll(".mc-day").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const dateStr = btn.dataset.date;
+      // Preserve existing time if set, else use noon
+      let timeStr = "12:00";
+      if (elements.dueInput?.value) {
+        const parts = elements.dueInput.value.split("T");
+        if (parts[1]) timeStr = parts[1].slice(0, 5);
+      }
+      if (elements.dueInput) elements.dueInput.value = `${dateStr}T${timeStr}`;
+      renderDerivedTags();
+    });
+  });
+
+  el.querySelector("#miniCalClear")?.addEventListener("click", () => {
+    if (elements.dueInput) elements.dueInput.value = "";
+    renderDerivedTags();
+  });
 }
 
 function renderTagButton(value, className, showHash = false) {
@@ -2788,12 +2890,29 @@ function inferDueDate(lower) {
       : date.getFullYear();
     date.setFullYear(year, month, day);
   }
-  if (lower.includes("tomorrow")) date.setDate(date.getDate() + 1);
-  if (lower.includes("next week")) date.setDate(date.getDate() + 7);
-  if (!explicitDate && !/(today|tomorrow|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)/.test(lower)) return "";
 
-  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-  const targetDay = days.findIndex((day) => lower.includes(day));
+  // Polish keywords: dzisiaj/dziś=today, jutro=tomorrow, pojutrze=day after tomorrow, następny tydzień=next week
+  const isToday = lower.includes("today") || /dzisia[jj]|dzi[sś]/.test(lower);
+  const isTomorrow = lower.includes("tomorrow") || lower.includes("jutro");
+  const isDayAfter = lower.includes("pojutrze");
+  const isNextWeek = lower.includes("next week") || /nast[eę]pn/.test(lower);
+
+  if (isTomorrow) date.setDate(date.getDate() + 1);
+  if (isDayAfter) date.setDate(date.getDate() + 2);
+  if (isNextWeek) date.setDate(date.getDate() + 7);
+
+  const plDays = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
+  const enDays = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+
+  if (!explicitDate && !isToday && !isTomorrow && !isDayAfter && !isNextWeek
+    && !enDays.some((d) => lower.includes(d))
+    && !plDays.some((d) => lower.includes(d))) return "";
+
+  // English day-of-week
+  const targetDayEn = enDays.findIndex((d) => lower.includes(d));
+  // Polish day-of-week
+  const targetDayPl = plDays.findIndex((d) => lower.includes(d));
+  const targetDay = targetDayEn >= 0 ? targetDayEn : targetDayPl;
   if (targetDay >= 0) {
     const current = date.getDay();
     const diff = (targetDay - current + 7) % 7 || 7;
@@ -2817,7 +2936,8 @@ function extractPrimaryTime(lower) {
   const actionTime = lower.match(/\b(?:pickup|pick up|drop off|dismissal|meeting|appointment|event|practice)\b.{0,50}?\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s?(am|pm)?\b/);
   if (actionTime) return actionTime;
 
-  const atTime = lower.match(/\bat\s*(\d{1,2})(?::(\d{2}))?\s?(am|pm)?\b/);
+  // "at 12" (English) or "o 12" / "o godzinie 12" (Polish)
+  const atTime = lower.match(/\b(?:at|o godzinie|o)\s+(\d{1,2})(?::(\d{2}))?\s?(am|pm)?\b/);
   if (atTime) return atTime;
 
   const explicitTimes = lower.matchAll(/\b(\d{1,2}):(\d{2})\s?(am|pm)?\b/g);
@@ -3172,6 +3292,12 @@ async function saveCard(event) {
   if (!saveCard._silent) elements.cardDialog.close();
   showToast(existing ? "Do updated" : buildCreateToast(card));
   render();
+  // Re-render calendar if it's the active module (so new Dos with due dates appear immediately)
+  if (!featureModule.classList.contains("hidden") && typeof window.syncCalendarEventsFromCards === "function") {
+    window.syncCalendarEventsFromCards();
+    const data = window._lastFeatureData;
+    if (data && typeof window.renderCalendarFeature === "function") window.renderCalendarFeature(data);
+  }
   // First card save is the ideal moment to ask for push permission -
   // user just demonstrated intent so the prompt feels relevant, not intrusive.
   if (!existing) requestNotificationPermission();
