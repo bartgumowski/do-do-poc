@@ -72,10 +72,6 @@ function applyCustodyColors(schedule) {
 
 // Returns "mine", "co", or "" for a given Date object (checks overrides first)
 function getCustodyOwner(date) {
-  // Check vacation schedule first - takes precedence without destroying the base schedule
-  const vac = getActiveVacation(date);
-  if (vac) return getVacationOwnerForDate(vac, date);
-
   const schedule = getCustodySchedule();
   if (!schedule.enabled) return null;
 
@@ -804,43 +800,9 @@ function openCustodyScheduleDialog() {
   dialog.showModal();
 }
 
-// ---- Vacation schedule (overlays normal custody without destroying it) ----
-
-const vacationsStorageKey = "do-do-vacations-v1";
-
-function loadVacations() {
-  try { const raw = window.appStorage?.getItem(vacationsStorageKey); return raw ? JSON.parse(raw) : []; } catch { return []; }
-}
-function saveVacations(vacs) {
-  window.appStorage?.setItem(vacationsStorageKey, JSON.stringify(vacs));
-}
-function getActiveVacation(date) {
-  const key = toCalendarKey(date);
-  return loadVacations().find((v) => key >= v.startDate && key <= v.endDate) || null;
-}
-function getVacationOwnerForDate(vac, date) {
-  if (vac.owner === "mine" || vac.owner === "co") return vac.owner;
-  const startMs = new Date(vac.startDate + "T00:00:00").getTime();
-  const dMs = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const weekIndex = Math.floor((dMs - startMs) / (7 * 86400000));
-  const first = vac.alternatingStart || "mine";
-  return weekIndex % 2 === 0 ? first : (first === "mine" ? "co" : "mine");
-}
-
-// ---- Change requests ----
-
-const changeRequestsStorageKey = "do-do-change-requests-v1";
-
-function loadChangeRequests() {
-  try { const raw = window.appStorage?.getItem(changeRequestsStorageKey); return raw ? JSON.parse(raw) : []; } catch { return []; }
-}
-function saveChangeRequests(crs) {
-  window.appStorage?.setItem(changeRequestsStorageKey, JSON.stringify(crs));
-}
-
-// Propagate the current week's per-day overrides to all other weeks in a ~6-year window.
+// Propagate the current week's per-day overrides to all other weeks in a 2-year window.
 // Maps each day-of-week (0=Sun..6=Sat) to its override from the reference week, then
-// applies those overrides to every matching weekday across -156..+156 weeks.
+// applies those overrides to every matching weekday across -52..+52 weeks.
 function propagateWeekSchedule(referenceWeekDays, schedule) {
   // Build a map: dayOfWeek (0-6) -> override value (or null to clear)
   const pattern = {};
@@ -854,8 +816,8 @@ function propagateWeekSchedule(referenceWeekDays, schedule) {
   const today = new Date();
   const newOverrides = { ...(schedule.overrides || {}) };
 
-  // Apply across 312 weeks (-156 to +156, ~6 years total) so it auto-covers future years
-  for (let w = -156; w <= 156; w++) {
+  // Apply across 104 weeks (-52 to +52)
+  for (let w = -52; w <= 52; w++) {
     referenceWeekDays.forEach((refDay) => {
       const target = addDays(refDay, w * 7);
       const k = toCalendarKey(target);
@@ -1154,7 +1116,7 @@ function _renderShoppingBoard(lists) {
     ${renderShoppingGroup("other", window.t ? window.t("shopping.other") : "Other", lists.other)}
     ${customLists.map((cl) => renderShoppingGroup(cl.key, cl.name, cl.items)).join("")}
     <div class="shopping-add-list-row">
-      <button class="ghost-button" type="button" id="addAnotherListBtn">${window.t?.("shopping.add_list") ?? "Add new list"}</button>
+      <button class="ghost-button" type="button" id="addAnotherListBtn">+ ${window.t?.("shopping.add_list") ?? "Add another list"}</button>
     </div>
   `;
 
@@ -1276,12 +1238,6 @@ function _renderShoppingBoard(lists) {
       const listKey = form.dataset.shoppingAddForm;
       input.value = "";
 
-      // After re-render, refocus the input for this list so user can keep typing
-      const refocusInput = () => {
-        const newInput = board.querySelector(`[data-shopping-add-form="${listKey}"] [data-shopping-input]`);
-        newInput?.focus();
-      };
-
       // Custom list (localStorage only)
       if (listKey.startsWith("custom-")) {
         const cls = loadCustomShoppingLists();
@@ -1293,7 +1249,6 @@ function _renderShoppingBoard(lists) {
         }
         const refreshed = await window.loadShoppingItems?.();
         _renderShoppingBoard(refreshed || loadShoppingLists());
-        refocusInput();
         return;
       }
 
@@ -1301,7 +1256,7 @@ function _renderShoppingBoard(lists) {
       const saved = await window.addShoppingItem?.(listKey, label);
       if (saved) {
         const refreshed = await window.loadShoppingItems?.();
-        if (refreshed) { _renderShoppingBoard(refreshed); refocusInput(); return; }
+        if (refreshed) { _renderShoppingBoard(refreshed); return; }
       }
       // localStorage fallback
       const nextLists = loadShoppingLists();
@@ -1310,7 +1265,6 @@ function _renderShoppingBoard(lists) {
       nextLists[listKey] = list;
       saveShoppingLists(nextLists);
       _renderShoppingBoard(nextLists);
-      refocusInput();
       const groupName = listKey === "groceries" ? (window.t?.("shopping.groceries") ?? "Groceries") : (window.t?.("shopping.other") ?? "Other");
       showFeatureToast(`${window.t?.("toast.added") ?? "Added"} – ${groupName}`);
     });
@@ -1355,7 +1309,7 @@ function _renderShoppingBoard(lists) {
 
   // "Add another list" button
   board.querySelector("#addAnotherListBtn")?.addEventListener("click", () => {
-    const name = prompt(window.t?.("shopping.new_list_prompt") ?? "Add new list");
+    const name = prompt(window.t?.("shopping.new_list_prompt") ?? "List name:");
     if (!name || !name.trim()) return;
     addCustomShoppingList(name.trim());
     window.loadShoppingItems?.().then((refreshed) => _renderShoppingBoard(refreshed || loadShoppingLists()));
@@ -1381,16 +1335,14 @@ function renderShoppingGroup(key, title, items) {
         </div>
       </div>
       <form class="shopping-capture" data-shopping-add-form="${key}">
+        <input data-shopping-input placeholder="${addPlaceholder}" autocomplete="off" />
         <button class="shopping-mic" type="button" data-shopping-mic aria-label="${dictateLabel}" title="${dictateLabel}">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
             <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
           </svg>
         </button>
-        <div class="shopping-input-wrap">
-          <input data-shopping-input placeholder="${addPlaceholder}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" />
-          <button class="shopping-add" type="submit" aria-label="Add ${title}">+</button>
-        </div>
+        <button class="shopping-add" type="submit" aria-label="+ ${title}">+</button>
       </form>
       <div class="shopping-list">
         ${items.map((item) => `
@@ -1908,9 +1860,7 @@ function renderCalendarFeature(data) {
           <button class="custody-chip ${selectedOwner === "co" ? "active" : ""}" type="button" data-custody-override="co">${coparentName}</button>
           <button class="custody-chip" type="button" data-custody-override="split">Split</button>
           ${hasOverride ? `<button class="custody-chip custody-chip-reset" type="button" data-custody-override="auto">Reset</button>` : ""}
-          <button class="custody-chip custody-chip-secondary" type="button" id="requestChangeBtn" title="Request a custody day change">↔ Change</button>
         </div>
-        ${getActiveVacation(selectedDate) ? `<div class="custody-vacation-banner"><span>✈ Vacation period</span><button class="ghost-button" type="button" id="openVacationsBtn" style="font-size:12px;padding:2px 8px;">Manage</button></div>` : ""}
       </div>`;
   })() : "";
 
@@ -1959,13 +1909,10 @@ function renderCalendarFeature(data) {
           <button class="${calendarState.view === view ? "active" : ""}" type="button" data-calendar-view="${view}">${window.t?.(`cal.view.${view}`) ?? capitalize(view)}</button>
         `).join("")}
       </div>
-      <div class="calendar-toolbar-row">
-        <button class="custody-schedule-btn" type="button" id="openCustodyDialogBtn" aria-label="Edit parenting schedule">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg>
-          ${custody.enabled ? (window.t?.("cal.parenting_schedule") ?? "Parenting schedule") : (window.t?.("cal.set_up_schedule") ?? "Set up parenting schedule")}
-        </button>
-        ${custody.enabled ? `<button class="custody-schedule-btn custody-vacations-btn" type="button" id="openVacationsBtn" aria-label="Manage vacations">✈ Vacations${loadVacations().length ? ` <span class="vac-count-badge">${loadVacations().length}</span>` : ""}</button>` : ""}
-      </div>
+      <button class="custody-schedule-btn" type="button" id="openCustodyDialogBtn" aria-label="Edit parenting schedule">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg>
+        ${custody.enabled ? (window.t?.("cal.parenting_schedule") ?? "Parenting schedule") : (window.t?.("cal.set_up_schedule") ?? "Set up parenting schedule")}
+      </button>
       <div class="calendar-body">
         ${renderCalendarBody()}
       </div>
@@ -2095,55 +2042,6 @@ function renderCalendarFeature(data) {
     showFeatureToast("Schedule applied to all weeks");
   });
 
-  // Open vacations dialog (toolbar button + "Manage" link inside vacation banner)
-  featureModule.querySelectorAll("#openVacationsBtn").forEach((btn) => {
-    btn.addEventListener("click", () => openVacationsDialog());
-  });
-
-  // Request custody day change
-  featureModule.querySelector("#requestChangeBtn")?.addEventListener("click", () => {
-    const owner = getCustodyOwner(selectedDate);
-    openChangeRequestDialog(calendarState.selected, owner);
-  });
-
-  // Change request approve / decline / delete
-  featureModule.querySelectorAll("[data-cr-approve]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.crApprove;
-      const crs = loadChangeRequests();
-      const cr = crs.find((c) => c.id === id);
-      if (cr) {
-        cr.status = "approved";
-        cr.resolvedAt = new Date().toISOString();
-        saveChangeRequests(crs);
-        setCustodyDayOverride(cr.requestedDate, cr.requestedOwner);
-      }
-      renderCalendarFeature(data);
-      showFeatureToast("Change approved and applied to schedule");
-    });
-  });
-
-  featureModule.querySelectorAll("[data-cr-decline]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.crDecline;
-      const crs = loadChangeRequests();
-      const cr = crs.find((c) => c.id === id);
-      if (cr) { cr.status = "declined"; cr.resolvedAt = new Date().toISOString(); saveChangeRequests(crs); }
-      renderCalendarFeature(data);
-      showFeatureToast("Change request declined");
-    });
-  });
-
-  featureModule.querySelectorAll("[data-cr-delete]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      saveChangeRequests(loadChangeRequests().filter((c) => c.id !== btn.dataset.crDelete));
-      renderCalendarFeature(data);
-    });
-  });
-
   window.bindUnifiedCardInteractions?.(featureModule);
 }
 
@@ -2191,18 +2089,15 @@ function renderCalendarDays() {
     const key = toCalendarKey(date);
     const events = eventsForDate(key);
     const dayConflicts = getConflictsForDate(key, activeConflicts);
-    const activeVac = getActiveVacation(date);
     const classes = ["calendar-day",
       key === calendarState.selected ? "selected" : "",
       events.length ? "has-marker" : "",
       dayConflicts.length ? "has-conflict" : "",
       getCustodyClass(date),
-      activeVac ? "vacation-period" : "",
     ].filter(Boolean).join(" ");
     const dots = events.slice(0, 3).map((item) => `<i class="${item.kind}${item.recurring ? " recurring" : ""}"></i>`).join("");
     const conflictDot = dayConflicts.length ? `<i class="conflict-dot" title="${dayConflicts.length} conflict${dayConflicts.length > 1 ? "s" : ""}">⚠</i>` : "";
-    const vacDot = activeVac ? `<i class="vacation-dot" title="${escapeHtml(activeVac.name || "Vacation")}">✈</i>` : "";
-    return `<button class="${classes}" type="button" data-calendar-day="${key}"><strong>${day}</strong><span>${dots}${conflictDot}${vacDot}</span></button>`;
+    return `<button class="${classes}" type="button" data-calendar-day="${key}"><strong>${day}</strong><span>${dots}${conflictDot}</span></button>`;
   });
   return [...blanks, ...days].join("");
 }
@@ -2294,40 +2189,7 @@ function renderDaySchedule(key) {
   `;
 }
 
-function renderChangeRequestAgendaItem(cr) {
-  const setup = window.getOnboardingState?.() || {};
-  const coparentName = setup.parents?.coparent || "Co-parent";
-  const newOwnerLabel = cr.requestedOwner === "mine" ? "Your day" : `${coparentName}'s day`;
-  const statusColors = { pending: "#f59e0b", approved: "#22c55e", declined: "#ef4444" };
-  const statusColor = statusColors[cr.status] || "#999";
-  const statusLabel = cr.status === "pending" ? "Pending" : cr.status === "approved" ? "Approved" : "Declined";
-  return `
-    <article class="change-request-card" data-cr-id="${escapeHtml(cr.id)}">
-      <div class="change-request-header">
-        <span class="change-request-label">↔ Change request</span>
-        <span class="change-request-status" style="color:${statusColor};">${statusLabel}</span>
-      </div>
-      <div class="change-request-body">
-        <strong>Propose: ${escapeHtml(newOwnerLabel)}</strong>
-        ${cr.reason ? `<span class="change-request-reason">${escapeHtml(cr.reason)}</span>` : ""}
-      </div>
-      ${cr.status === "pending" ? `
-        <div class="change-request-actions">
-          <button class="custody-chip active" type="button" data-cr-approve="${escapeHtml(cr.id)}">Approve</button>
-          <button class="custody-chip custody-chip-reset" type="button" data-cr-decline="${escapeHtml(cr.id)}">Decline</button>
-          <button class="custody-chip" type="button" data-cr-delete="${escapeHtml(cr.id)}" style="opacity:0.55;margin-left:auto;">Remove</button>
-        </div>
-      ` : `
-        <div class="change-request-actions">
-          <button class="custody-chip" type="button" data-cr-delete="${escapeHtml(cr.id)}" style="opacity:0.55;">Remove</button>
-        </div>
-      `}
-    </article>
-  `;
-}
-
 function renderAgendaCard(item) {
-  if (item.kind === "change-request") return renderChangeRequestAgendaItem(item.changeRequest);
   if (item.privateBlock || item.kind === "busy") {
     const personClass = item.person
       ? (item.person === "Parent B" ? "busy-parent-b" : "busy-parent-a")
@@ -2413,160 +2275,6 @@ function addCalendarEvent() {
   });
 }
 
-function openVacationsDialog() {
-  document.getElementById("vacationsDialog")?.remove();
-  const custody = getCustodySchedule();
-  const setup = window.getOnboardingState?.() || {};
-  const coparentName = setup.parents?.coparent || "Co-parent";
-  const vacations = loadVacations();
-
-  const dialog = document.createElement("dialog");
-  dialog.id = "vacationsDialog";
-  dialog.className = "custody-schedule-dialog";
-  dialog.innerHTML = `
-    <div class="custody-dialog-body" style="max-width:440px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h3 style="margin:0;font-size:16px;">✈ Vacation schedules</h3>
-        <button class="ghost-button" type="button" id="closeVacationsDialog" style="font-size:20px;line-height:1;padding:4px 10px;">✕</button>
-      </div>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px;">Vacation periods override the normal custody schedule without destroying it. After the vacation, the regular schedule resumes automatically.</p>
-      <div id="vacationsList" style="margin-bottom:16px;">
-        ${vacations.length === 0 ? `<p style="font-size:13px;color:var(--muted);text-align:center;padding:12px 0;">No vacations added yet.</p>` : vacations.map((v) => {
-          const ownerLabel = v.owner === "mine" ? "Your days" : v.owner === "co" ? `${escapeHtml(coparentName)}'s days` : `Alternating weeks (starts with ${v.alternatingStart === "mine" ? "you" : escapeHtml(coparentName)})`;
-          return `<div class="vacation-list-item">
-            <div class="vacation-list-info">
-              <strong>${escapeHtml(v.name || "Vacation")}</strong>
-              <span>${v.startDate} - ${v.endDate}</span>
-              <span class="vacation-list-owner">${ownerLabel}</span>
-            </div>
-            <button class="custody-chip custody-chip-reset" type="button" data-vac-delete="${v.id}" style="font-size:11px;padding:3px 10px;flex-shrink:0;">Remove</button>
-          </div>`;
-        }).join("")}
-      </div>
-      <details class="vacation-add-details">
-        <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);padding:8px 0;">+ Add vacation period</summary>
-        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">
-          <label class="clean-field">
-            <span>Name</span>
-            <input type="text" id="vacName" placeholder='e.g. "Summer 2026"' />
-          </label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <label class="clean-field">
-              <span>Start date</span>
-              <input type="date" id="vacStart" />
-            </label>
-            <label class="clean-field">
-              <span>End date</span>
-              <input type="date" id="vacEnd" />
-            </label>
-          </div>
-          <label class="clean-field">
-            <span>Who has the kids?</span>
-            <select id="vacOwner">
-              <option value="mine">Your days (whole period)</option>
-              <option value="co">${escapeHtml(coparentName)}'s days (whole period)</option>
-              <option value="alternating">Alternating weeks</option>
-            </select>
-          </label>
-          <label class="clean-field" id="vacAlternatingRow" style="display:none;">
-            <span>First week starts with</span>
-            <select id="vacAlternatingStart">
-              <option value="mine">You</option>
-              <option value="co">${escapeHtml(coparentName)}</option>
-            </select>
-          </label>
-          <button class="primary-button" type="button" id="saveVacationBtn">Add vacation</button>
-        </div>
-      </details>
-    </div>
-  `;
-  document.body.appendChild(dialog);
-  dialog.showModal();
-
-  dialog.querySelector("#closeVacationsDialog").addEventListener("click", () => dialog.close());
-  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
-
-  dialog.querySelector("#vacOwner").addEventListener("change", (e) => {
-    dialog.querySelector("#vacAlternatingRow").style.display = e.target.value === "alternating" ? "block" : "none";
-  });
-
-  dialog.querySelectorAll("[data-vac-delete]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      saveVacations(loadVacations().filter((v) => v.id !== btn.dataset.vacDelete));
-      dialog.close();
-      openVacationsDialog();
-      // data is available from outer renderCalendarFeature scope
-      if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
-    });
-  });
-
-  dialog.querySelector("#saveVacationBtn").addEventListener("click", () => {
-    const name = (dialog.querySelector("#vacName").value.trim()) || "Vacation";
-    const startDate = dialog.querySelector("#vacStart").value;
-    const endDate = dialog.querySelector("#vacEnd").value;
-    const owner = dialog.querySelector("#vacOwner").value;
-    const alternatingStart = dialog.querySelector("#vacAlternatingStart").value;
-    if (!startDate || !endDate) { showFeatureToast("Please enter start and end dates"); return; }
-    if (endDate < startDate) { showFeatureToast("End date must be after start date"); return; }
-    saveVacations([...loadVacations(), { id: "vac-" + Date.now(), name, startDate, endDate, owner, alternatingStart }]);
-    dialog.close();
-    if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
-    showFeatureToast("Vacation added");
-  });
-}
-
-function openChangeRequestDialog(selectedDateKey, currentOwner) {
-  document.getElementById("changeRequestDialog")?.remove();
-  const setup = window.getOnboardingState?.() || {};
-  const coparentName = setup.parents?.coparent || "Co-parent";
-
-  const dialog = document.createElement("dialog");
-  dialog.id = "changeRequestDialog";
-  dialog.className = "custody-schedule-dialog";
-  dialog.innerHTML = `
-    <div class="custody-dialog-body" style="max-width:380px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h3 style="margin:0;font-size:16px;">↔ Request schedule change</h3>
-        <button class="ghost-button" type="button" id="closeCrDialog" style="font-size:20px;line-height:1;padding:4px 10px;">✕</button>
-      </div>
-      <label class="clean-field" style="margin-bottom:10px;">
-        <span>Date</span>
-        <input type="date" id="crDate" value="${selectedDateKey}" />
-      </label>
-      <label class="clean-field" style="margin-bottom:10px;">
-        <span>Propose new owner</span>
-        <select id="crRequestedOwner">
-          <option value="mine"${currentOwner !== "mine" ? " selected" : ""}>You take this day</option>
-          <option value="co"${currentOwner === "mine" ? " selected" : ""}>${escapeHtml(coparentName)} takes this day</option>
-        </select>
-      </label>
-      <label class="clean-field" style="margin-bottom:16px;">
-        <span>Reason (optional)</span>
-        <input type="text" id="crReason" placeholder="e.g. Doctor appointment, work travel..." />
-      </label>
-      <button class="primary-button" type="button" id="saveCrBtn" style="width:100%;">Save request</button>
-    </div>
-  `;
-  document.body.appendChild(dialog);
-  dialog.showModal();
-
-  dialog.querySelector("#closeCrDialog").addEventListener("click", () => dialog.close());
-  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
-
-  dialog.querySelector("#saveCrBtn").addEventListener("click", () => {
-    const requestedDate = dialog.querySelector("#crDate").value;
-    const requestedOwner = dialog.querySelector("#crRequestedOwner").value;
-    const reason = dialog.querySelector("#crReason").value.trim();
-    if (!requestedDate) { showFeatureToast("Please select a date"); return; }
-    const cr = { id: "cr-" + Date.now(), createdAt: new Date().toISOString(), requestedDate, currentOwner: currentOwner || "", requestedOwner, reason, status: "pending" };
-    saveChangeRequests([...loadChangeRequests(), cr]);
-    dialog.close();
-    if (typeof calendarState !== "undefined") calendarState.selected = requestedDate;
-    if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
-    showFeatureToast("Change request saved");
-  });
-}
-
 function reminderIsoFromDate(date, preset) {
   const reminderDate = new Date(date);
   if (preset !== "at-due" && preset !== "custom") {
@@ -2587,11 +2295,7 @@ function moveCalendar(direction) {
 }
 
 function eventsForDate(key) {
-  const regular = calendarState.events.filter((item) => item.date === key).sort((a, b) => a.time.localeCompare(b.time));
-  const crItems = loadChangeRequests()
-    .filter((cr) => cr.requestedDate === key)
-    .map((cr) => ({ kind: "change-request", date: key, time: "All day", cardId: cr.id, changeRequest: cr }));
-  return [...crItems, ...regular];
+  return calendarState.events.filter((item) => item.date === key).sort((a, b) => a.time.localeCompare(b.time));
 }
 
 function syncCalendarEventsFromCards() {
