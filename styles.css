@@ -4865,6 +4865,56 @@ textarea {
   gap: 14px;
 }
 
+/* Calendar sync strip - below month/week grid */
+.cal-sync-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-color, #eee);
+}
+
+.cal-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color, #ddd);
+  background: var(--paper, #fff);
+  color: var(--text-secondary, #888);
+  font-size: 0.71rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.cal-sync-btn:hover {
+  border-color: var(--accent, #1aab8b);
+  color: var(--accent, #1aab8b);
+}
+
+.cal-sync-btn.sync-ok {
+  border-color: var(--accent, #1aab8b);
+  color: var(--accent, #1aab8b);
+  background: color-mix(in srgb, var(--accent, #1aab8b) 8%, transparent);
+}
+
+.cal-sync-btn.sync-ok::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent, #1aab8b);
+  flex-shrink: 0;
+}
+
+.cal-sync-gear {
+  margin-left: auto;
+  padding: 4px 8px;
+}
+
 .calendar-privacy-note {
   display: grid;
   gap: 3px;
