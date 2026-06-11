@@ -3468,8 +3468,13 @@ function quickRespondCard(id, response) {
   if (!card || card.status === "Done") return;
   const setup = getOnboardingState() || {};
   const myName = setup.parents?.primary || "Parent A";
-  const text = response === "do" ? "I'll do it" : response === "will" ? "Please do it" : "Can't do this";
+  const text = response === "will" ? "Please do it" : response === "cannot" ? "Can't do this" : null;
   const nextStatus = response === "cannot" ? "Disputed" : response === "do" ? "To Do" : "Waiting";
+  // "do" = I'll do it: silently set assignee + status, no chat message
+  // "will" / "cannot" = send a message to the thread
+  const newComments = text
+    ? [...card.comments, { author: myName, text, time: "Just now" }]
+    : card.comments;
   state.cards = state.cards.map((item) => (
     item.id === id
       ? {
@@ -3477,12 +3482,15 @@ function quickRespondCard(id, response) {
           status: nextStatus,
           assignee: response === "do" ? myName : item.assignee,
           acknowledged: true,
-          comments: [...item.comments, { author: myName, text, time: "Just now" }],
+          comments: newComments,
         }
       : item
   ));
   persist();
-  showToast(text);
+  const toastMsg = response === "do"
+    ? (window.t?.("action.ill_do_it") ?? "I'll do it")
+    : (text || "Done");
+  showToast(toastMsg);
   render();
   const updated = state.cards.find((c) => c.id === id);
   if (updated && window.saveCardToSupabase) window.saveCardToSupabase(updated).catch(() => {});

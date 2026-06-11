@@ -522,7 +522,7 @@
               <button class="secondary-button autofill-button" type="button" id="autofillButton" style="display:none">Autofill</button>
               <div class="quick-actions dialog-quick-actions hidden" id="dialogQuickActions">
                 <button class="quick-complete" type="button" id="dialogCompleteButton" data-i18n="card.done_btn">Done</button>
-                <button class="quick-response" type="button" id="dialogDoButton" data-i18n="action.ill_do_it">I’ll do it</button>
+                <button class="quick-complete quick-do-btn" type="button" id="dialogDoButton" data-i18n="action.ill_do_it">I’ll do it</button>
                 <button class="quick-response" type="button" id="dialogPleaseButton" data-i18n="action.please_do_it">Please do it</button>
                 <button class="quick-response" type="button" id="dialogCannotButton" data-i18n="action.cant">Can’t</button>
               </div>
@@ -567,24 +567,6 @@
                   <option>Ava + Leo</option>
                 </select>
                 <input id="dueInput" type="datetime-local" tabindex="-1" />
-                <select id="recurrenceInput" tabindex="-1" title="Repeat">
-                  <option value="none">Does not repeat</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="biweekly">Every 2 weeks</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="custom-223">2-2-3 custody</option>
-                  <option value="custom-wowo">Week-on / week-off</option>
-                </select>
-                <div id="recurrenceDaysRow" class="recurrence-days-row hidden">
-                  <label><input type="checkbox" value="MO" class="recurrence-day" />Mo</label>
-                  <label><input type="checkbox" value="TU" class="recurrence-day" />Tu</label>
-                  <label><input type="checkbox" value="WE" class="recurrence-day" />We</label>
-                  <label><input type="checkbox" value="TH" class="recurrence-day" />Th</label>
-                  <label><input type="checkbox" value="FR" class="recurrence-day" />Fr</label>
-                  <label><input type="checkbox" value="SA" class="recurrence-day" />Sa</label>
-                  <label><input type="checkbox" value="SU" class="recurrence-day" />Su</label>
-                </div>
                 <input id="amountInput" tabindex="-1" />
               </div>
             </section>
@@ -635,6 +617,31 @@
                   <button class="secondary-button" type="button" id="saveCardReminderButton" data-i18n="reminder.save">Save</button>
                 </div>
               </section>
+              <!-- Recurrence panel -->
+              <section class="card-info-section" id="cardRecurrencePanel">
+                <div class="section-heading" data-i18n="card.recurrence_heading">Powtarzanie</div>
+                <label class="clean-field">
+                  <select id="recurrenceInput">
+                    <option value="none" data-i18n="recurrence.none">Nie powtarza się</option>
+                    <option value="daily" data-i18n="recurrence.daily">Codziennie</option>
+                    <option value="weekly" data-i18n="recurrence.weekly">Co tydzień</option>
+                    <option value="biweekly" data-i18n="recurrence.biweekly">Co 2 tygodnie</option>
+                    <option value="monthly" data-i18n="recurrence.monthly">Co miesiąc</option>
+                    <option value="custom-223" data-i18n="recurrence.c223">2-2-3 (opieka)</option>
+                    <option value="custom-wowo" data-i18n="recurrence.wowo">Tydzień-na / tydzień-off</option>
+                  </select>
+                </label>
+                <div id="recurrenceDaysRow" class="recurrence-days-row hidden">
+                  <label><input type="checkbox" value="MO" class="recurrence-day" /><span data-i18n="day.mo">Pon</span></label>
+                  <label><input type="checkbox" value="TU" class="recurrence-day" /><span data-i18n="day.tu">Wt</span></label>
+                  <label><input type="checkbox" value="WE" class="recurrence-day" /><span data-i18n="day.we">Śr</span></label>
+                  <label><input type="checkbox" value="TH" class="recurrence-day" /><span data-i18n="day.th">Czw</span></label>
+                  <label><input type="checkbox" value="FR" class="recurrence-day" /><span data-i18n="day.fr">Pt</span></label>
+                  <label><input type="checkbox" value="SA" class="recurrence-day" /><span data-i18n="day.sa">Sob</span></label>
+                  <label><input type="checkbox" value="SU" class="recurrence-day" /><span data-i18n="day.su">Nd</span></label>
+                </div>
+              </section>
+
               <!-- Payment panel - shown for Expense cards with an amount set -->
               <section class="card-info-section" id="cardPaymentPanel" hidden>
                 <div class="section-heading" data-i18n="card.payment_heading">Payment</div>

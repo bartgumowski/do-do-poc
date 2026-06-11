@@ -80,6 +80,17 @@
       "reminder.clear":   "Clear",
       "reminder.save":    "Save",
 
+      "card.recurrence_heading": "Repeat",
+      "recurrence.none":     "Does not repeat",
+      "recurrence.daily":    "Daily",
+      "recurrence.weekly":   "Weekly",
+      "recurrence.biweekly": "Every 2 weeks",
+      "recurrence.monthly":  "Monthly",
+      "recurrence.c223":     "2-2-3 custody",
+      "recurrence.wowo":     "Week-on / week-off",
+      "day.mo": "Mo", "day.tu": "Tu", "day.we": "We",
+      "day.th": "Th", "day.fr": "Fr", "day.sa": "Sa", "day.su": "Su",
+
       // Card types
       "type.task":    "Task",
       "type.event":   "Event",
@@ -803,6 +814,17 @@
       "reminder.custom":  "Własny czas",
       "reminder.clear":   "Wyczyść",
       "reminder.save":    "Zapisz",
+
+      "card.recurrence_heading": "Powtarzanie",
+      "recurrence.none":     "Nie powtarza się",
+      "recurrence.daily":    "Codziennie",
+      "recurrence.weekly":   "Co tydzień",
+      "recurrence.biweekly": "Co 2 tygodnie",
+      "recurrence.monthly":  "Co miesiąc",
+      "recurrence.c223":     "2-2-3 (opieka naprzemienna)",
+      "recurrence.wowo":     "Tydzień z / tydzień bez",
+      "day.mo": "Pon", "day.tu": "Wt", "day.we": "Sr",
+      "day.th": "Czw", "day.fr": "Pt", "day.sa": "Sob", "day.su": "Nd",
 
       "type.task":    "Zadanie",
       "type.event":   "Wydarzenie",
