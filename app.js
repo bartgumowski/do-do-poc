@@ -1,4 +1,4 @@
-const APP_VERSION = "0.10.4";
+const APP_VERSION = "0.11.0";
 const APP_VERSION_DATE = "2026-06-11";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -4278,6 +4278,15 @@ window.quickCompleteCard = quickCompleteCard;
 window.quickRespondCard = quickRespondCard;
 window.openCardDialog = openCardDialog;
 window.getCards = () => state.cards;
+// Patch a card's due date from features.js (week-grid drag-drop)
+window.patchCardDue = (cardId, newDue) => {
+  const idx = state.cards.findIndex((c) => c.id === cardId);
+  if (idx < 0) return;
+  state.cards[idx] = { ...state.cards[idx], due: newDue };
+  if (window.saveCardToSupabase) window.saveCardToSupabase(state.cards[idx]).catch(() => {});
+  syncCalendarEventsFromCards?.();
+  renderBoard?.();
+};
 window.startDictationForField = startDictationForField;
 window.extractMessageTags = extractMessageTags;
 window.renderMessageTags = renderMessageTags;

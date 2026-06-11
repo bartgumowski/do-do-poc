@@ -823,9 +823,12 @@ function getActiveVacation(date) {
 }
 function getVacationOwnerForDate(vac, date) {
   if (vac.owner === "mine" || vac.owner === "co") return vac.owner;
-  const startMs = new Date(vac.startDate + "T00:00:00").getTime();
-  const dMs = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const weekIndex = Math.floor((dMs - startMs) / (7 * 86400000));
+  // Alternating weeks - snap to week boundaries using the stored weekStart preference
+  const weekStartDay = parseInt(localStorage.getItem("do-do-week-start") || "1");
+  const vacStart = new Date(vac.startDate + "T00:00:00");
+  const weekAnchor = startOfWeek(vacStart, weekStartDay);
+  const dayDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const weekIndex = Math.floor((dayDate - weekAnchor) / (7 * 86400000));
   const first = vac.alternatingStart || "mine";
   return weekIndex % 2 === 0 ? first : (first === "mine" ? "co" : "mine");
 }
@@ -2078,6 +2081,12 @@ function renderCalendarFeature(data) {
     });
   });
 
+  // Bind week-grid drag-drop (desktop only, noop on mobile)
+  if (calendarState.view === "week") {
+    const calBody = featureModule.querySelector(".calendar-body");
+    if (calBody) _bindWeekGridDragDrop(calBody);
+  }
+
   // Personal calendar title toggle
   featureModule.querySelector("#showPersonalTitlesToggle")?.addEventListener("change", (e) => {
     localStorage.setItem("do-do-show-personal-titles", e.target.checked ? "true" : "false");
@@ -2310,26 +2319,166 @@ function renderCalendarDays() {
 function renderWeekView() {
   const selected = parseCalendarKey(calendarState.selected);
   const start = startOfWeek(selected);
-  return `
-    <div class="week-strip">
-      ${Array.from({ length: 7 }, (_, index) => {
-        const date = addDays(start, index);
-        const key = toCalendarKey(date);
-        const events = eventsForDate(key);
-        const weekDayConflicts = getConflictsForDate(key, _getActiveConflicts());
-        const conflictTag = weekDayConflicts.length ? ` <span class="week-conflict-dot">⚠</span>` : "";
-        const custodyWeekClass = getCustodyClass(date);
-        return `
-          <button class="week-day ${key === calendarState.selected ? "selected" : ""}${weekDayConflicts.length ? " has-conflict" : ""}${custodyWeekClass ? " " + custodyWeekClass : ""}" type="button" data-calendar-day="${key}">
-            <span>${weekdayLabel(date)}</span>
-            <strong>${date.getDate()}${conflictTag}</strong>
-            <em>${events.length ? `${events.length} ${window.t?.("cal.item") ?? "item"}${events.length === 1 ? "" : (window.t?.("cal.item_s") ?? "s")}` : (window.t?.("cal.clear") ?? "Clear")}</em>
-          </button>
-        `;
+  const today = toCalendarKey(new Date());
+  const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 06:00 - 22:00
+
+  // Build day columns
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(start, i);
+    const key = toCalendarKey(date);
+    const events = eventsForDate(key).filter((e) => e.kind !== "change-request");
+    const custody = getCustodyClass(date);
+    const isToday = key === today;
+    const vacDot = getActiveVacation(date) ? `<span class="wg-vac-dot" title="Vacation">✈</span>` : "";
+    return { date, key, events, custody, isToday, vacDot };
+  });
+
+  // Header row
+  const headerCells = days.map(({ date, key, custody, isToday, vacDot }) =>
+    `<div class="wg-col-head${isToday ? " wg-today" : ""}${custody ? " " + custody : ""}" data-calendar-day="${key}">
+      <span class="wg-col-dow">${weekdayLabel(date)}</span>
+      <strong class="wg-col-num">${date.getDate()}</strong>
+      ${vacDot}
+    </div>`
+  ).join("");
+
+  // All-day row
+  const allDayCells = days.map(({ key, events }) => {
+    const allDay = events.filter((e) => !e.time || e.time === "All day");
+    return `<div class="wg-allday-cell" data-drop-day="${key}" data-drop-hour="allday">
+      ${allDay.map((e) => _renderWeekGridCard(e, key)).join("")}
+    </div>`;
+  }).join("");
+
+  // Time slot rows
+  const slotRows = HOURS.map((h) => {
+    const label = `${String(h).padStart(2, "0")}:00`;
+    const cells = days.map(({ key, events }) => {
+      const slotEvents = events.filter((e) => {
+        const t = e.time && e.time !== "All day" ? e.time : null;
+        if (!t) return false;
+        const [eh] = t.split(":").map(Number);
+        return eh === h;
+      });
+      return `<div class="wg-slot-cell${slotEvents.length ? " wg-has-event" : ""}" data-drop-day="${key}" data-drop-hour="${h}">
+        ${slotEvents.map((e) => _renderWeekGridCard(e, key)).join("")}
+      </div>`;
+    }).join("");
+    return `<div class="wg-row">
+      <div class="wg-time-label">${label}</div>
+      ${cells}
+    </div>`;
+  }).join("");
+
+  // Mobile fallback: classic week strip (hidden on desktop via CSS)
+  const mobileStrip = `
+    <div class="week-strip week-strip-mobile-only">
+      ${days.map(({ date, key, events, custody, isToday }) => {
+        const conflicts = getConflictsForDate(key, _getActiveConflicts());
+        const conflictTag = conflicts.length ? ` <span class="week-conflict-dot">⚠</span>` : "";
+        return `<button class="week-day${key === calendarState.selected ? " selected" : ""}${conflicts.length ? " has-conflict" : ""}${custody ? " " + custody : ""}" type="button" data-calendar-day="${key}">
+          <span>${weekdayLabel(date)}</span>
+          <strong>${date.getDate()}${conflictTag}</strong>
+          <em>${events.length ? `${events.length} item${events.length === 1 ? "" : "s"}` : "Clear"}</em>
+        </button>`;
       }).join("")}
     </div>
     ${renderDaySchedule(calendarState.selected)}
   `;
+
+  return `
+    <div class="week-grid-view">
+      <div class="wg-header">
+        <div class="wg-time-label"></div>
+        ${headerCells}
+      </div>
+      <div class="wg-allday-row">
+        <div class="wg-time-label wg-allday-label">All day</div>
+        ${allDayCells}
+      </div>
+      <div class="wg-body">
+        ${slotRows}
+      </div>
+    </div>
+    ${mobileStrip}
+  `;
+}
+
+function _renderWeekGridCard(event, dayKey) {
+  const card = (window.getCards?.() || []).find((c) => c.id === event.cardId);
+  if (!card) return "";
+  const statusClass = card.status === "Done" ? "wg-card-done" : "";
+  const assignee = card.assignee || "";
+  const initial = assignee ? assignee.charAt(0).toUpperCase() : "";
+  return `<div class="wg-card ${statusClass}" draggable="true"
+    data-card-id="${card.id}"
+    data-card-time="${event.time || "allday"}"
+    title="${escapeHtml(card.title)}"
+  >
+    <span class="wg-card-title">${escapeHtml(card.title)}</span>
+    ${event.time && event.time !== "All day" ? `<span class="wg-card-time">${event.time}</span>` : ""}
+    ${initial ? `<span class="wg-card-avatar">${initial}</span>` : ""}
+  </div>`;
+}
+
+// Called once after renderCalendarBody() to wire up drag-drop on the week grid
+function _bindWeekGridDragDrop(container) {
+  let dragCardId = null;
+  let dragOrigTime = null;
+
+  container.querySelectorAll(".wg-card").forEach((card) => {
+    card.addEventListener("dragstart", (e) => {
+      dragCardId = card.dataset.cardId;
+      dragOrigTime = card.dataset.cardTime;
+      e.dataTransfer.effectAllowed = "move";
+      card.classList.add("wg-dragging");
+    });
+    card.addEventListener("dragend", () => {
+      dragCardId = null;
+      container.querySelectorAll(".wg-dragging").forEach((el) => el.classList.remove("wg-dragging"));
+      container.querySelectorAll(".wg-drop-target").forEach((el) => el.classList.remove("wg-drop-target"));
+    });
+    // Click to open card
+    card.addEventListener("click", () => window.openCardDialog?.(card.dataset.cardId));
+  });
+
+  container.querySelectorAll("[data-drop-day]").forEach((cell) => {
+    cell.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      container.querySelectorAll(".wg-drop-target").forEach((el) => el.classList.remove("wg-drop-target"));
+      cell.classList.add("wg-drop-target");
+    });
+    cell.addEventListener("dragleave", () => cell.classList.remove("wg-drop-target"));
+    cell.addEventListener("drop", (e) => {
+      e.preventDefault();
+      cell.classList.remove("wg-drop-target");
+      if (!dragCardId) return;
+      const newDay = cell.dataset.dropDay;   // "YYYY-MM-DD"
+      const newHour = cell.dataset.dropHour; // "6".."22" or "allday"
+      const allCards = window.getCards?.() || [];
+      const card = allCards.find((c) => c.id === dragCardId);
+      if (!card) return;
+
+      // Build new due string
+      let newDue;
+      if (newHour === "allday" || !card.due) {
+        newDue = newDay + "T00:00";
+      } else {
+        const origTime = card.due?.slice(11, 16) || "00:00";
+        const hStr = String(newHour).padStart(2, "0");
+        newDue = `${newDay}T${hStr}:00`;
+      }
+      if (newDue === card.due?.slice(0, 16)) return; // no change
+      window.patchCardDue?.(dragCardId, newDue);
+      // Re-render the week view
+      const calBody = document.querySelector(".calendar-body");
+      if (calBody) {
+        calBody.innerHTML = renderCalendarBody();
+        _bindWeekGridDragDrop(calBody);
+      }
+    });
+  });
 }
 
 function renderDayView() {
@@ -2513,106 +2662,275 @@ function addCalendarEvent() {
   });
 }
 
-function openVacationsDialog() {
+function openVacationsDialog(editId = null) {
   document.getElementById("vacationsDialog")?.remove();
-  const custody = getCustodySchedule();
   const setup = window.getOnboardingState?.() || {};
   const coparentName = setup.parents?.coparent || "Co-parent";
-  const vacations = loadVacations();
+  const weekDayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+  const vState = {
+    editingId: editId,
+    rangeStart: null,
+    rangeEnd: null,
+    viewYear: new Date().getFullYear(),
+    viewMonth: new Date().getMonth(),
+    weekStart: parseInt(localStorage.getItem("do-do-week-start") || "1"),
+    _editLoaded: false,
+  };
 
   const dialog = document.createElement("dialog");
   dialog.id = "vacationsDialog";
   dialog.className = "custody-schedule-dialog";
-  dialog.innerHTML = `
-    <div class="custody-dialog-body" style="max-width:440px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h3 style="margin:0;font-size:16px;">✈ Vacation schedules</h3>
-        <button class="ghost-button" type="button" id="closeVacationsDialog" style="font-size:20px;line-height:1;padding:4px 10px;">✕</button>
-      </div>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px;">Vacation periods override the normal custody schedule without destroying it. After the vacation, the regular schedule resumes automatically.</p>
-      <div id="vacationsList" style="margin-bottom:16px;">
-        ${vacations.length === 0 ? `<p style="font-size:13px;color:var(--muted);text-align:center;padding:12px 0;">No vacations added yet.</p>` : vacations.map((v) => {
-          const ownerLabel = v.owner === "mine" ? "Your days" : v.owner === "co" ? `${escapeHtml(coparentName)}'s days` : `Alternating weeks (starts with ${v.alternatingStart === "mine" ? "you" : escapeHtml(coparentName)})`;
-          return `<div class="vacation-list-item">
+  document.body.appendChild(dialog);
+
+  function refreshVacDialog() {
+    const vacations = loadVacations();
+    const editing = vState.editingId ? vacations.find((v) => v.id === vState.editingId) : null;
+
+    // Pre-fill range when entering edit mode for the first time
+    if (editing && !vState._editLoaded) {
+      vState.rangeStart = editing.startDate;
+      vState.rangeEnd = editing.endDate;
+      vState.viewYear = parseInt(editing.startDate.slice(0, 4));
+      vState.viewMonth = parseInt(editing.startDate.slice(5, 7)) - 1;
+      vState._editLoaded = true;
+    }
+    if (!vState.editingId) vState._editLoaded = false;
+
+    const editOwner = editing?.owner || "mine";
+    const editAltStart = editing?.alternatingStart || "mine";
+
+    // vacation list
+    const vacListHtml = vacations.length === 0
+      ? `<p class="vac-empty-msg">No vacation periods yet.</p>`
+      : vacations.map((v) => {
+          const ownerLabel = v.owner === "mine" ? "Your days"
+            : v.owner === "co" ? `${escapeHtml(coparentName)}'s days`
+            : `Alternating (starts: ${v.alternatingStart === "mine" ? "you" : escapeHtml(coparentName)})`;
+          const isEditing = vState.editingId === v.id;
+          return `<div class="vacation-list-item${isEditing ? " vac-editing" : ""}">
             <div class="vacation-list-info">
               <strong>${escapeHtml(v.name || "Vacation")}</strong>
-              <span>${v.startDate} - ${v.endDate}</span>
+              <span>${v.startDate} — ${v.endDate}</span>
               <span class="vacation-list-owner">${ownerLabel}</span>
             </div>
-            <button class="custody-chip custody-chip-reset" type="button" data-vac-delete="${v.id}" style="font-size:11px;padding:3px 10px;flex-shrink:0;">Remove</button>
+            <div class="vac-item-actions">
+              <button class="vac-edit-btn${isEditing ? " active" : ""}" type="button" data-vac-edit="${v.id}" title="Edit">✎</button>
+              <button class="custody-chip custody-chip-reset" type="button" data-vac-delete="${v.id}">Remove</button>
+            </div>
           </div>`;
-        }).join("")}
-      </div>
-      <details class="vacation-add-details">
-        <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);padding:8px 0;">+ Add vacation period</summary>
-        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">
-          <label class="clean-field">
+        }).join("");
+
+    // range calendar
+    const rangeCalHtml = _buildVacRangeCalHTML(vState, vacations);
+
+    // range summary row
+    const rangeDisplay = `
+      <div class="vac-range-display">
+        <span class="vac-range-label">From</span>
+        <span class="vac-range-val${vState.rangeStart ? "" : " placeholder"}">${vState.rangeStart || "tap a date"}</span>
+        <span class="vac-range-arrow">→</span>
+        <span class="vac-range-label">To</span>
+        <span class="vac-range-val${vState.rangeEnd ? "" : " placeholder"}">${vState.rangeEnd || (vState.rangeStart ? "tap end date" : "—")}</span>
+        ${vState.rangeStart ? `<button class="vac-range-clear-btn" type="button" id="vacRangeClear">✕</button>` : ""}
+      </div>`;
+
+    dialog.innerHTML = `
+      <div class="custody-dialog-body vac-dialog-body">
+        <div class="vac-dialog-header">
+          <h3>✈ Vacation schedules</h3>
+          <button class="ghost-button" type="button" id="closeVacationsDialog" style="font-size:20px;line-height:1;padding:4px 10px;">✕</button>
+        </div>
+        <p class="vac-dialog-desc">Vacation periods override custody without erasing the regular schedule. It resumes automatically after the vacation ends.</p>
+
+        <div id="vacationsList">${vacListHtml}</div>
+
+        <div class="vac-form-section">
+          <div class="vac-form-heading">${vState.editingId ? "Edit vacation" : "Add vacation"}</div>
+          ${rangeCalHtml}
+          ${rangeDisplay}
+          <label class="clean-field" style="margin-top:10px;">
             <span>Name</span>
-            <input type="text" id="vacName" placeholder='e.g. "Summer 2026"' />
+            <input type="text" id="vacName" placeholder='e.g. "Summer 2026"' value="${escapeHtml(editing?.name || "")}" />
           </label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <label class="clean-field">
-              <span>Start date</span>
-              <input type="date" id="vacStart" />
-            </label>
-            <label class="clean-field">
-              <span>End date</span>
-              <input type="date" id="vacEnd" />
-            </label>
-          </div>
           <label class="clean-field">
             <span>Who has the kids?</span>
             <select id="vacOwner">
-              <option value="mine">Your days (whole period)</option>
-              <option value="co">${escapeHtml(coparentName)}'s days (whole period)</option>
-              <option value="alternating">Alternating weeks</option>
+              <option value="mine"${editOwner === "mine" ? " selected" : ""}>Your days (whole period)</option>
+              <option value="co"${editOwner === "co" ? " selected" : ""}>${escapeHtml(coparentName)}'s days (whole period)</option>
+              <option value="alternating"${editOwner === "alternating" ? " selected" : ""}>Alternating weeks</option>
             </select>
           </label>
-          <label class="clean-field" id="vacAlternatingRow" style="display:none;">
-            <span>First week starts with</span>
-            <select id="vacAlternatingStart">
-              <option value="mine">You</option>
-              <option value="co">${escapeHtml(coparentName)}</option>
-            </select>
-          </label>
-          <button class="primary-button" type="button" id="saveVacationBtn">Add vacation</button>
+          <div id="vacAlternatingRows" class="${editOwner === "alternating" ? "" : "hidden"}">
+            <label class="clean-field">
+              <span>First week with</span>
+              <select id="vacAlternatingStart">
+                <option value="mine"${editAltStart === "mine" ? " selected" : ""}>You</option>
+                <option value="co"${editAltStart === "co" ? " selected" : ""}>${escapeHtml(coparentName)}</option>
+              </select>
+            </label>
+            <label class="clean-field">
+              <span>Week starts on</span>
+              <select id="vacWeekStartDay">
+                ${[1, 2, 3, 4, 5, 6, 0].map((d) => `<option value="${d}"${vState.weekStart === d ? " selected" : ""}>${weekDayNames[d]}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+          <div class="vac-form-btns">
+            <button class="primary-button" type="button" id="saveVacationBtn">${vState.editingId ? "Update vacation" : "Add vacation"}</button>
+            ${vState.editingId ? `<button class="custody-chip custody-chip-reset" type="button" id="cancelVacEdit">Cancel edit</button>` : ""}
+          </div>
         </div>
-      </details>
-    </div>
-  `;
-  document.body.appendChild(dialog);
-  dialog.showModal();
+      </div>
+    `;
 
-  dialog.querySelector("#closeVacationsDialog").addEventListener("click", () => dialog.close());
-  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+    // ---- bind events ----
+    dialog.querySelector("#closeVacationsDialog").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
-  dialog.querySelector("#vacOwner").addEventListener("change", (e) => {
-    dialog.querySelector("#vacAlternatingRow").style.display = e.target.value === "alternating" ? "block" : "none";
-  });
+    dialog.querySelector("#vacCalPrev")?.addEventListener("click", () => {
+      vState.viewMonth--;
+      if (vState.viewMonth < 0) { vState.viewMonth = 11; vState.viewYear--; }
+      refreshVacDialog();
+    });
+    dialog.querySelector("#vacCalNext")?.addEventListener("click", () => {
+      vState.viewMonth++;
+      if (vState.viewMonth > 11) { vState.viewMonth = 0; vState.viewYear++; }
+      refreshVacDialog();
+    });
 
-  dialog.querySelectorAll("[data-vac-delete]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      saveVacations(loadVacations().filter((v) => v.id !== btn.dataset.vacDelete));
-      dialog.close();
-      openVacationsDialog();
-      // data is available from outer renderCalendarFeature scope
+    dialog.querySelectorAll("[data-vac-date]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const d = btn.dataset.vacDate;
+        if (!vState.rangeStart || (vState.rangeStart && vState.rangeEnd)) {
+          vState.rangeStart = d; vState.rangeEnd = null;
+        } else if (d < vState.rangeStart) {
+          vState.rangeEnd = vState.rangeStart; vState.rangeStart = d;
+        } else if (d === vState.rangeStart) {
+          vState.rangeStart = null;
+        } else {
+          vState.rangeEnd = d;
+        }
+        refreshVacDialog();
+      });
+    });
+
+    dialog.querySelector("#vacRangeClear")?.addEventListener("click", () => {
+      vState.rangeStart = null; vState.rangeEnd = null; refreshVacDialog();
+    });
+
+    dialog.querySelector("#vacOwner")?.addEventListener("change", (e) => {
+      dialog.querySelector("#vacAlternatingRows")?.classList.toggle("hidden", e.target.value !== "alternating");
+    });
+
+    dialog.querySelector("#vacWeekStartDay")?.addEventListener("change", (e) => {
+      vState.weekStart = parseInt(e.target.value);
+      localStorage.setItem("do-do-week-start", e.target.value);
+    });
+
+    dialog.querySelectorAll("[data-vac-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        vState.editingId = vState.editingId === btn.dataset.vacEdit ? null : btn.dataset.vacEdit;
+        vState._editLoaded = false;
+        if (!vState.editingId) { vState.rangeStart = null; vState.rangeEnd = null; }
+        refreshVacDialog();
+      });
+    });
+
+    dialog.querySelectorAll("[data-vac-delete]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        saveVacations(loadVacations().filter((v) => v.id !== btn.dataset.vacDelete));
+        if (vState.editingId === btn.dataset.vacDelete) {
+          vState.editingId = null; vState.rangeStart = null; vState.rangeEnd = null; vState._editLoaded = false;
+        }
+        refreshVacDialog();
+        if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
+      });
+    });
+
+    dialog.querySelector("#cancelVacEdit")?.addEventListener("click", () => {
+      vState.editingId = null; vState.rangeStart = null; vState.rangeEnd = null; vState._editLoaded = false;
+      refreshVacDialog();
+    });
+
+    dialog.querySelector("#saveVacationBtn")?.addEventListener("click", () => {
+      if (!vState.rangeStart || !vState.rangeEnd) { showFeatureToast("Select a date range on the calendar"); return; }
+      const name = (dialog.querySelector("#vacName")?.value.trim()) || "Vacation";
+      const owner = dialog.querySelector("#vacOwner")?.value || "mine";
+      const alternatingStart = dialog.querySelector("#vacAlternatingStart")?.value || "mine";
+      const existingVacs = loadVacations();
+      if (vState.editingId) {
+        saveVacations(existingVacs.map((v) => v.id === vState.editingId
+          ? { ...v, name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart }
+          : v));
+        showFeatureToast("Vacation updated");
+      } else {
+        saveVacations([...existingVacs, { id: "vac-" + Date.now(), name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart }]);
+        showFeatureToast("Vacation added");
+      }
+      vState.editingId = null; vState.rangeStart = null; vState.rangeEnd = null; vState._editLoaded = false;
+      refreshVacDialog();
       if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
     });
-  });
+  }
 
-  dialog.querySelector("#saveVacationBtn").addEventListener("click", () => {
-    const name = (dialog.querySelector("#vacName").value.trim()) || "Vacation";
-    const startDate = dialog.querySelector("#vacStart").value;
-    const endDate = dialog.querySelector("#vacEnd").value;
-    const owner = dialog.querySelector("#vacOwner").value;
-    const alternatingStart = dialog.querySelector("#vacAlternatingStart").value;
-    if (!startDate || !endDate) { showFeatureToast("Please enter start and end dates"); return; }
-    if (endDate < startDate) { showFeatureToast("End date must be after start date"); return; }
-    saveVacations([...loadVacations(), { id: "vac-" + Date.now(), name, startDate, endDate, owner, alternatingStart }]);
-    dialog.close();
-    if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
-    showFeatureToast("Vacation added");
-  });
+  dialog.showModal();
+  refreshVacDialog();
+}
+
+function _buildVacRangeCalHTML(vState, vacations) {
+  const { viewYear, viewMonth, rangeStart, rangeEnd, editingId } = vState;
+  const today = new Date();
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const weekStart = parseInt(localStorage.getItem("do-do-week-start") || "1");
+  // Day letter headers rotated from weekStart
+  const allDayLetters = ["S","M","T","W","T","F","S"];
+  const headerLetters = Array.from({ length: 7 }, (_, i) => allDayLetters[(i + weekStart) % 7]);
+
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const startDow = (firstDay.getDay() - weekStart + 7) % 7;
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  let cells = "";
+  let dayNum = 1;
+  for (let row = 0; row < 6; row++) {
+    cells += "<tr>";
+    for (let col = 0; col < 7; col++) {
+      const ci = row * 7 + col;
+      if (ci < startDow || dayNum > daysInMonth) { cells += "<td></td>"; }
+      else {
+        const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+        const isToday = new Date(viewYear, viewMonth, dayNum).toDateString() === today.toDateString();
+        const isStart = dateStr === rangeStart;
+        const isEnd = dateStr === rangeEnd;
+        const isHovering = rangeStart && !rangeEnd && dateStr === rangeStart;
+        const inRange = rangeStart && rangeEnd && dateStr > rangeStart && dateStr < rangeEnd;
+        const existingVac = vacations.find((v) => v.id !== editingId && dateStr >= v.startDate && dateStr <= v.endDate);
+        let cls = "mc-day vac-range-day";
+        if (isToday) cls += " mc-today";
+        if (isStart || isEnd) cls += " mc-selected vac-ep";
+        if (inRange) cls += " vac-in-range";
+        if (existingVac) cls += " vac-existing-day";
+        cells += `<td${inRange ? ' class="vac-in-range-cell"' : ""}><button class="${cls}" type="button" data-vac-date="${dateStr}">${dayNum}</button></td>`;
+        dayNum++;
+      }
+    }
+    cells += "</tr>";
+    if (dayNum > daysInMonth) break;
+  }
+
+  return `
+    <div class="vac-range-cal">
+      <div class="mc-header">
+        <button class="mc-nav" type="button" id="vacCalPrev">&#8249;</button>
+        <span class="mc-month-label">${monthNames[viewMonth]} ${viewYear}</span>
+        <button class="mc-nav" type="button" id="vacCalNext">&#8250;</button>
+      </div>
+      <table class="mc-grid">
+        <thead><tr>${headerLetters.map((d) => `<th>${d}</th>`).join("")}</tr></thead>
+        <tbody>${cells}</tbody>
+      </table>
+    </div>`;
 }
 
 function openChangeRequestDialog(selectedDateKey, currentOwner) {
@@ -2924,8 +3242,9 @@ function addDays(date, days) {
   return next;
 }
 
-function startOfWeek(date) {
-  return addDays(date, -((date.getDay() + 6) % 7));
+function startOfWeek(date, weekStartDay) {
+  const wsd = weekStartDay ?? parseInt(localStorage.getItem("do-do-week-start") || "1");
+  return addDays(date, -((date.getDay() - wsd + 7) % 7));
 }
 
 function _getDateLocale() {
