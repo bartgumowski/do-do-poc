@@ -4733,6 +4733,28 @@ textarea {
   padding: 20px;
 }
 
+/* Desktop two-column calendar layout: day panel left, grid right */
+.calendar-layout {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 1081px) {
+  .calendar-layout {
+    grid-template-columns: minmax(300px, 2fr) minmax(340px, 3fr);
+    align-items: start;
+    gap: 20px;
+  }
+
+  .calendar-agenda {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100dvh - 60px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+
 .calendar-shell {
   display: grid;
   gap: 14px;

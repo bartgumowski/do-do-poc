@@ -2,6 +2,58 @@
 
 ---
 
+## v0.9.7 - 2026-06-11 - Shopping UX polish + PWA improvements
+
+### Instant uncheck visual feedback
+- Unchecking a shopping item now removes the strikethrough and muted style immediately, without waiting for the Supabase round-trip to complete.
+- Applied to both Supabase-backed items and custom list items.
+
+### Disable mobile zoom
+- `user-scalable=no, maximum-scale=1.0` added to viewport meta in `index.html` - prevents Safari from zooming in on form fields.
+- CSS fallback via `@supports (-webkit-touch-callout: none)` ensures input font size is at least 16px (the threshold below which iOS auto-zooms).
+
+### Remember last visited module
+- Do-Do now remembers which module was open when the app is killed and restarted as a PWA on iOS.
+- Uses both hash routing (for in-session back/forward) and `localStorage("do-do-last-module")` (for cold restarts).
+- On auth resolve, hash takes priority over localStorage; both fall back to the default module.
+
+### Paste multi-line text as multiple shopping items
+- Pasting text containing line breaks into the shopping input adds each line as a separate item.
+- Works for both Supabase-backed lists and custom localStorage lists.
+- Shows a toast: "N items added" after the batch insert.
+
+---
+
+## v0.9.3-v0.9.6 - 2026-06-11 - Shopping add form: single pill layout
+
+### Shopping capture form redesigned
+- Mic button, text input, and + button are now fused into a single pill: `[ mic  type here... + ]`
+- All three elements live inside one `.shopping-input-wrap` flex container with `border-radius: 999px`.
+- Input height is driven by its own `padding: 9px 8px` (not inherited height) - required for Safari compatibility.
+- Dark mode pill background uses `rgba(244, 247, 246, 0.075)`.
+
+### i18n fix - "Add new list" button
+- "Add new list" button was showing the raw translation key `shopping.add_list` instead of the translated label.
+- Fixed by adding the key to all three language dictionaries (EN, DE, PL) in `i18n.js`.
+- Same fix applied to the new-list prompt dialog title (`shopping.new_list_prompt`).
+
+---
+
+## v0.9.1-v0.9.2 - 2026-06-10 - SEG-16: Vacation schedule + calendar change requests
+
+### Vacation schedule (v0.9.1)
+- New **Vacation** override type in the custody calendar. Vacation days show a ✈ indicator in the month grid.
+- Vacations dialog: add/remove vacation periods per parent without destroying the underlying custody schedule.
+- Vacation periods stored as date ranges inside `custody-schedule-v1` localStorage under `vacations[]`.
+
+### Calendar change requests (v0.9.2)
+- Co-parent can request a custody day swap: **Change** chip appears on overridden days.
+- Change request dialog: describe the swap, set proposed date, submit.
+- Other parent sees pending request chip; can **Approve**, **Decline**, or **Delete**.
+- Requests stored in Supabase `custody_change_requests` table (or localStorage fallback).
+
+---
+
 ## v0.8.0 - 2026-06-10 - SEG-14: Security hardening (Critical + High audit fixes)
 
 Implements the Critical/High findings from CODE-AUDIT-2026-06-10.md.

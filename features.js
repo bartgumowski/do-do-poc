@@ -1988,6 +1988,7 @@ function renderCalendarFeature(data) {
   })() : "";
 
   featureModule.innerHTML = `
+<<<<<<< Updated upstream
     <div class="calendar-shell">
       <div class="calendar-topline">
         <button class="round-nav" type="button" data-calendar-nav="-1" aria-label="Previous ${calendarState.view === "month" ? "month" : "week"}">‹</button>
@@ -2014,6 +2015,9 @@ function renderCalendarFeature(data) {
       </div>
     </div>
 
+=======
+    <div class="calendar-layout">
+>>>>>>> Stashed changes
     <section class="calendar-agenda">
       <div class="agenda-heading">
         <div>
@@ -2030,6 +2034,32 @@ function renderCalendarFeature(data) {
           : `<article class="agenda-empty">${window.t?.("cal.no_dos") ?? "No Dos on this day."}</article>`}
       </div>
     </section>
+    <div class="calendar-shell">
+      <div class="calendar-topline">
+        <button class="round-nav" type="button" data-calendar-nav="-1" aria-label="Previous ${calendarState.view === "month" ? "month" : "week"}">‹</button>
+        <div>
+          <span class="calendar-kicker">${window.t?.(`cal.view.${calendarState.view}`) ?? capitalize(calendarState.view)}</span>
+          <strong>${formatMonthYear(calendarState.cursor)}</strong>
+        </div>
+        <button class="round-nav" type="button" data-calendar-nav="1" aria-label="Next ${calendarState.view === "month" ? "month" : "week"}">›</button>
+      </div>
+      <div class="calendar-view-switcher" aria-label="Calendar views">
+        ${["month", "week", "day"].map((view) => `
+          <button class="${calendarState.view === view ? "active" : ""}" type="button" data-calendar-view="${view}">${window.t?.(`cal.view.${view}`) ?? capitalize(view)}</button>
+        `).join("")}
+      </div>
+      <div class="calendar-toolbar-row">
+        <button class="custody-schedule-btn" type="button" id="openCustodyDialogBtn" aria-label="Edit parenting schedule">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg>
+          ${custody.enabled ? (window.t?.("cal.parenting_schedule") ?? "Parenting schedule") : (window.t?.("cal.set_up_schedule") ?? "Set up parenting schedule")}
+        </button>
+        ${custody.enabled ? `<button class="custody-schedule-btn custody-vacations-btn" type="button" id="openVacationsBtn" aria-label="Manage vacations">✈ Vacations${loadVacations().length ? ` <span class="vac-count-badge">${loadVacations().length}</span>` : ""}</button>` : ""}
+      </div>
+      <div class="calendar-body">
+        ${renderCalendarBody()}
+      </div>
+    </div>
+    </div>
   `;
 
   featureModule.querySelectorAll(".feature-action").forEach((button) => {

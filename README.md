@@ -4,7 +4,7 @@ Alignment app for any two people who share responsibilities and need to stay in 
 
 Co-parents, couples, partners, caregivers, flatmates - anyone coordinating a shared life. **Not a divorce tool.** Pilot market: Poland. Vision: global.
 
-Current version: **v0.6.4** (2026-06-08)
+Current version: **v0.9.7** (2026-06-11)
 
 ---
 
@@ -106,7 +106,12 @@ Vercel auto-deploys from `main`. No build step. If `git add` fails with a lock e
 | Expense payment page (Apple Pay / Google Pay / card) | Live |
 | Receipt photo upload | Live |
 | Expense balance summary | Live |
-| Shopping list (real-time sync, delete, clear bought) | Live |
+| Shopping list (real-time sync, delete, clear bought, paste multi-item) | Live |
+| Shopping mic+input+plus pill form | Live |
+| Custody calendar (7-7, 2-2-3, 5-2 schedules, day overrides, split days) | Live |
+| Vacation schedule (✈ indicator, date ranges per parent) | Live |
+| Calendar change requests (propose, approve, decline) | Live |
+| PWA last-page memory (survives iOS kill and restart) | Live |
 | Direct messages by topic (real-time) | Live |
 | Presence indicators (partner viewing same card) | Live |
 | Offline background sync | Live |

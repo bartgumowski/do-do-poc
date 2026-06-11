@@ -135,11 +135,11 @@
       <a class="back-link" href="index.html">Back to Do-Do</a>
 
       <section class="legal-hero">
-        <span class="muted">Effective date: 27 May 2026</span>
+        <span class="muted">Effective date: 11 June 2026</span>
         <h1>Do-Do legal terms</h1>
         <p>
-          These starter clauses are written for a family coordination app operating in the EU/EEA and the United States.
-          They must be reviewed by qualified counsel before commercial launch.
+          These terms govern Do-Do, a family coordination app operating in the EU/EEA, Switzerland, and the United States.
+          They should be reviewed by qualified counsel before commercial launch.
         </p>
         <p class="notice">
           Do-Do is a coordination tool. It is not a law firm, court, mediator, emergency service, medical provider, bank, or tax adviser.
@@ -150,6 +150,7 @@
           <a href="#children">Children</a>
           <a href="#security">Security</a>
           <a href="#cookies">Cookies</a>
+          <a href="#google">Google</a>
           <a href="#contact">Contact</a>
           <a href="/prywatnosc">Prywatność (PL)</a>
         </nav>
@@ -209,7 +210,7 @@
         <h2>Privacy Notice</h2>
         <p>
           This notice describes how Do-Do collects, uses, and protects your personal data.
-          Do-Do is operated by Bart Gumowski (Switzerland). Effective date: June 2026.
+          Do-Do is operated by Bart Gumowski (Switzerland). Effective date: 11 June 2026.
         </p>
 
         <h3>Data we may collect</h3>
@@ -251,6 +252,20 @@
           <li>We do not discriminate against users for exercising privacy rights.</li>
         </ul>
 
+        <h3>Google Calendar integration</h3>
+        <p>
+          Do-Do may request access to your Google Calendar to sync family events, tasks, and reminders. This integration is entirely optional - you may use Do-Do without connecting Google Calendar.
+        </p>
+        <ul>
+          <li><strong>Scope requested:</strong> <code>https://www.googleapis.com/auth/calendar.events</code> - allows Do-Do to read and write calendar events on your behalf.</li>
+          <li><strong>What we read:</strong> event titles, dates, times, and descriptions for events created or modified in Do-Do.</li>
+          <li><strong>What we write:</strong> Do-Do tasks, reminders, and agreed schedule items are created or updated as calendar events at your direction.</li>
+          <li><strong>What we never do:</strong> Do-Do does not read, store, process, or share Google Calendar events that were not created by Do-Do. We do not scan your calendar for personal data, contacts, or any other purpose beyond family coordination.</li>
+          <li><strong>Token storage:</strong> OAuth refresh tokens are stored encrypted in Supabase (EU, Ireland) and used solely to refresh calendar access. They are never shared with any third party.</li>
+          <li><strong>Revoke access:</strong> at any time via <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a> or via Do-Do Settings - Calendar - Disconnect Google Calendar.</li>
+          <li><strong>Google API Services User Data Policy:</strong> Do-Do's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements. Information received from Google APIs is not used to develop, improve, or train generalized AI or ML models.</li>
+        </ul>
+
         <h3>Sharing and processors</h3>
         <ul>
           <li><strong>Supabase (EU-West-1, Ireland)</strong> - database, authentication, file storage, and real-time sync. Your data is stored in the EU.</li>
@@ -258,6 +273,7 @@
           <li><strong>Anthropic (US)</strong> - AI field extraction via Claude Haiku. Card text submitted for AI interpretation is sent to Anthropic's API. No data is used for model training without consent.</li>
           <li><strong>Stripe (US/EU)</strong> - payment processing for subscriptions and expense payments. Payment card data is handled exclusively by Stripe and never stored by Do-Do.</li>
           <li><strong>Resend (US)</strong> - transactional email delivery (reminders, invites, payment requests).</li>
+          <li><strong>Google LLC (US)</strong> - Google Sign-In for authentication and optional Google Calendar sync. Data exchanged with Google is governed by Google's Privacy Policy and the Google API Services User Data Policy.</li>
           <li>Data is shared with your invited co-parent according to family-board permissions.</li>
           <li>Data may be shared with authorities when legally required.</li>
         </ul>
@@ -301,6 +317,24 @@
           <li>Notify affected users and regulators where required after a confirmed data breach.</li>
           <li>Users should report suspected unauthorized access immediately.</li>
         </ul>
+      </section>
+
+      <section class="legal-card" id="google">
+        <h2>Google API Limited Use Disclosure</h2>
+        <p>
+          Do-Do's use of information received from Google APIs is limited to the practices disclosed in this Privacy Notice. Specifically:
+        </p>
+        <ul>
+          <li>Google user data is used only to provide and improve the Do-Do family calendar sync feature, which is directly requested by the user.</li>
+          <li>Google user data is not transferred to third parties except as necessary to provide the service (Supabase storage, Vercel API processing).</li>
+          <li>Google user data is not used for advertising or to build advertising profiles.</li>
+          <li>Google user data is not sold or used to develop, improve, or train generalized AI or ML models.</li>
+          <li>Humans at Do-Do do not read your Google Calendar data unless you explicitly provide it for support purposes or we are required to do so by law.</li>
+        </ul>
+        <p>
+          This disclosure satisfies the Google API Services User Data Policy's Limited Use requirements.
+          See: <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">developers.google.com/terms/api-services-user-data-policy</a>
+        </p>
       </section>
 
       <section class="legal-card" id="cookies">

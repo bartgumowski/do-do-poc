@@ -81,6 +81,9 @@ Note: if `git add` fails with a lock error, remove `.git/index.lock` in Finder f
 | 10 | App Store and Distribution | Not started | - |
 | 11 | Siri / Voice Shortcuts (PWA) | Done - per-user HMAC tokens, personalised .shortcut file download, Settings UI | v0.6.10 |
 | 12 | Native iOS Wrapper (SiriKit + App Store) | Not started - see SEG-12-ios-native-wrapper.md | - |
+| 15 | Immutable Message Log (court-safe) | Not started - see SEG-15-immutable-messages.md | - |
+| 16 | Expense Court Records (who paid what, ledger PDF) | Not started - see SEG-16-expense-court-records.md | - |
+| 17 | Practitioner Access + Certified PDF Records | Not started - see SEG-17-practitioner-access.md | - |
 
 ---
 

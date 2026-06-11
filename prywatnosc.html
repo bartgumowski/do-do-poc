@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
-    <title>Do-Do - Twoje dane i prywatność</title>
-    <meta name="description" content="Jak Do-Do chroni dane Twojej rodziny. Prostym językiem: co przechowujemy, kto to widzi, RODO i serwery w UE." />
+    <title>Do-Do - Polityka Prywatnosci i RODO</title>
+    <meta name="description" content="Polityka prywatnosci Do-Do zgodna z RODO. Co przechowujemy, kto to widzi, Twoje prawa i jak je wykonac." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -29,7 +29,7 @@
       }
 
       .legal-page {
-        width: min(100%, 760px);
+        width: min(100%, 780px);
         margin: 0 auto;
         padding: 24px 16px 64px;
       }
@@ -44,8 +44,15 @@
       .legal-hero { padding: 26px; margin-bottom: 14px; }
       .legal-card { padding: 22px; margin: 12px 0; }
 
+      .legal-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .legal-nav a,
       .back-link {
-        display: inline-flex;
         border-radius: 999px;
         padding: 9px 12px;
         background: #f4f5f0;
@@ -53,14 +60,19 @@
         font-size: 12px;
         font-weight: 900;
         text-decoration: none;
+      }
+
+      .back-link {
+        display: inline-flex;
         margin-bottom: 14px;
       }
 
-      h1, h2 { margin: 0; line-height: 1.1; }
-      h1 { font-size: clamp(30px, 7vw, 52px); }
+      h1, h2, h3 { margin: 0; line-height: 1.1; }
+      h1 { font-size: clamp(28px, 6vw, 48px); }
       h2 { font-size: 22px; margin-bottom: 10px; }
+      h3 { font-size: 16px; margin: 16px 0 6px; }
 
-      p, li { color: var(--muted); font-size: 15px; }
+      p, li { color: var(--muted); font-size: 14px; }
       ul { padding-left: 18px; }
 
       .notice {
@@ -70,6 +82,7 @@
         background: #f5fbf8;
         color: var(--ink);
         font-weight: 800;
+        font-size: 14px;
       }
 
       .muted {
@@ -81,103 +94,399 @@
 
       strong { color: var(--ink); }
 
-      .legal-footer-links { margin-top: 18px; font-size: 13px; }
-      .legal-footer-links a { color: var(--ink); font-weight: 800; }
+      code {
+        border-radius: 8px;
+        padding: 2px 6px;
+        background: #f4f5f0;
+        font-size: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin: 12px 0;
+      }
+      th {
+        text-align: left;
+        padding: 8px 10px;
+        background: #f4f5f0;
+        color: var(--ink);
+        font-weight: 800;
+        border-radius: 8px;
+      }
+      td {
+        padding: 8px 10px;
+        color: var(--muted);
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
     </style>
   </head>
   <body>
     <main class="legal-page">
-      <a class="back-link" href="/">Wróć do Do-Do</a>
+      <a class="back-link" href="/">Wróc do Do-Do</a>
 
       <section class="legal-hero">
-        <span class="muted">Ostatnia aktualizacja: 9 czerwca 2026</span>
-        <h1>Twoje dane. Prostym językiem.</h1>
+        <span class="muted">Data wejscia w zycie: 11 czerwca 2026</span>
+        <h1>Polityka prywatnosci i RODO</h1>
         <p>
-          Do-Do przechowuje informacje o Waszych dzieciach, wydatkach i ustaleniach.
-          Wiemy, jak wrażliwe są to dane - zwłaszcza po rozstaniu. Dlatego ta strona
-          odpowiada wprost na pytania, które zadałabyś lub zadałbyś sam.
+          Do-Do to narzedzie do koordynacji zycia rodzinnego. Przechowujemy informacje
+          o harmonogramach, dzieciach, wydatkach i ustaleniach. Wiemy, jak wrazliwe sa
+          to dane - zwlaszcza po rozstaniu. Ta strona wyjasnia dokladnie, co robimy
+          z Twoimi danymi i jakie masz prawa.
         </p>
         <p class="notice">
-          Dane są przechowywane na serwerach w Unii Europejskiej i podlegają RODO.
+          Dane przechowywane sa na serwerach w Unii Europejskiej i podlegaja RODO.
           Nie sprzedajemy danych. Nie pokazujemy reklam. Nigdy.
         </p>
+        <nav class="legal-nav" aria-label="Sekcje polityki">
+          <a href="#administrator">Administrator</a>
+          <a href="#dane">Dane</a>
+          <a href="#podstawy">Podstawy prawne</a>
+          <a href="#google">Google</a>
+          <a href="#podmioty">Podmioty</a>
+          <a href="#retencja">Retencja</a>
+          <a href="#prawa">Twoje prawa</a>
+          <a href="#dzieci">Dzieci</a>
+          <a href="#bezpieczenstwo">Bezpieczenstwo</a>
+          <a href="#kontakt">Kontakt</a>
+        </nav>
       </section>
 
-      <section class="legal-card">
-        <h2>Co widzi drugi rodzic?</h2>
+      <!-- 1. ADMINISTRATOR -->
+      <section class="legal-card" id="administrator">
+        <h2>1. Administrator danych osobowych</h2>
         <p>
-          Dokładnie to samo, co Ty - i nic więcej. Wspólna tablica, kalendarz, wydatki
-          i wiadomości są widoczne dla obojga rodziców. Na tym polega Do-Do: <strong>jedna
-          wersja prawdy, bez podejrzeń, że ktoś widzi coś innego.</strong>
-        </p>
-        <p>
-          Twoje hasło, dane logowania i ustawienia konta są tylko Twoje. Drugi rodzic
-          nigdy nie ma do nich dostępu.
-        </p>
-      </section>
-
-      <section class="legal-card">
-        <h2>Czy ktoś może zmienić historię?</h2>
-        <p>
-          Nie. Wpisy mają znacznik czasu nadawany przez serwer. <strong>Żaden rodzic nie może
-          wstecznie zmienić ani usunąć wpisów drugiej osoby.</strong> Historia edycji jest
-          zachowywana. To chroni oboje rodziców tak samo.
-        </p>
-      </section>
-
-      <section class="legal-card">
-        <h2>Gdzie są dane?</h2>
-        <ul>
-          <li>Na serwerach w <strong>Unii Europejskiej</strong>.</li>
-          <li>Pod ochroną <strong>RODO</strong> - najsurowszego prawa o ochronie danych na świecie.</li>
-          <li>Zaszyfrowane podczas przesyłania i przechowywania.</li>
-        </ul>
-        <p>
-          Dla porównania: rozmowy na WhatsApp i tabelki w Excelu nie dają żadnej z tych
-          gwarancji w kontekście wspólnej, niezmienialnej historii rodzinnej.
-        </p>
-      </section>
-
-      <section class="legal-card">
-        <h2>Kto NIE widzi Waszych danych?</h2>
-        <ul>
-          <li><strong>Reklamodawcy</strong> - nie ma reklam, nie ma profilowania.</li>
-          <li><strong>Inne firmy</strong> - nie sprzedajemy ani nie udostępniamy danych do celów marketingowych.</li>
-          <li><strong>Inni użytkownicy</strong> - dane widzi wyłącznie dwoje rodziców z jednej pary.</li>
-        </ul>
-      </section>
-
-      <section class="legal-card">
-        <h2>Jak zabrać swoje dane?</h2>
-        <p>
-          W każdej chwili, bez pytania o powód:
+          Administratorem Twoich danych osobowych jest:
         </p>
         <ul>
-          <li><strong>Eksport</strong> - w Ustawieniach pobierzesz wszystkie swoje dane jednym kliknięciem (prawo do przenoszenia danych, art. 20 RODO).</li>
-          <li><strong>Usunięcie konta</strong> - w Ustawieniach, ze skutkiem trwałym (prawo do bycia zapomnianym, art. 17 RODO).</li>
+          <li><strong>Imie i nazwisko:</strong> Bart Gumowski</li>
+          <li><strong>Kraj siedziby:</strong> Szwajcaria</li>
+          <li><strong>Adres e-mail:</strong> <a href="mailto:hello@do-do.app">hello@do-do.app</a></li>
+          <li><strong>Aplikacja:</strong> Do-Do (dostepna pod adresem do-do.app)</li>
+        </ul>
+        <p>
+          Do-Do przetwarza dane osobowe uzytkowników z UE/EOG zgodnie z Rozporzadzeniem Parlamentu
+          Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. (RODO) oraz szwajcarskiej
+          Federalnej Ustawy o Ochronie Danych (revDSG / nFADP).
+        </p>
+        <p>
+          Do-Do nie wyznaczylo formalnego Inspektora Ochrony Danych (IOD), gdyz nie spelnia
+          progów okreslonych w art. 37 RODO. W sprawach dotyczacych danych osobowych prosimy
+          kontaktowac sie bezposrednio pod adresem: <a href="mailto:hello@do-do.app">hello@do-do.app</a>.
+        </p>
+      </section>
+
+      <!-- 2. JAKIE DANE -->
+      <section class="legal-card" id="dane">
+        <h2>2. Jakie dane zbieramy</h2>
+
+        <h3>Dane konta</h3>
+        <ul>
+          <li>Imie, adres e-mail, numer telefonu (jezeli podany)</li>
+          <li>Dostawca uwierzytelniania (Google, Apple lub e-mail)</li>
+          <li>Ustawienia konta i preferencje jezyka</li>
+          <li>Data rejestracji i ostatniego logowania</li>
+        </ul>
+
+        <h3>Dane tablicy rodzinnej</h3>
+        <ul>
+          <li>Imiona i podstawowe informacje o dzieciach (wiek, szkola, alergje, leki) - tylko te, które sam/a wprowadzisz</li>
+          <li>Imiona i dane kontaktowe wspolorodzica, opiekunów lub czlonków rodziny dodanych do tablicy</li>
+          <li>Harmonogramy, przypomnienia, zadania, wiadomosci, listy zakupów</li>
+          <li>Wydatki, budzet i historia platnosci wspoldzielonych kosztów rodzinnych</li>
+          <li>Historia edycji wpisów ze znacznikami czasu nadawanymi przez serwer</li>
+        </ul>
+
+        <h3>Dane uzytkowania</h3>
+        <ul>
+          <li>Logowania, interakcje z funkcjami aplikacji, powiadomienia push</li>
+          <li>Statusy kart, potwierdzenia odczytu, zmiany przypomnien</li>
+          <li>Anonimowe dane analityczne dotyczace wydajnosci i niezawodnosci aplikacji</li>
+        </ul>
+
+        <h3>Dane urzadzenia</h3>
+        <ul>
+          <li>Typ przegladarki i system operacyjny</li>
+          <li>Przyblizony region (kraj/strefa czasowa)</li>
+          <li>Subskrypcja push i status service workera</li>
+        </ul>
+
+        <h3>Dane kalendarza Google (opcjonalne)</h3>
+        <ul>
+          <li>Tytuly, daty i opisy wydarzen kalendarza - wylacznie tych stworzonych lub zmodyfikowanych przez Do-Do</li>
+          <li>Token OAuth do odswiezania dostepu do kalendarza (zaszyfrowany, przechowywany w UE)</li>
+        </ul>
+        <p>Integracja z Google Calendar jest calkowicie opcjonalna. Mozesz uzywac Do-Do bez jej wlaczania.</p>
+      </section>
+
+      <!-- 3. PODSTAWY PRAWNE -->
+      <section class="legal-card" id="podstawy">
+        <h2>3. Podstawy prawne przetwarzania (art. 6 i 9 RODO)</h2>
+
+        <table>
+          <tr>
+            <th>Cel przetwarzania</th>
+            <th>Podstawa prawna</th>
+          </tr>
+          <tr>
+            <td>Swiadczenie uslug aplikacji (konto, tablica, przypomnienia, kalkulacje wydatków)</td>
+            <td>Art. 6 ust. 1 lit. b - niezbednosc do wykonania umowy</td>
+          </tr>
+          <tr>
+            <td>Wyslanie powiadomien push, zaproszen, przypomnien</td>
+            <td>Art. 6 ust. 1 lit. b - wykonanie umowy; lub art. 6 ust. 1 lit. a - zgoda (tam gdzie wymagana)</td>
+          </tr>
+          <tr>
+            <td>Bezpieczenstwo, zapobieganie naduzyciem, logi systemowe</td>
+            <td>Art. 6 ust. 1 lit. f - prawnie uzasadniony interes administratora</td>
+          </tr>
+          <tr>
+            <td>Integracja z Google Calendar (synchronizacja wydarzen)</td>
+            <td>Art. 6 ust. 1 lit. a - zgoda uzytkownika (udzielana przy polaczeniu konta Google)</td>
+          </tr>
+          <tr>
+            <td>Przetwarzanie danych dotyczacych dzieci na tablicy</td>
+            <td>Art. 6 ust. 1 lit. b - umowa z rodzicem/opiekunem sprawujacym wladze rodzicielska</td>
+          </tr>
+          <tr>
+            <td>Wypelnianie obowiazkow prawnych (podatki, regulatorzy)</td>
+            <td>Art. 6 ust. 1 lit. c - obowiazek prawny</td>
+          </tr>
+          <tr>
+            <td>Eksport danych do postepowania sadowego lub mediacji</td>
+            <td>Art. 6 ust. 1 lit. b - wykonanie umowy; art. 9 ust. 2 lit. f - dochodzenie roszczen</td>
+          </tr>
+        </table>
+      </section>
+
+      <!-- 4. GOOGLE CALENDAR -->
+      <section class="legal-card" id="google">
+        <h2>4. Integracja z Google Calendar</h2>
+        <p>
+          Jezeli zdecydujesz sie polaczyc Google Calendar z Do-Do, aplikacja zada nastepujacego zakresu dostepu:
+        </p>
+        <ul>
+          <li><strong>Zakres (scope):</strong> <code>https://www.googleapis.com/auth/calendar.events</code></li>
+          <li><strong>Co czytamy:</strong> tytuly, daty, godziny i opisy wydarzen tworzonych lub modyfikowanych przez Do-Do.</li>
+          <li><strong>Co zapisujemy:</strong> zadania, przypomnienia i uzgodnione terminy z Do-Do sa tworzone jako wydarzenia w Twoim kalendarzu - na Twoje polecenie.</li>
+          <li><strong>Czego NIE robimy:</strong> nie czytamy, nie przechowujemy, nie przetwarzamy ani nie udostepniamy wydarzen z Twojego kalendarza, które nie zostaly stworzone przez Do-Do. Nie skanujemy kalendarza w zadnym innym celu niz koordynacja rodzinna.</li>
+          <li><strong>Przechowywanie tokena:</strong> token odswiezajacy OAuth jest przechowywany w formie zaszyfrowanej w Supabase (UE, Irlandia) i sluzy wylacznie do odswiezania dostepu do kalendarza. Nie jest udostepniany zadnej stronie trzeciej.</li>
+          <li><strong>Cofniecie zgody:</strong> mozesz cofnac dostep w dowolnym momencie poprzez <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a> lub w Ustawieniach Do-Do - Kalendarz - Odlacz Google Calendar.</li>
+        </ul>
+        <p>
+          Korzystanie z danych otrzymanych od Google APIs przez Do-Do jest zgodne z
+          <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>,
+          w tym z wymogiem ograniczonego uzytkowania (Limited Use). Dane Google nie sa
+          uzywane do rozwijania modeli AI/ML ani do celow reklamowych.
+        </p>
+      </section>
+
+      <!-- 5. PODMIOTY PRZETWARZAJACE -->
+      <section class="legal-card" id="podmioty">
+        <h2>5. Podmioty przetwarzajace i odbiorcy danych</h2>
+        <p>
+          Do-Do korzysta z nastepujacych podwykonawców (procesorów danych), z którymi zawarte sa
+          odpowiednie umowy powierzenia przetwarzania danych (DPA) lub standardowe klauzule umowne (SCCs):
+        </p>
+        <table>
+          <tr>
+            <th>Podmiot</th>
+            <th>Rola</th>
+            <th>Lokalizacja danych</th>
+          </tr>
+          <tr>
+            <td><strong>Supabase</strong></td>
+            <td>Baza danych, uwierzytelnianie, przechowywanie plikow, synchronizacja w czasie rzeczywistym</td>
+            <td>EU-West-1 (Irlandia)</td>
+          </tr>
+          <tr>
+            <td><strong>Vercel</strong></td>
+            <td>Hosting serverless API, serwowanie aplikacji</td>
+            <td>US (Transfer na podstawie SCCs)</td>
+          </tr>
+          <tr>
+            <td><strong>Anthropic</strong></td>
+            <td>Ekstrakcja danych AI (Claude Haiku) - opcjonalna, tylko dla kart AI</td>
+            <td>US (Transfer na podstawie SCCs)</td>
+          </tr>
+          <tr>
+            <td><strong>Stripe</strong></td>
+            <td>Platnosci subskrypcyjne i wspólne wydatki rodzinne</td>
+            <td>US/UE (dane kart wylacznie u Stripe)</td>
+          </tr>
+          <tr>
+            <td><strong>Resend</strong></td>
+            <td>Transakcyjne e-maile (przypomnienia, zaproszenia, prosby o platnosc)</td>
+            <td>US (Transfer na podstawie SCCs)</td>
+          </tr>
+          <tr>
+            <td><strong>Google LLC</strong></td>
+            <td>Logowanie Google (SSO) i opcjonalna synchronizacja Google Calendar</td>
+            <td>US (Transfer na podstawie SCCs)</td>
+          </tr>
+        </table>
+        <p>
+          <strong>Wspólrodzic zaproszony do tablicy</strong> widzi te same dane co Ty - bo na tym polega Do-Do:
+          jedna wersja prawdy dla obojga rodziców. Twoje haslo, dane logowania i ustawienia konta
+          sa widoczne tylko dla Ciebie.
+        </p>
+        <p>
+          Dane moga byc ujawnione organom panstwowym wylacznie na podstawie waznego i zgodnego
+          z prawem zadania (np. nakaz sadowy, postepowanie organów scigania).
+        </p>
+      </section>
+
+      <!-- 6. RETENCJA -->
+      <section class="legal-card" id="retencja">
+        <h2>6. Okres przechowywania danych</h2>
+        <ul>
+          <li><strong>Dane konta i tablicy rodzinnej:</strong> przechowywane przez caly czas aktywnosci konta lub tablicy rodzinnej.</li>
+          <li><strong>Po usunieciu konta:</strong> Twój profil i wiadomosci sa usuwane natychmiast. Karty, które stworzyłes/as, sa anonimizowane w ciagu 30 dni. Dane wspólrodzica sa zachowywane (chyba ze on/ona rowniez usunie konto).</li>
+          <li><strong>Historia edycji:</strong> zachowywana bezterminowo jako niezmienialny zapis dla celow koordynacyjnych i ewentualnych postepowañ prawnych, chyba ze uzytkownik zada usuniecia.</li>
+          <li><strong>Kopie zapasowe:</strong> moga byc przechowywane do 30 dni przed automatycznym usunieciem.</li>
+          <li><strong>Dane platnosci (Stripe):</strong> przechowywane przez Stripe zgodnie z wymaganiami regulacji finansowych (zwykle 7 lat).</li>
+          <li><strong>Logi systemowe:</strong> przechowywane przez okres do 90 dni dla celow bezpieczenstwa i diagnostyki.</li>
         </ul>
       </section>
 
-      <section class="legal-card">
-        <h2>Dokumenty do sądu lub mediacji</h2>
+      <!-- 7. TWOJE PRAWA -->
+      <section class="legal-card" id="prawa">
+        <h2>7. Twoje prawa zgodnie z RODO</h2>
         <p>
-          Historia wydatków i ustaleń w Do-Do może zostać wyeksportowana w uporządkowanym
-          formacie ze znacznikami czasu - przydatnym w mediacji lub postępowaniu sądowym.
-          Zrzuty ekranu z komunikatorów łatwo podważyć; uporządkowany, niezmienialny
-          rejestr - znacznie trudniej.
+          Jako osoba, której dane dotycza, przysluguja Ci nastepujace prawa (art. 15-21 RODO):
+        </p>
+
+        <h3>Prawo dostepu (art. 15)</h3>
+        <p>Mozesz zazadac informacji o tym, jakie Twoje dane przechowujemy i jak je przetwarzamy.</p>
+
+        <h3>Prawo do sprostowania (art. 16)</h3>
+        <p>Mozesz poprawic nieprawidlowe lub uzupelnic niekompletne dane w dowolnym momencie bezposrednio w aplikacji lub przez kontakt z nami.</p>
+
+        <h3>Prawo do usuniecia ("bycia zapomnianym") (art. 17)</h3>
+        <p>Mozesz usunac swoje konto w Ustawieniach - Konto - Usun konto. Usluniecie jest trwale i natychmiastowe.</p>
+
+        <h3>Prawo do przenoszenia danych (art. 20)</h3>
+        <p>Mozesz pobrac wszystkie swoje dane w ustrukturyzowanym formacie (JSON) w Ustawieniach - Konto - Pobierz moje dane.</p>
+
+        <h3>Prawo do ograniczenia przetwarzania (art. 18)</h3>
+        <p>W okreslonych przypadkach mozesz zazadac ograniczenia przetwarzania Twoich danych. Skontaktuj sie z nami pod adresem hello@do-do.app.</p>
+
+        <h3>Prawo do sprzeciwu (art. 21)</h3>
+        <p>Mozesz sprzeciwic sie przetwarzaniu opartemu na prawnie uzasadnionym interesie administratora. Skontaktuj sie z nami pod adresem hello@do-do.app.</p>
+
+        <h3>Prawo do cofniecia zgody</h3>
+        <p>Tam gdzie przetwarzanie opiera sie na zgodzie (np. Google Calendar, powiadomienia push), mozesz cofnac zgode w dowolnym momencie w Ustawieniach Do-Do lub w ustawieniach urzadzenia. Cofniecie zgody nie wplywa na zgodnosc z prawem przetwarzania sprzed cofniecia.</p>
+
+        <h3>Prawo do skargi do organu nadzorczego</h3>
+        <p>
+          Masz prawo wniesc skarge do organu nadzorczego wlasciwego dla Twojego miejsca zamieszkania:
+        </p>
+        <ul>
+          <li><strong>Polska:</strong> Urzad Ochrony Danych Osobowych (UODO) - <a href="https://uodo.gov.pl" target="_blank" rel="noopener">uodo.gov.pl</a></li>
+          <li><strong>UE/EOG:</strong> lokalny organ ochrony danych w Twoim kraju</li>
+          <li><strong>Szwajcaria:</strong> Federalny Komisarz ds. Ochrony Danych i Informacji (FDPIC) - <a href="https://www.edoeb.admin.ch" target="_blank" rel="noopener">edoeb.admin.ch</a></li>
+        </ul>
+        <p>
+          Przed zlozeniem skargi zachecamy do kontaktu z nami bezposrednio - zazwyczaj mozemy rozwiazac problem szybciej.
+        </p>
+
+        <p style="margin-top:14px;">
+          Na wnioski dotyczace praw odpowiadamy bez zbednej zwloki, w ciagu maksymalnie 30 dni (art. 12 ust. 3 RODO). W przypadku skomplikowanych lub licznych zadan termin moze zostac przedluzony o kolejne 60 dni, o czym zostaniesz poinformowany/a.
         </p>
       </section>
 
-      <section class="legal-card">
-        <h2>Masz pytania?</h2>
+      <!-- 8. DZIECI -->
+      <section class="legal-card" id="dzieci">
+        <h2>8. Dane dzieci i ochrona maloletnich</h2>
         <p>
-          Napisz do nas - odpowiadamy po polsku. Pełne warunki prawne (po angielsku)
-          znajdziesz w dokumencie poniżej.
+          Do-Do jest przeznaczone dla pelnoletnych rodziców i opiekunów koordynujacych zycie rodzinne.
+          Profile dzieci sa tworzone i kontrolowane przez dorosłych.
         </p>
-        <p class="legal-footer-links">
-          <a href="/legal">Pełne warunki i polityka prywatności (EN)</a>
+        <ul>
+          <li>Dodajac profil dziecka, potwierdzasz, ze posiadasz wladze rodzicielska lub inne zgodne z prawem upowaznienie do przetwarzania jego danych.</li>
+          <li>Dzieci ponizej 16 roku zycia nie powinny samodzielnie zakladac kont w Do-Do.</li>
+          <li>Rodzice moga w dowolnym momencie zazadac dostepu, sprostowania, eksportu lub usuniecia danych dziecka.</li>
+          <li>Do-Do zbiera wylacznie te dane dziecka, które sa uzasadnione celem koordynacji rodzinnej (imie, wiek, szkola, alergje, leki - jezeli je podasz).</li>
+          <li>Jezeli Twoje dziecko, ktoré nie ukonczylo 16 lat, zarejestruje sie samodzielnie - poinformuj nas pod adresem hello@do-do.app, a usuniemy konto bez zbednej zwloki.</li>
+        </ul>
+        <p>
+          Dane dzieci na wspolnej tablicy sa widoczne dla obojga rodziców. Zadna osoba trzecia
+          (poza wymienionymi procesorami technicznymi) nie ma dostepu do informacji o dzieciach.
         </p>
       </section>
+
+      <!-- 9. BEZPIECZENSTWO -->
+      <section class="legal-card" id="bezpieczenstwo">
+        <h2>9. Bezpieczenstwo danych</h2>
+        <ul>
+          <li><strong>Szyfrowanie w tranzycie:</strong> caly ruch danych jest szyfrowany TLS/HTTPS.</li>
+          <li><strong>Szyfrowanie w spoczynku:</strong> dane sa szyfrowane na serwerach Supabase (AES-256).</li>
+          <li><strong>Kontrola dostepu:</strong> zasada minimalnych uprawnien - pracownicy i systemy maja dostep tylko do danych niezbednych do swiadczenia uslugi.</li>
+          <li><strong>Historia edycji:</strong> wszystkie wpisy posiadaja znacznik czasu nadawany przez serwer - zadna ze stron nie moze wstecznie zmienic ani usunac wpisow drugiej osoby.</li>
+          <li><strong>Platnosci:</strong> dane kart platniczych sa obsługiwane wylacznie przez Stripe i nigdy nie sa przechowywane na serwerach Do-Do.</li>
+          <li><strong>Tokeny Google OAuth:</strong> przechowywane w postaci zaszyfrowanej, uzywane wylacznie do odswiezania dostepu do kalendarza.</li>
+        </ul>
+        <p>
+          <strong>Naruszenie ochrony danych:</strong> w przypadku stwierdzenia naruszenia, które moze powodowac ryzyko dla praw i wolnosci uzytkowników, powiadomimy wlasciwy organ nadzorczy w ciagu 72 godzin (art. 33 RODO). Jezeli ryzyko jest wysokie, powiadomimy rowniez dotkniete osoby bez zbednej zwloki (art. 34 RODO).
+        </p>
+        <p>
+          Podejrzewane nieuprawnione uzycie konta prosimy zglaszac natychmiast pod adres:
+          <a href="mailto:hello@do-do.app">hello@do-do.app</a>.
+        </p>
+      </section>
+
+      <!-- 10. PLIKI COOKIE -->
+      <section class="legal-card">
+        <h2>10. Pliki cookie i lokalne przechowywanie danych</h2>
+        <ul>
+          <li><strong>Niezbedne pliki cookie (sesyjne):</strong> Supabase uzywa jednego pliku cookie uwierzytelniajacego do utrzymania sesji logowania. Jest to niezbedne technicznie i nie wymaga zgody.</li>
+          <li><strong>Lokalne przechowywanie (localStorage):</strong> Do-Do przechowuje dane tablicy, ustawienia i preferencje w lokalnej pamieci przegladarki dla szybkosci i dzialania offline. Zadne dane nie sa wysylane do reklamodawców.</li>
+          <li><strong>Cache service workera:</strong> pliki aplikacji sa buforowane dla uzytku offline. Zadne dane sledzace nie sa przechowywane w cache.</li>
+          <li><strong>Brak cookies reklamowych i analitycznych:</strong> Do-Do nie uzywa Google Analytics, Facebook Pixel ani zadnych sieci reklamowych. Twoja aktywnosc nie jest sledzona na innych stronach internetowych.</li>
+          <li><strong>Powiadomienia push:</strong> wymagaja wyraznej zgody przegladarki. Mozna je wylaczyc w dowolnym momencie w ustawieniach przegladarki lub w Ustawieniach Do-Do.</li>
+        </ul>
+      </section>
+
+      <!-- 11. ZMIANY POLITYKI -->
+      <section class="legal-card">
+        <h2>11. Zmiany polityki prywatnosci</h2>
+        <p>
+          W przypadku istotnych zmian w sposobie przetwarzania danych powiadomimy Cie co najmniej
+          14 dni wczesniej - przez powiadomienie w aplikacji lub e-mail na adres przypisany do konta.
+          Data ostatniej aktualizacji jest zawsze widoczna w naglówku strony.
+        </p>
+        <p>
+          Dalsze korzystanie z Do-Do po wejsciu w zycie nowej wersji polityki oznacza jej akceptacje.
+          Jezeli nie akceptujesz zmian, mozesz usunac konto przed ich wejsciem w zycie.
+        </p>
+      </section>
+
+      <!-- 12. KONTAKT -->
+      <section class="legal-card" id="kontakt">
+        <h2>12. Kontakt</h2>
+        <p>
+          W sprawach dotyczacych danych osobowych, realizacji praw lub pytañ o prywatnosc:
+        </p>
+        <ul>
+          <li><strong>Administrator:</strong> Bart Gumowski</li>
+          <li><strong>E-mail:</strong> <a href="mailto:hello@do-do.app">hello@do-do.app</a></li>
+          <li><strong>Jezyk obslugi:</strong> polski, angielski</li>
+          <li><strong>Czas odpowiedzi:</strong> do 30 dni (art. 12 ust. 3 RODO)</li>
+        </ul>
+        <p>
+          Organ nadzorczy wlasciwy dla uzytkowników z Polski:<br />
+          <strong>Urzad Ochrony Danych Osobowych (UODO)</strong><br />
+          ul. Stawki 2, 00-193 Warszawa<br />
+          <a href="https://uodo.gov.pl" target="_blank" rel="noopener">uodo.gov.pl</a>
+        </p>
+        <p>
+          Pelna polityka prywatnosci i warunki uzytkowania w jezyku angielskim:
+          <a href="/legal"><strong>do-do.app/legal</strong></a>
+        </p>
+      </section>
+
     </main>
   </body>
 </html>
