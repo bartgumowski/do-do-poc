@@ -1,4 +1,4 @@
-const APP_VERSION = "0.9.6";
+const APP_VERSION = "0.9.7";
 const APP_VERSION_DATE = "2026-06-11";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1151,6 +1151,15 @@ function showApp(session) {
   document.body.classList.remove("auth-locked");
   if (elements.verifyEmailScreen) elements.verifyEmailScreen.hidden = true;
   initializeOnboarding();
+
+  // Restore last visited module (PWA restart loses the URL hash)
+  setTimeout(() => {
+    const validModules = ["board", "calendar", "messages", "shopping", "expenses", "settings"];
+    const fromHash = location.hash.replace("#", "").toLowerCase();
+    const fromStorage = localStorage.getItem("do-do-last-module");
+    const target = validModules.includes(fromHash) ? fromHash : fromStorage;
+    if (target && validModules.includes(target)) window.switchModule?.(target);
+  }, 0);
   // Load real data from Supabase in the background
   if (window.initSupabaseData) {
     window.initSupabaseData(currentAuthSession).catch(() => {});

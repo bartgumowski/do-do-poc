@@ -609,6 +609,7 @@ window.switchModule = function(moduleName) {
   _origSwitchModule(moduleName);
   const hash = "#" + moduleName;
   if (location.hash !== hash) history.pushState(null, "", hash);
+  localStorage.setItem("do-do-last-module", moduleName);
 };
 
 function routeFromHash() {
@@ -1162,6 +1163,10 @@ function _renderShoppingBoard(lists) {
     const id = input.dataset.shoppingCheck;
     if (typeof id === "string" && id.startsWith("custom-")) return; // handled separately below
     input.addEventListener("change", async () => {
+      // Immediate visual feedback - don't wait for async re-render
+      const wrap = input.closest(".shopping-row-wrap");
+      if (wrap) wrap.classList.toggle("bought", input.checked);
+
       const listKey = input.dataset.shoppingList;
       const myName = typeof getMyName === "function" ? getMyName() : "";
       if (typeof id === "string" && id.startsWith(listKey + "-")) {
@@ -1314,6 +1319,40 @@ function _renderShoppingBoard(lists) {
       const groupName = listKey === "groceries" ? (window.t?.("shopping.groceries") ?? "Groceries") : (window.t?.("shopping.other") ?? "Other");
       showFeatureToast(`${window.t?.("toast.added") ?? "Added"} – ${groupName}`);
     });
+
+    // Multi-line paste: split clipboard text into individual items
+    input.addEventListener("paste", async (e) => {
+      const text = (e.clipboardData || window.clipboardData).getData("text");
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      if (lines.length <= 1) return; // single line - let normal paste handle it
+      e.preventDefault();
+      const listKey = form.dataset.shoppingAddForm;
+      if (listKey.startsWith("custom-")) {
+        const cls = loadCustomShoppingLists();
+        const cl = cls.find((l) => l.key === listKey);
+        if (cl) {
+          cl.items = cl.items || [];
+          lines.forEach((label) => cl.items.push({ id: `${listKey}-${Date.now()}-${Math.random().toString(36).slice(2)}`, label, bought: false }));
+          saveCustomShoppingLists(cls);
+        }
+        const refreshed = await window.loadShoppingItems?.();
+        _renderShoppingBoard(refreshed || loadShoppingLists());
+      } else {
+        if (window.addShoppingItem) {
+          for (const label of lines) await window.addShoppingItem(listKey, label);
+          const refreshed = await window.loadShoppingItems?.();
+          if (refreshed) { _renderShoppingBoard(refreshed); }
+        } else {
+          const nextLists = loadShoppingLists();
+          const list = nextLists[listKey] || [];
+          lines.forEach((label) => list.push({ id: `${listKey}-${Date.now()}-${Math.random().toString(36).slice(2)}`, label, bought: false }));
+          nextLists[listKey] = list;
+          saveShoppingLists(nextLists);
+          _renderShoppingBoard(nextLists);
+        }
+      }
+      showFeatureToast(`${lines.length} ${window.t?.("toast.items_added") ?? "items added"}`);
+    });
   });
 
   // Delete for custom-list items
@@ -1338,6 +1377,10 @@ function _renderShoppingBoard(lists) {
     const id = input.dataset.shoppingCheck;
     if (typeof id === "string" && id.startsWith("custom-")) {
       input.addEventListener("change", async () => {
+        // Immediate visual feedback
+        const wrap = input.closest(".shopping-row-wrap");
+        if (wrap) wrap.classList.toggle("bought", input.checked);
+
         const listKey = id.split("-").slice(0, 2).join("-");
         const myName = typeof getMyName === "function" ? getMyName() : "";
         const cls = loadCustomShoppingLists();
