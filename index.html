@@ -323,7 +323,7 @@
           <nav class="module-list" aria-label="Modules">
             <button class="module-link active" data-module="board" data-i18n="nav.board">Board</button>
             <button class="module-link" data-module="calendar" data-i18n="nav.calendar">Calendar</button>
-            <button class="module-link" data-module="messages" data-i18n="nav.messages">Messages</button>
+            <button class="module-link" data-module="messages" data-i18n="nav.messages" hidden>Messages</button>
             <button class="module-link" data-module="shopping" data-i18n="nav.shopping">Shopping</button>
             <button class="module-link" data-module="expenses" data-i18n="nav.expenses">Expenses</button>
             <button class="module-link" data-module="settings" data-i18n="nav.settings">Settings</button>
@@ -385,7 +385,7 @@
                 <span data-i18n="stats.expenses">Expenses</span>
                 <strong id="topCosts">CHF 0</strong>
               </button>
-              <button class="mini-stat" type="button" data-module="messages" aria-label="Open messages">
+              <button class="mini-stat" type="button" data-module="messages" aria-label="Open messages" hidden>
                 <span data-i18n="stats.messages">Messages</span>
                 <strong id="topMessages">0</strong>
               </button>
@@ -438,7 +438,7 @@
         </svg>
         <span data-i18n="nav.calendar">Calendar</span>
       </button>
-      <button class="phone-tab" type="button" data-mobile-module="messages">
+      <button class="phone-tab" type="button" data-mobile-module="messages" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" />
         </svg>
