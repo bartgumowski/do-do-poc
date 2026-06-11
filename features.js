@@ -2015,23 +2015,22 @@ function renderCalendarFeature(data) {
         const familyOk = Boolean(aut.syncFamilyCalendar);
         const workGoogleOk = wcc.includes("google");
         const workMsOk = wcc.includes("outlook");
-        const t = window.t || ((k, fb) => fb || k);
+        // Friendly labels - shown as-is regardless of language
+        const calIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`;
+        const gearIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>`;
         return `
         <div class="cal-sync-strip">
-          <button class="cal-sync-btn${familyOk ? " sync-ok" : ""}" type="button" data-sync-goto="family">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            ${t("cal.sync.family", "Family")}
+          <button class="custody-schedule-btn cal-sync-item${familyOk ? " cal-sync-connected" : ""}" type="button" data-sync-goto="family">
+            ${calIcon} Kalendarz rodzinny${familyOk ? " ✓" : ""}
           </button>
-          <button class="cal-sync-btn${workGoogleOk ? " sync-ok" : ""}" type="button" data-sync-goto="work-google">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-            ${t("cal.sync.work_google", "Work (Google)")}
+          <button class="custody-schedule-btn cal-sync-item${workGoogleOk ? " cal-sync-connected" : ""}" type="button" data-sync-goto="work-google">
+            ${calIcon} Google Work${workGoogleOk ? " ✓" : ""}
           </button>
-          <button class="cal-sync-btn${workMsOk ? " sync-ok" : ""}" type="button" data-sync-goto="work-ms">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-            ${t("cal.sync.work_ms", "Work (Microsoft)")}
+          <button class="custody-schedule-btn cal-sync-item${workMsOk ? " cal-sync-connected" : ""}" type="button" data-sync-goto="work-ms">
+            ${calIcon} Microsoft${workMsOk ? " ✓" : ""}
           </button>
-          <button class="cal-sync-btn cal-sync-gear" type="button" data-sync-goto="settings" aria-label="Sync &amp; reminder settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+          <button class="custody-schedule-btn cal-sync-gear-btn" type="button" data-sync-goto="settings" title="Ustawienia synchronizacji i przypomnień">
+            ${gearIcon} Synchronizacja
           </button>
         </div>`;
       })()}

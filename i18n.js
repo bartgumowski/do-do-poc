@@ -756,8 +756,8 @@
       "board.col.done":   "Gotowe",
       "board.archived":   "Archiwum",
       "board.empty_title":"Brak zadań na tablicy",
-      "board.empty_cta":  "Nowe zadanie",
-      "board.new_do":     "Nowe zadanie",
+      "board.empty_cta":  "Dodaj Do",
+      "board.new_do":     "Dodaj Do",
 
       "status.todo":      "Do zrobienia",
       "status.waiting":   "Oczekuje",
@@ -767,7 +767,7 @@
       "status.info":      "Tylko info",
       "status.request":   "Prośba",
 
-      "card.new":              "Nowe zadanie",
+      "card.new":              "Dodaj Do",
       "card.info_thread":      "Informacje i wątek",
       "card.save":             "Zapisz",
       "card.cancel":           "Anuluj",
