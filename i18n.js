@@ -87,7 +87,9 @@
       "recurrence.biweekly": "Every 2 weeks",
       "recurrence.monthly":  "Monthly",
       "recurrence.c223":     "2-2-3 custody",
-      "recurrence.wowo":     "Week-on / week-off",
+      "recurrence.wowo":         "Week-on / week-off",
+      "recurrence.custom_dates": "Custom dates...",
+      "recurrence.pick_hint":    "Tap dates to add them",
       "day.mo": "Mo", "day.tu": "Tu", "day.we": "We",
       "day.th": "Th", "day.fr": "Fr", "day.sa": "Sa", "day.su": "Su",
 
@@ -822,7 +824,9 @@
       "recurrence.biweekly": "Co 2 tygodnie",
       "recurrence.monthly":  "Co miesiąc",
       "recurrence.c223":     "2-2-3 (opieka naprzemienna)",
-      "recurrence.wowo":     "Tydzień z / tydzień bez",
+      "recurrence.wowo":         "Tydzień z / tydzień bez",
+      "recurrence.custom_dates": "Własne daty...",
+      "recurrence.pick_hint":    "Kliknij daty, aby je dodać",
       "day.mo": "Pon", "day.tu": "Wt", "day.we": "Sr",
       "day.th": "Czw", "day.fr": "Pt", "day.sa": "Sob", "day.su": "Nd",
 

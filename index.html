@@ -629,6 +629,7 @@
                     <option value="monthly" data-i18n="recurrence.monthly">Co miesiąc</option>
                     <option value="custom-223" data-i18n="recurrence.c223">2-2-3 (opieka)</option>
                     <option value="custom-wowo" data-i18n="recurrence.wowo">Tydzień-na / tydzień-off</option>
+                    <option value="custom-dates" data-i18n="recurrence.custom_dates">Własne daty...</option>
                   </select>
                 </label>
                 <div id="recurrenceDaysRow" class="recurrence-days-row hidden">
@@ -639,6 +640,11 @@
                   <label><input type="checkbox" value="FR" class="recurrence-day" /><span data-i18n="day.fr">Pt</span></label>
                   <label><input type="checkbox" value="SA" class="recurrence-day" /><span data-i18n="day.sa">Sob</span></label>
                   <label><input type="checkbox" value="SU" class="recurrence-day" /><span data-i18n="day.su">Nd</span></label>
+                </div>
+                <!-- Custom specific-dates multi-picker -->
+                <div id="customDatesPicker" class="custom-dates-picker hidden">
+                  <div id="customDatesCalendar" class="mini-cal-picker"></div>
+                  <div id="customDatesList" class="custom-dates-list"></div>
                 </div>
               </section>
 

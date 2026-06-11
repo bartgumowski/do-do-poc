@@ -1,4 +1,4 @@
-const APP_VERSION = "0.10.3";
+const APP_VERSION = "0.10.4";
 const APP_VERSION_DATE = "2026-06-11";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1884,13 +1884,25 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     const recDaysRow = document.querySelector("#recurrenceDaysRow");
     if (recInput) {
       recInput.value = card.recurrence?.freq || "none";
-      const showDays = ["weekly", "biweekly"].includes(card.recurrence?.freq);
+      const freq = card.recurrence?.freq;
+      const showDays = ["weekly", "biweekly"].includes(freq);
       recDaysRow?.classList.toggle("hidden", !showDays);
       if (showDays) {
         const days = card.recurrence?.days || [];
         recDaysRow?.querySelectorAll(".recurrence-day").forEach((cb) => {
           cb.checked = days.includes(cb.value);
         });
+      }
+      // Restore custom dates
+      const customPicker = document.querySelector("#customDatesPicker");
+      const calEl = document.getElementById("customDatesCalendar");
+      if (customPicker && calEl) {
+        const isCustom = freq === "custom-dates";
+        customPicker.classList.toggle("hidden", !isCustom);
+        calEl.dataset.selectedDates = (card.recurrence?.customDates || []).join(",");
+        delete calEl.dataset.viewYear;
+        delete calEl.dataset.viewMonth;
+        if (isCustom) renderCustomDatesCal();
       }
     }
     elements.amountInput.value = card.amount || "";
@@ -3249,8 +3261,11 @@ async function saveCard(event) {
   const recurrenceDays = recurrenceFreq === "weekly" || recurrenceFreq === "biweekly"
     ? Array.from(document.querySelectorAll(".recurrence-day:checked")).map((cb) => cb.value)
     : [];
+  const customDates = recurrenceFreq === "custom-dates"
+    ? (document.getElementById("customDatesCalendar")?.dataset.selectedDates || "").split(",").filter(Boolean).sort()
+    : [];
   const recurrence = recurrenceFreq !== "none"
-    ? { freq: recurrenceFreq, days: recurrenceDays }
+    ? { freq: recurrenceFreq, days: recurrenceDays, ...(customDates.length ? { customDates } : {}) }
     : null;
 
   const card = {
@@ -3347,11 +3362,105 @@ async function saveCard(event) {
 function _bindRecurrenceDaysToggle() {
   const recInput = document.querySelector("#recurrenceInput");
   const daysRow = document.querySelector("#recurrenceDaysRow");
-  if (!recInput || !daysRow) return;
-  recInput.onchange = () => {
-    const showDays = ["weekly", "biweekly"].includes(recInput.value);
-    daysRow.classList.toggle("hidden", !showDays);
+  const customPicker = document.querySelector("#customDatesPicker");
+  if (!recInput) return;
+  const update = () => {
+    const v = recInput.value;
+    daysRow?.classList.toggle("hidden", !["weekly", "biweekly"].includes(v));
+    customPicker?.classList.toggle("hidden", v !== "custom-dates");
+    if (v === "custom-dates") renderCustomDatesCal();
   };
+  recInput.onchange = update;
+  update(); // apply on open
+}
+
+// State for custom-dates picker - held in the element's dataset
+function renderCustomDatesCal() {
+  const calEl = document.getElementById("customDatesCalendar");
+  const listEl = document.getElementById("customDatesList");
+  if (!calEl || !listEl) return;
+
+  // Load selected dates from dataset (comma-separated YYYY-MM-DD)
+  const selected = new Set((calEl.dataset.selectedDates || "").split(",").filter(Boolean));
+  const today = new Date();
+  let viewYear = calEl.dataset.viewYear ? parseInt(calEl.dataset.viewYear) : today.getFullYear();
+  let viewMonth = calEl.dataset.viewMonth !== undefined ? parseInt(calEl.dataset.viewMonth) : today.getMonth();
+
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const dayNames = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const startDow = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  let cells = "";
+  let dayNum = 1;
+  for (let row = 0; row < 6; row++) {
+    cells += "<tr>";
+    for (let col = 0; col < 7; col++) {
+      const ci = row * 7 + col;
+      if (ci < startDow || dayNum > daysInMonth) { cells += "<td></td>"; }
+      else {
+        const dateStr = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(dayNum).padStart(2,"0")}`;
+        const isToday = new Date(viewYear, viewMonth, dayNum).toDateString() === today.toDateString();
+        const isPicked = selected.has(dateStr);
+        let cls = "mc-day";
+        if (isToday) cls += " mc-today";
+        if (isPicked) cls += " mc-selected";
+        cells += `<td><button class="${cls}" type="button" data-pick="${dateStr}">${dayNum}</button></td>`;
+        dayNum++;
+      }
+    }
+    cells += "</tr>";
+    if (dayNum > daysInMonth) break;
+  }
+
+  calEl.innerHTML = `
+    <div class="mc-header">
+      <button class="mc-nav" type="button" id="cdcPrev">&#8249;</button>
+      <span class="mc-month-label">${monthNames[viewMonth]} ${viewYear}</span>
+      <button class="mc-nav" type="button" id="cdcNext">&#8250;</button>
+    </div>
+    <table class="mc-grid">
+      <thead><tr>${dayNames.map((d)=>`<th>${d}</th>`).join("")}</tr></thead>
+      <tbody>${cells}</tbody>
+    </table>
+  `;
+  calEl.dataset.viewYear = viewYear;
+  calEl.dataset.viewMonth = viewMonth;
+
+  // Render selected dates as chips
+  const sorted = [...selected].sort();
+  listEl.innerHTML = sorted.length
+    ? sorted.map((d) => `<span class="custom-date-chip">${d}<button type="button" data-remove="${d}" aria-label="Remove">&#215;</button></span>`).join("")
+    : `<span class="custom-dates-hint">${window.t?.("recurrence.pick_hint") ?? "Tap dates to add them"}</span>`;
+
+  calEl.querySelector("#cdcPrev")?.addEventListener("click", () => {
+    let m = parseInt(calEl.dataset.viewMonth) - 1, y = parseInt(calEl.dataset.viewYear);
+    if (m < 0) { m = 11; y--; }
+    calEl.dataset.viewMonth = m; calEl.dataset.viewYear = y;
+    renderCustomDatesCal();
+  });
+  calEl.querySelector("#cdcNext")?.addEventListener("click", () => {
+    let m = parseInt(calEl.dataset.viewMonth) + 1, y = parseInt(calEl.dataset.viewYear);
+    if (m > 11) { m = 0; y++; }
+    calEl.dataset.viewMonth = m; calEl.dataset.viewYear = y;
+    renderCustomDatesCal();
+  });
+  calEl.querySelectorAll("[data-pick]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const d = btn.dataset.pick;
+      if (selected.has(d)) selected.delete(d); else selected.add(d);
+      calEl.dataset.selectedDates = [...selected].join(",");
+      renderCustomDatesCal();
+    });
+  });
+  listEl.querySelectorAll("[data-remove]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selected.delete(btn.dataset.remove);
+      calEl.dataset.selectedDates = [...selected].join(",");
+      renderCustomDatesCal();
+    });
+  });
 }
 
 // ─── Recurrence scope dialog (this event / all future) ───────────────────────
@@ -4265,31 +4374,13 @@ function isPetName(name) {
 }
 
 function peopleForCard(card) {
-  const family = getFamilyPeople();
   const assignee = card.assignee;
 
-  // Base adults from explicit assignee field
-  let adults = !assignee ? []
+  // Show only the person explicitly assigned to do the task - no text scanning
+  const adults = !assignee ? []
     : assignee === "Both parents" ? ["Parent A", "Parent B"]
     : assignee === "Child" ? []
     : [assignee];
-
-  // Also scan title, details, and all comment text for parent name mentions
-  const textToScan = [
-    card.title || "",
-    card.details || "",
-    ...(card.comments || []).map((c) => c.text || ""),
-  ].join(" ").toLowerCase();
-
-  const mentionsPrimary = family.primary.aliases.some((a) => textToScan.includes(a.toLowerCase()))
-    || /\bfor me\b|\bi('ll| will)\b/.test(textToScan);
-  const mentionsCoparent = family.coparent.aliases.some((a) => textToScan.includes(a.toLowerCase()));
-
-  if (mentionsPrimary && !adults.includes("Parent A")) adults = [...adults, "Parent A"];
-  if (mentionsCoparent && !adults.includes("Parent B")) adults = [...adults, "Parent B"];
-
-  // Deduplicate
-  adults = [...new Set(adults)];
 
   const children = card.child ? splitPeople(card.child) : [];
   const people = [...adults, ...children];
