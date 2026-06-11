@@ -1154,7 +1154,7 @@ function _renderShoppingBoard(lists) {
     ${renderShoppingGroup("other", window.t ? window.t("shopping.other") : "Other", lists.other)}
     ${customLists.map((cl) => renderShoppingGroup(cl.key, cl.name, cl.items)).join("")}
     <div class="shopping-add-list-row">
-      <button class="ghost-button" type="button" id="addAnotherListBtn">+ ${window.t?.("shopping.add_list") ?? "Add another list"}</button>
+      <button class="ghost-button" type="button" id="addAnotherListBtn">${window.t?.("shopping.add_list") ?? "Add another list"}</button>
     </div>
   `;
 
@@ -1276,6 +1276,12 @@ function _renderShoppingBoard(lists) {
       const listKey = form.dataset.shoppingAddForm;
       input.value = "";
 
+      // After re-render, refocus the input for this list so user can keep typing
+      const refocusInput = () => {
+        const newInput = board.querySelector(`[data-shopping-add-form="${listKey}"] [data-shopping-input]`);
+        newInput?.focus();
+      };
+
       // Custom list (localStorage only)
       if (listKey.startsWith("custom-")) {
         const cls = loadCustomShoppingLists();
@@ -1287,6 +1293,7 @@ function _renderShoppingBoard(lists) {
         }
         const refreshed = await window.loadShoppingItems?.();
         _renderShoppingBoard(refreshed || loadShoppingLists());
+        refocusInput();
         return;
       }
 
@@ -1294,7 +1301,7 @@ function _renderShoppingBoard(lists) {
       const saved = await window.addShoppingItem?.(listKey, label);
       if (saved) {
         const refreshed = await window.loadShoppingItems?.();
-        if (refreshed) { _renderShoppingBoard(refreshed); return; }
+        if (refreshed) { _renderShoppingBoard(refreshed); refocusInput(); return; }
       }
       // localStorage fallback
       const nextLists = loadShoppingLists();
@@ -1303,6 +1310,7 @@ function _renderShoppingBoard(lists) {
       nextLists[listKey] = list;
       saveShoppingLists(nextLists);
       _renderShoppingBoard(nextLists);
+      refocusInput();
       const groupName = listKey === "groceries" ? (window.t?.("shopping.groceries") ?? "Groceries") : (window.t?.("shopping.other") ?? "Other");
       showFeatureToast(`${window.t?.("toast.added") ?? "Added"} – ${groupName}`);
     });
@@ -1373,14 +1381,16 @@ function renderShoppingGroup(key, title, items) {
         </div>
       </div>
       <form class="shopping-capture" data-shopping-add-form="${key}">
-        <input data-shopping-input placeholder="${addPlaceholder}" autocomplete="off" />
         <button class="shopping-mic" type="button" data-shopping-mic aria-label="${dictateLabel}" title="${dictateLabel}">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
             <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
           </svg>
         </button>
-        <button class="shopping-add" type="submit" aria-label="+ ${title}">+</button>
+        <div class="shopping-input-wrap">
+          <input data-shopping-input placeholder="${addPlaceholder}" autocomplete="off" autocorrect="off" autocapitalize="sentences" enterkeyhint="done" />
+          <button class="shopping-add" type="submit" aria-label="Add ${title}">+</button>
+        </div>
       </form>
       <div class="shopping-list">
         ${items.map((item) => `
