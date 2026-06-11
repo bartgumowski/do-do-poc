@@ -1154,7 +1154,7 @@ function _renderShoppingBoard(lists) {
     ${renderShoppingGroup("other", window.t ? window.t("shopping.other") : "Other", lists.other)}
     ${customLists.map((cl) => renderShoppingGroup(cl.key, cl.name, cl.items)).join("")}
     <div class="shopping-add-list-row">
-      <button class="ghost-button" type="button" id="addAnotherListBtn">${window.t?.("shopping.add_list") ?? "Add another list"}</button>
+      <button class="ghost-button" type="button" id="addAnotherListBtn">${window.t?.("shopping.add_list") ?? "Add new list"}</button>
     </div>
   `;
 
@@ -1355,7 +1355,7 @@ function _renderShoppingBoard(lists) {
 
   // "Add another list" button
   board.querySelector("#addAnotherListBtn")?.addEventListener("click", () => {
-    const name = prompt(window.t?.("shopping.new_list_prompt") ?? "List name:");
+    const name = prompt(window.t?.("shopping.new_list_prompt") ?? "Add new list");
     if (!name || !name.trim()) return;
     addCustomShoppingList(name.trim());
     window.loadShoppingItems?.().then((refreshed) => _renderShoppingBoard(refreshed || loadShoppingLists()));
