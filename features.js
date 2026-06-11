@@ -1381,14 +1381,16 @@ function renderShoppingGroup(key, title, items) {
         </div>
       </div>
       <form class="shopping-capture" data-shopping-add-form="${key}">
-        <input data-shopping-input placeholder="${addPlaceholder}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" />
         <button class="shopping-mic" type="button" data-shopping-mic aria-label="${dictateLabel}" title="${dictateLabel}">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
             <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
           </svg>
         </button>
-        <button class="shopping-add" type="submit" aria-label="Add ${title}">+</button>
+        <div class="shopping-input-wrap">
+          <input data-shopping-input placeholder="${addPlaceholder}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" />
+          <button class="shopping-add" type="submit" aria-label="Add ${title}">+</button>
+        </div>
       </form>
       <div class="shopping-list">
         ${items.map((item) => `
