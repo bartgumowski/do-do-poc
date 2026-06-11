@@ -4746,7 +4746,9 @@ textarea {
     gap: 20px;
   }
 
+  /* Agenda moves to left column on desktop; calendar-shell stays right */
   .calendar-agenda {
+    order: -1;
     position: sticky;
     top: 20px;
     max-height: calc(100dvh - 60px);
