@@ -106,6 +106,8 @@
       "shopping.clear_bought": "Clear bought ({{n}})",
       "shopping.no_items":     "No shopping items yet.",
       "shopping.dictate":      "Dictate item",
+      "shopping.add_list":     "Add new list",
+      "shopping.new_list_prompt": "Add new list",
 
       // Expenses
       "expense.total":          "Expense total",
@@ -468,6 +470,8 @@
       "shopping.clear_bought": "Gekaufte löschen ({{n}})",
       "shopping.no_items":     "Noch keine Einkaufsartikel.",
       "shopping.dictate":      "Artikel diktieren",
+      "shopping.add_list":     "Neue Liste hinzufügen",
+      "shopping.new_list_prompt": "Neue Liste hinzufügen",
 
       "expense.total":          "Ausgaben gesamt",
       "expense.desc":           "Jede Ausgabe ist ein normaler Eintrag mit Kommentaren, Personen, Datum und Status.",
@@ -823,6 +827,8 @@
       "shopping.clear_bought": "Usuń kupione ({{n}})",
       "shopping.no_items":     "Brak produktów na liście.",
       "shopping.dictate":      "Podyktuj produkt",
+      "shopping.add_list":     "Dodaj nową listę",
+      "shopping.new_list_prompt": "Dodaj nową listę",
 
       "expense.total":          "Suma wydatków",
       "expense.desc":           "Każdy wydatek to normalne zadanie z komentarzami, osobami, datą i statusem.",
