@@ -36,7 +36,7 @@ function getCustodySchedule() {
   try {
     const raw = localStorage.getItem("custody-schedule-v1");
     const defaults = {
-      enabled: false,
+      enabled: true,
       type: "7-7",
       referenceDate: new Date().toISOString().slice(0, 10),
       myColor: "#65d6c6",
@@ -45,7 +45,7 @@ function getCustodySchedule() {
     };
     return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
   } catch {
-    return { enabled: false, type: "7-7", referenceDate: new Date().toISOString().slice(0, 10), myColor: "#65d6c6", coColor: "#76808a", overrides: {} };
+    return { enabled: true, type: "7-7", referenceDate: new Date().toISOString().slice(0, 10), myColor: "#65d6c6", coColor: "#76808a", overrides: {} };
   }
 }
 
@@ -108,6 +108,7 @@ function getCustodyOwner(date) {
     const dow = d.getDay();
     return (dow === 0 || dow === 6) ? "co" : "mine";
   }
+  // manual: only overrides apply, no auto-pattern
   return null;
 }
 
@@ -738,10 +739,11 @@ function openCustodyScheduleDialog() {
           <option value="7-7" ${cs.type === "7-7" ? "selected" : ""}>Alternating weeks (7-7)</option>
           <option value="2-2-3" ${cs.type === "2-2-3" ? "selected" : ""}>2-2-3 rotation</option>
           <option value="5-2" ${cs.type === "5-2" ? "selected" : ""}>Weekdays mine / weekends co-parent</option>
+          <option value="manual" ${cs.type === "manual" ? "selected" : ""}>Manual (set each day individually)</option>
         </select>
       </label>
 
-      <label class="clean-field custody-dialog-field" id="cdRefRow" ${cs.type === "5-2" ? 'style="display:none"' : ""}>
+      <label class="clean-field custody-dialog-field" id="cdRefRow" ${(cs.type === "5-2" || cs.type === "manual") ? 'style="display:none"' : ""}>
         <span>My schedule starts</span>
         <input type="date" id="cdReferenceDate" value="${cs.referenceDate || new Date().toISOString().slice(0,10)}" />
       </label>
@@ -775,7 +777,7 @@ function openCustodyScheduleDialog() {
   // Type change hides/shows reference date
   dialog.querySelector("#cdType")?.addEventListener("change", (e) => {
     const row = dialog.querySelector("#cdRefRow");
-    if (row) row.style.display = e.target.value === "5-2" ? "none" : "";
+    if (row) row.style.display = (e.target.value === "5-2" || e.target.value === "manual") ? "none" : "";
   });
 
   // Save
@@ -1979,12 +1981,11 @@ function renderCalendarFeature(data) {
           </button>`;
         }).join("")}
       </div>
-      ${weekHasOverrides ? `
-        <div class="custody-propagate-row">
-          <button class="ghost-button" type="button" id="propagateWeekBtn" style="font-size:12px;color:var(--muted);padding:4px 10px;">
-            Apply this week's schedule to all weeks
-          </button>
-        </div>` : ""}`;
+      <div class="custody-propagate-row">
+        <button class="ghost-button" type="button" id="propagateWeekBtn" style="font-size:12px;color:var(--muted);padding:4px 10px;">
+          Apply this week's schedule to all weeks
+        </button>
+      </div>`;
   })() : "";
 
   featureModule.innerHTML = `
@@ -2292,7 +2293,7 @@ function renderDaySchedule(key) {
   const conflicts = getConflictsForDate(key, _getActiveConflicts());
 
   if (!events.length) {
-    return `<div class="day-schedule"><article class="agenda-empty">No events on this day.</article></div>`;
+    return `<div class="day-schedule"><article class="agenda-empty">${window.t?.("cal.no_events") ?? "No events on this day."}</article></div>`;
   }
   // Group by time, sorted
   const byTime = {};
