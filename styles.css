@@ -4755,6 +4755,10 @@ html[data-theme="dark"] .expense-status-badge.expense-status-disputed { backgrou
   background: #78c7be;
 }
 
+.caregiver-mini {
+  background: #9b6bb5;
+}
+
 .pet-mini {
   background: #c9c7b7;
   color: var(--ink);

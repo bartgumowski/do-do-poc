@@ -603,7 +603,7 @@ function switchModule(moduleName) {
 window.switchModule = switchModule;
 
 // --- Hash-based routing ---
-const VALID_MODULES = ["board", "calendar", "messages", "shopping", "expenses", "settings"];
+const VALID_MODULES = ["board", "calendar", "shopping", "expenses", "settings"];
 
 const _origSwitchModule = switchModule;
 window.switchModule = function(moduleName) {
@@ -2042,7 +2042,16 @@ function renderCalendarFeature(data) {
           <span>${window.t?.("cal.selected_day") ?? "Selected day"}</span>
           <strong>${formatAgendaDate(selectedDate)}</strong>
         </div>
-        <button class="secondary-button feature-action" data-action="Add Do">${window.t?.("cal.add_do") ?? "Add Do"}</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          ${(() => {
+            const _spt = localStorage.getItem("do-do-show-personal-titles") === "true";
+            return `<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;" title="Show titles from your personal calendar">
+              <input type="checkbox" id="showPersonalTitlesToggle" ${_spt ? "checked" : ""} style="margin:0;cursor:pointer;" />
+              <span>Moje tytu&#322;y</span>
+            </label>`;
+          })()}
+          <button class="secondary-button feature-action" data-action="Add Do">${window.t?.("cal.add_do") ?? "Add Do"}</button>
+        </div>
       </div>
       ${weekOverview}
       ${custodyStrip}
@@ -2067,6 +2076,12 @@ function renderCalendarFeature(data) {
       addCalendarEvent();
       showFeatureToast(window.t?.("cal.toast_do_added") ?? "Do added to selected day");
     });
+  });
+
+  // Personal calendar title toggle
+  featureModule.querySelector("#showPersonalTitlesToggle")?.addEventListener("change", (e) => {
+    localStorage.setItem("do-do-show-personal-titles", e.target.checked ? "true" : "false");
+    renderCalendarFeature(data);
   });
 
   featureModule.querySelectorAll("[data-calendar-day]").forEach((button) => {
@@ -2701,10 +2716,16 @@ function buildCalendarEvents(baseDate) {
   }
 
   // Merge Google Calendar events (own + co-parent + Apple CalDAV)
+  // Work calendars are ALWAYS shown as busy - titles never imported.
+  // Personal calendar: default busy; user can toggle "Show my titles" in the calendar view.
+  const _showPersonalTitles = localStorage.getItem("do-do-show-personal-titles") === "true";
   const gcalEvents = (window.getGoogleCalendarEvents?.() || []).map((item) => {
     const date = new Date(item.start);
-    const isBusy = item.source === "work" || item.source === "personal"
-      || item.source === "coparent-work" || item.source === "apple-work";
+    // Work + co-parent work + Apple work = always busy, no exceptions
+    const isWorkBusy = item.source === "work" || item.source === "coparent-work" || item.source === "apple-work";
+    // Personal = busy by default; respect user toggle for own events only
+    const isPersonalBusy = item.source === "personal" && !_showPersonalTitles;
+    const isBusy = isWorkBusy || isPersonalBusy;
     return {
       cardId: item.id,
       date: toCalendarKey(date),
@@ -3404,6 +3425,7 @@ function renderSettingsFeature() {
   `;
 
   const _st = window.t || ((k) => k);
+  const caregivers = setup.caregivers || [];
   featureModule.innerHTML = `
     <div class="feature-layout settings-layout">
       ${renderSpecialPanel("settings", "automation")}
@@ -3422,18 +3444,25 @@ function renderSettingsFeature() {
               </svg>
             </button>
           </article>
-          ${coparentName ? `
-          <article class="feature-item feature-item-editable">
-            <div class="feature-item-main">
-              <strong>${escapeHtml(coparentName)}</strong>
-              <span style="color:var(--muted);font-size:12px;">${_st("settings.coparent_name")}</span>
-            </div>
-            <button class="icon-button icon-button-sm" id="editCoparentNameBtn" aria-label="Edit co-parent name">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/>
-              </svg>
-            </button>
-          </article>` : ""}
+        </div>
+      </section>
+
+      <section class="feature-panel" id="invitePanel">
+        <h3>${_st("settings.coparent")}</h3>
+        <div class="feature-items" id="invitePanelContent">
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_st("settings.checking")}</p>
+        </div>
+      </section>
+
+      <section class="feature-panel">
+        <div class="feature-panel-header">
+          <h3>Opiekunowie</h3>
+          <button class="secondary-button" id="addCaregiverBtn">Dodaj opiekuna</button>
+        </div>
+        <div class="feature-items" id="caregiversList">
+          ${caregivers.length
+            ? caregivers.map((c, i) => renderMemberRow(c.name || c, i, "caregiver")).join("")
+            : `<p class="feature-empty" style="font-size:13px;color:var(--muted);">Babcia, opiekunka, dziadek - osoby ktore pomagaja w opiece</p>`}
         </div>
       </section>
 
@@ -3464,13 +3493,6 @@ function renderSettingsFeature() {
       ${renderSpecialPanel("settings", "vaccine")}
 
       ${renderSpecialPanel("settings", "custody")}
-
-      <section class="feature-panel" id="invitePanel">
-        <h3>${_st("settings.coparent")}</h3>
-        <div class="feature-items" id="invitePanelContent">
-          <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_st("settings.checking")}</p>
-        </div>
-      </section>
 
       <section class="feature-panel" id="subscriptionPanel">
         <h3>${_st("settings.subscription")}</h3>
@@ -3535,11 +3557,11 @@ function renderSettingsFeature() {
 
   // Edit my name
   featureModule.querySelector("#editMyNameBtn")?.addEventListener("click", () => promptEditMyName());
-  featureModule.querySelector("#editCoparentNameBtn")?.addEventListener("click", () => promptEditCoparentName());
 
-  // Add child/pet
+  // Add child/pet/caregiver
   featureModule.querySelector("#addChildBtn")?.addEventListener("click", () => promptAddChild());
   featureModule.querySelector("#addPetBtn")?.addEventListener("click", () => promptAddPet());
+  featureModule.querySelector("#addCaregiverBtn")?.addEventListener("click", () => promptAddCaregiver());
 
   // Share Do-Do
   const SHARE_URL = "https://do-do.app";
@@ -3676,6 +3698,16 @@ function renderSettingsFeature() {
     const i = Number(btn.dataset.deletePet);
     btn.addEventListener("click", () => confirmDeletePet(i));
   });
+
+  // Edit/delete caregivers
+  featureModule.querySelectorAll("[data-edit-caregiver]").forEach((btn) => {
+    const i = Number(btn.dataset.editCaregiver);
+    btn.addEventListener("click", () => promptEditCaregiver(i));
+  });
+  featureModule.querySelectorAll("[data-delete-caregiver]").forEach((btn) => {
+    const i = Number(btn.dataset.deleteCaregiver);
+    btn.addEventListener("click", () => confirmDeleteCaregiver(i));
+  });
 }
 
 function escapeHtml(str) {
@@ -3778,11 +3810,12 @@ async function renderInvitePanel() {
 
   const hasPair = Boolean(window.getCurrentPairId?.());
   const setup = window.getOnboardingState?.() || {};
-  const coparentName = setup.parents?.coparent || "Co-parent";
+  const coparentName = setup.parents?.coparent || "";
   const inviteEmail = setup.parents?.invite || "";
 
+  // Check if co-parent already joined
+  let coparentJoined = false;
   if (hasPair) {
-    // Check if parent B has actually joined (pair has parent_b set)
     const pairStatus = await window.supabaseClient
       ?.from("pairs")
       .select("parent_b, accepted_at")
@@ -3790,20 +3823,10 @@ async function renderInvitePanel() {
       .maybeSingle()
       .then(({ data }) => data)
       .catch(() => null);
-
-    if (pairStatus?.parent_b) {
-      panel.innerHTML = `
-        <article class="feature-item">
-          <strong>${escapeHtml(coparentName)}</strong>
-          <span style="color:#0ea58f;">Connected - on the same board</span>
-        </article>
-      `;
-      return;
-    }
+    coparentJoined = Boolean(pairStatus?.parent_b);
   }
 
-  // Co-parent hasn't joined yet - show invite options
-  // Try sessionStorage first; fall back to fetching invite_token from the pair record
+  // Get pending invite link
   let pendingLink = (() => { try { return sessionStorage.getItem("do-do-pending-invite-link"); } catch { return null; } })();
   if (!pendingLink && window.getCurrentPairId?.()) {
     try {
@@ -3818,66 +3841,102 @@ async function renderInvitePanel() {
     } catch { /* silent */ }
   }
 
-  const _ipt = window.t || ((k) => k);
-  panel.innerHTML = `
-    <article class="feature-item">
-      <strong>${escapeHtml(coparentName || _ipt("settings.coparent"))}</strong>
-      <span>${_ipt("settings.not_joined")}${inviteEmail ? ` - ${escapeHtml(inviteEmail)}` : ""}</span>
-    </article>
-    ${pendingLink ? `
-    <div style="display:grid;gap:8px;">
-      <label style="display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:800;">
-        ${_ipt("settings.pending_invite")}
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input id="settingsInviteInput" readonly value="${escapeHtml(pendingLink)}"
-            style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;background:var(--soft);color:var(--ink);" />
-          <button id="settingsInviteCopy" class="secondary-button" style="white-space:nowrap;min-height:36px;padding:0 12px;font-size:12px;">${_ipt("settings.copy_link")}</button>
+  if (coparentJoined) {
+    // Co-parent connected - show name + status, allow name edit
+    panel.innerHTML = `
+      <article class="feature-item feature-item-editable">
+        <div class="feature-item-main">
+          <strong>${escapeHtml(coparentName || "Co-parent")}</strong>
+          <span style="color:#0ea58f;font-size:12px;">Polaczony/a - wspolna tablica</span>
         </div>
-      </label>
-      ${inviteEmail ? `<button id="settingsResendEmail" class="secondary-button" style="justify-self:start;min-height:36px;padding:0 14px;font-size:12px;">${_ipt("settings.resend")}</button>` : ""}
+        <button class="icon-button icon-button-sm" id="editCoparentNameBtn" aria-label="Edit co-parent name">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/>
+          </svg>
+        </button>
+      </article>
+    `;
+    panel.querySelector("#editCoparentNameBtn")?.addEventListener("click", () => promptEditCoparentName());
+    return;
+  }
+
+  // Co-parent not joined yet - unified name + email + invite form
+  panel.innerHTML = `
+    <div style="display:grid;gap:12px;">
+      <div style="display:grid;gap:6px;">
+        <label style="font-size:12px;font-weight:700;color:var(--muted);">Imie rodzica</label>
+        <input id="coparentNameInput" type="text" placeholder="np. Tomek"
+          value="${escapeHtml(coparentName)}"
+          style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;background:var(--soft);color:var(--ink);width:100%;box-sizing:border-box;" />
+      </div>
+      <div style="display:grid;gap:6px;">
+        <label style="font-size:12px;font-weight:700;color:var(--muted);">Email (do zaproszenia)</label>
+        <input id="coparentEmailInput" type="email" placeholder="rodzic@email.com"
+          value="${escapeHtml(inviteEmail)}"
+          style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;background:var(--soft);color:var(--ink);width:100%;box-sizing:border-box;" />
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button id="settingsSaveAndInviteBtn" class="secondary-button" style="min-height:36px;padding:0 16px;">Zapisz i wyslij zaproszenie</button>
+        ${pendingLink ? `<button id="settingsInviteCopy" class="ghost-button" style="min-height:36px;padding:0 12px;font-size:13px;">Kopiuj link</button>` : ""}
+      </div>
+      ${pendingLink ? `
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="settingsInviteInput" readonly value="${escapeHtml(pendingLink)}"
+          style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:11px;background:var(--soft);color:var(--muted);" />
+      </div>` : ""}
+      ${inviteEmail && !pendingLink ? `<p style="font-size:12px;color:var(--muted);margin:0;">Zaproszenie wyslane na ${escapeHtml(inviteEmail)}</p>` : ""}
     </div>
-    ` : inviteEmail ? `
-    <button id="settingsResendEmail" class="secondary-button" style="justify-self:start;min-height:36px;padding:0 14px;font-size:12px;">${_ipt("settings.resend")}</button>
-    ` : `
-    <p style="margin:0;font-size:13px;color:var(--muted);">${_ipt("invite.no_email")}</p>
-    `}
   `;
+
+  panel.querySelector("#settingsSaveAndInviteBtn")?.addEventListener("click", async () => {
+    const nameInput = panel.querySelector("#coparentNameInput");
+    const emailInput = panel.querySelector("#coparentEmailInput");
+    const name = nameInput?.value.trim();
+    const email = emailInput?.value.trim();
+    if (!name) { showFeatureToast("Podaj imie rodzica"); nameInput?.focus(); return; }
+
+    const btn = panel.querySelector("#settingsSaveAndInviteBtn");
+    btn.disabled = true;
+    btn.textContent = "Zapisywanie...";
+
+    // Save name locally
+    const updatedSetup = { ...setup, parents: { ...(setup.parents || {}), coparent: name, invite: email || setup.parents?.invite || "" } };
+    window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updatedSetup));
+
+    // Update Supabase profile name if pair exists
+    if (hasPair && window.supabaseClient && window.getCurrentPairId?.()) {
+      await window.supabaseClient.from("pairs")
+        .update({ invite_email: email || null })
+        .eq("id", window.getCurrentPairId())
+        .catch(() => {});
+    }
+
+    // Send invite email if email provided
+    if (email && pendingLink) {
+      try {
+        const res = await fetch("/api/invite-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(await window.getAuthHeader?.() || {}) },
+          body: JSON.stringify({ toEmail: email, fromName: setup.parents?.primary || null, inviteLink: pendingLink }),
+        });
+        const data = res.ok ? await res.json() : {};
+        if (data.sent) {
+          showFeatureToast(`Zaproszenie wyslane do ${email}`);
+        } else {
+          showFeatureToast("Email nie wyslany - skopiuj link recznie");
+        }
+      } catch { showFeatureToast("Zapisano - wyslij link recznie"); }
+    } else {
+      showFeatureToast(email ? "Zapisano - link nie dostepny jeszcze" : "Imie zapisane");
+    }
+
+    window.switchModule("settings");
+  });
 
   panel.querySelector("#settingsInviteCopy")?.addEventListener("click", () => {
     navigator.clipboard.writeText(pendingLink).then(() => {
-      panel.querySelector("#settingsInviteCopy").textContent = _ipt("settings.copied");
+      showFeatureToast("Link skopiowany");
     }).catch(() => panel.querySelector("#settingsInviteInput")?.select());
-  });
-
-  panel.querySelector("#settingsResendEmail")?.addEventListener("click", async () => {
-    const btn = panel.querySelector("#settingsResendEmail");
-    btn.disabled = true;
-    btn.textContent = window.t?.("invite.sending") ?? "Sending...";
-    try {
-      const link = pendingLink || `${window.location.origin}/invite/unknown`;
-      const res = await fetch("/api/invite-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await window.getAuthHeader()) },
-        body: JSON.stringify({
-          toEmail: inviteEmail,
-          fromName: setup.parents?.primary || null,
-          inviteLink: link,
-        }),
-      });
-      const data = res.ok ? await res.json() : {};
-      if (data.sent) {
-        btn.textContent = "Sent!";
-        showFeatureToast(`Invite re-sent to ${inviteEmail}`);
-      } else {
-        btn.textContent = "Re-send email";
-        btn.disabled = false;
-        showFeatureToast("Email not configured - share the link manually");
-      }
-    } catch {
-      btn.textContent = "Re-send email";
-      btn.disabled = false;
-      showFeatureToast("Could not send - share the link manually");
-    }
   });
 }
 
@@ -3955,6 +4014,43 @@ async function confirmDeleteChild(index) {
     await window.saveChildrenToSupabase?.(setup.familyId, children).catch(() => {});
   }
   showFeatureToast(`${name} removed`);
+  window.switchModule("settings");
+}
+
+// ─── Caregivers CRUD ──────────────────────────────────────────────────────────
+
+function promptAddCaregiver() {
+  const name = window.prompt("Imie opiekuna (np. Babcia, Pani Kasia):");
+  if (!name?.trim()) return;
+  const setup = window.getOnboardingState?.() || {};
+  const updated = { ...setup, caregivers: [...(setup.caregivers || []), { name: name.trim() }] };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`${name.trim()} dodany/a`);
+  window.switchModule("settings");
+}
+
+function promptEditCaregiver(index) {
+  const setup = window.getOnboardingState?.() || {};
+  const caregivers = [...(setup.caregivers || [])];
+  const current = caregivers[index]?.name || caregivers[index] || "";
+  const name = window.prompt("Zmien imie:", current);
+  if (!name?.trim() || name.trim() === current) return;
+  caregivers[index] = { ...(typeof caregivers[index] === "object" ? caregivers[index] : {}), name: name.trim() };
+  const updated = { ...setup, caregivers };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`Zmieniono na ${name.trim()}`);
+  window.switchModule("settings");
+}
+
+function confirmDeleteCaregiver(index) {
+  const setup = window.getOnboardingState?.() || {};
+  const caregivers = [...(setup.caregivers || [])];
+  const name = caregivers[index]?.name || caregivers[index] || "tego opiekuna";
+  if (!window.confirm(`Usunac ${name}?`)) return;
+  caregivers.splice(index, 1);
+  const updated = { ...setup, caregivers };
+  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+  showFeatureToast(`${name} usuniety/a`);
   window.switchModule("settings");
 }
 

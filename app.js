@@ -1,4 +1,4 @@
-const APP_VERSION = "0.10.2";
+const APP_VERSION = "0.10.3";
 const APP_VERSION_DATE = "2026-06-11";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1154,7 +1154,7 @@ function showApp(session) {
 
   // Restore last visited module (PWA restart loses the URL hash)
   setTimeout(() => {
-    const validModules = ["board", "calendar", "messages", "shopping", "expenses", "settings"];
+    const validModules = ["board", "calendar", "shopping", "expenses", "settings"];
     const fromHash = location.hash.replace("#", "").toLowerCase();
     const fromStorage = localStorage.getItem("do-do-last-module");
     const target = validModules.includes(fromHash) ? fromHash : fromStorage;
@@ -2807,6 +2807,10 @@ function inferStatus(lower) {
 
 function inferAssignee(lower) {
   const family = getFamilyPeople();
+  // Check caregivers first (most specific names)
+  for (const cg of (family.caregivers || [])) {
+    if (textMentionsName(lower, cg.name)) return cg.name;
+  }
   if (family.coparent.aliases.some((name) => textMentionsName(lower, name))) return "Parent B";
   if (family.primary.aliases.some((name) => textMentionsName(lower, name))) return "Parent A";
   if (lower.includes("parent b") || lower.includes("other parent")) return "Parent B";
@@ -2818,6 +2822,10 @@ function inferAssignee(lower) {
 // Like inferAssignee but returns null if no explicit name mention - no "Parent A" default
 function inferAssigneeFromMention(lower) {
   const family = getFamilyPeople();
+  // Check caregivers first
+  for (const cg of (family.caregivers || [])) {
+    if (textMentionsName(lower, cg.name)) return cg.name;
+  }
   if (family.coparent.aliases.some((name) => textMentionsName(lower, name))) return "Parent B";
   if (family.primary.aliases.some((name) => textMentionsName(lower, name))) return "Parent A";
   if (lower.includes("parent b") || lower.includes("other parent")) return "Parent B";
@@ -2852,9 +2860,11 @@ function getFamilyPeople() {
   const coparentName = setup.parents?.coparent || "Parent B";
   const children = normalizePeopleList(setup.children, ["Ava", "Leo"]);
   const pets = normalizePeopleList(setup.pets, ["Milo"]);
+  const caregivers = normalizePeopleList(setup.caregivers, []);
   return {
     primary: { role: "Parent A", name: primaryName, aliases: ["Parent A", "primary parent", primaryName] },
     coparent: { role: "Parent B", name: coparentName, aliases: ["Parent B", "co-parent", "coparent", "other parent", coparentName] },
+    caregivers, // [{ name: "Babcia" }, { name: "Opiekunka" }, ...]
     children,
     pets,
   };
@@ -4315,6 +4325,7 @@ function personClass(value) {
   const family = getFamilyPeople();
   if (value === "Parent B" || value === family.coparent.name) return "parent-b-mini";
   if (value === "Child") return "child-assignee-mini";
+  if ((family.caregivers || []).some((cg) => cg.name === value)) return "caregiver-mini";
   return "parent-a-mini";
 }
 
