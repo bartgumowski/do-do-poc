@@ -4,9 +4,22 @@
 //
 // No login required - just the PaymentIntent client_secret is needed.
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+// Lazy Stripe init - without STRIPE_SECRET_KEY the function must not crash
+// at load time (Stripe account not created yet).
+let _stripe = null;
+function getStripe() {
+  if (!_stripe && process.env.STRIPE_SECRET_KEY) {
+    _stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+  }
+  return _stripe;
+}
 
 module.exports = async function handler(req, res) {
+  const stripe = getStripe();
+  if (!stripe) {
+    return res.status(503).send(errorPage("Payments not available.", "Payments are not set up yet. Please try again later."));
+  }
+
   const intentId = req.query?.intent || "";
 
   if (!intentId || !intentId.startsWith("pi_")) {

@@ -3,7 +3,15 @@
 // Auth (SEG-14): Authorization: Bearer <supabase_jwt> required.
 // userId/pairId are derived server-side from the verified token, never from the body.
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+// Lazy Stripe init - without STRIPE_SECRET_KEY the function must not crash
+// at load time (Stripe account not created yet).
+let _stripe = null;
+function getStripe() {
+  if (!_stripe && process.env.STRIPE_SECRET_KEY) {
+    _stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+  }
+  return _stripe;
+}
 const { createClient } = require("@supabase/supabase-js");
 const { requireUser } = require("./_auth");
 
@@ -30,7 +38,8 @@ function escapeHtml(str) {
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: "Stripe not configured" });
+  const stripe = getStripe();
+  if (!stripe) return res.status(503).json({ error: "Stripe not configured" });
 
   const user = await requireUser(req, res);
   if (!user) return;

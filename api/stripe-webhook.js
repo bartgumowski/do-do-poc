@@ -7,7 +7,15 @@
 //   customer.subscription.deleted -> subscription_status = 'canceled'
 //   invoice.payment_failed       -> subscription_status = 'past_due'
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+// Lazy Stripe init - without STRIPE_SECRET_KEY the function must not crash
+// at load time (Stripe account not created yet).
+let _stripe = null;
+function getStripe() {
+  if (!_stripe && process.env.STRIPE_SECRET_KEY) {
+    _stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+  }
+  return _stripe;
+}
 const { createClient } = require("@supabase/supabase-js");
 
 const supabase = createClient(
@@ -43,9 +51,10 @@ module.exports = async function handler(req, res) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   // SEG-14: fail closed. Never process an unsigned webhook.
-  if (!webhookSecret) {
-    console.error("STRIPE_WEBHOOK_SECRET not set - rejecting webhook");
-    return res.status(500).json({ error: "Webhook not configured" });
+  const stripe = getStripe();
+  if (!webhookSecret || !stripe) {
+    console.error("Stripe webhook not configured - rejecting");
+    return res.status(503).json({ error: "Webhook not configured" });
   }
 
   let event;
