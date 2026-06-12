@@ -9024,7 +9024,7 @@ html[data-theme="dark"] .change-request-card {
   flex-direction: column;
   width: 100%;
   box-sizing: border-box;
-  background: var(--bg);
+  background: var(--surface-page);
   border-top: 1px solid var(--line);
   /* Fill remaining viewport height */
   height: calc(100dvh - 260px);
@@ -9046,7 +9046,7 @@ html[data-theme="dark"] .change-request-card {
   justify-content: space-between;
   padding: 8px 0;
   flex-shrink: 0;
-  background: var(--bg);
+  background: var(--surface-page);
   border-bottom: 1px solid var(--line);
 }
 
@@ -9069,7 +9069,7 @@ html[data-theme="dark"] .change-request-card {
 .bcal-toggle {
   display: flex;
   gap: 2px;
-  background: var(--surface);
+  background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 2px;
@@ -9115,7 +9115,7 @@ html[data-theme="dark"] .change-request-card {
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--surface-page);
   flex: 1;
   min-height: 0;
 }
@@ -9139,7 +9139,7 @@ html[data-theme="dark"] .change-request-card {
   gap: 2px;
   padding: 8px 4px 6px;
   border-bottom: 2px solid var(--line);
-  background: var(--bg, #f8f8f5);
+  background: var(--surface-raised);
   user-select: none;
 }
 
