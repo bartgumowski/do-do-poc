@@ -1,4 +1,4 @@
-const APP_VERSION = "0.12.9";
+const APP_VERSION = "0.13.1";
 const APP_VERSION_DATE = "2026-06-12";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -71,10 +71,27 @@ const statusColumns = ["Important", "Waiting", "To Do", "Done"]; // kept for DB 
 function getKanbanColumns() {
   const _t = window.t || ((k, fb) => fb || k);
   return [
-    { id: "to-decide", label: _t("board.col.decide", "To decide"), statuses: ["Important", "Waiting", "Disputed"] },
-    { id: "mine",      label: _t("board.col.mine",   "Mine"),      statuses: ["To Do", "Info Only", "Request"]    },
-    { id: "done",      label: _t("board.col.done",   "Done"),      statuses: ["Done"]                              },
+    { id: "today",     label: _t("board.col.today",   "Today")     },
+    { id: "mine",      label: _t("board.col.mine",    "Mine")      },
+    { id: "to-decide", label: _t("board.col.decide",  "To decide") },
+    { id: "not-mine",  label: _t("board.col.notmine", "Not mine")  },
+    { id: "archive",   label: _t("board.col.archive", "Archive")   },
   ];
+}
+// Assign a card to exactly one column using priority order:
+// 1. Today  - due today (any status)
+// 2. Archive - Done and not today
+// 3. Not mine - assigned exclusively to co-parent, not Done
+// 4. To decide - Important / Waiting / Disputed, not above
+// 5. Mine - everything else
+function assignCardToColumn(card) {
+  const setup = getOnboardingState() || {};
+  const coParent = setup.parents?.coparent || "Parent B";
+  if (isToday(card.due)) return "today";
+  if (card.status === "Done") return "archive";
+  if (card.assignee === coParent) return "not-mine";
+  if (["Important", "Waiting", "Disputed"].includes(card.status)) return "to-decide";
+  return "mine";
 }
 // Keep a static fallback for any code that imported the constant directly
 const kanbanColumns = getKanbanColumns();
@@ -275,6 +292,9 @@ window.addEventListener("subscriptionLoaded", (e) => {
   state.subscriptionStatus = e.detail.status || "free";
   state.subscriptionPeriodEnd = e.detail.periodEnd || null;
 });
+
+// Board week-calendar state (must be declared before render() is called)
+const _boardCal = { weekStart: _boardCalGetWeekStart(new Date()) };
 
 // Subscription helpers
 function isPaidUser() {
@@ -1558,9 +1578,6 @@ function isCardArchived(card) {
 }
 
 function renderBoard(cards) {
-  const activeCards = cards.filter((card) => !isCardArchived(card));
-  const archivedCards = cards.filter(isCardArchived);
-
   if (!cards.length) {
     const setup = getOnboardingState();
     const name = setup?.parents?.primary || "there";
@@ -1577,8 +1594,16 @@ function renderBoard(cards) {
     return;
   }
 
-  const columnsHtml = getKanbanColumns().map(({ id, label, statuses }) => {
-    const columnCards = activeCards.filter((card) => statuses.includes(card.status));
+  // Assign each card to exactly one column using priority logic
+  const columnMap = {};
+  getKanbanColumns().forEach(({ id }) => { columnMap[id] = []; });
+  cards.forEach((card) => {
+    const colId = assignCardToColumn(card);
+    if (columnMap[colId]) columnMap[colId].push(card);
+  });
+
+  const columnsHtml = getKanbanColumns().map(({ id, label }) => {
+    const columnCards = columnMap[id] || [];
     return `
       <section class="column" data-column="${id}">
         <div class="column-header">${label}<span>${columnCards.length}</span></div>
@@ -1591,29 +1616,7 @@ function renderBoard(cards) {
     `;
   }).join("");
 
-  const archivedHtml = archivedCards.length ? `
-    <div class="archive-section" style="grid-column:1/-1;" id="archiveSection">
-      <button class="archive-toggle" type="button" id="archiveToggle" aria-expanded="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v4H3zM5 8v12h14V8"/><path d="M10 12h4"/></svg>
-        ${(window.t || ((k) => k))("board.archived")}
-        <span>${archivedCards.length}</span>
-        <svg class="archive-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-      </button>
-      <div class="archive-grid hidden" id="archiveGrid">
-        ${archivedCards.map(renderCard).join("")}
-      </div>
-    </div>
-  ` : "";
-
-  elements.boardView.innerHTML = columnsHtml + archivedHtml;
-
-  elements.boardView.querySelector("#archiveToggle")?.addEventListener("click", () => {
-    const grid = elements.boardView.querySelector("#archiveGrid");
-    const btn = elements.boardView.querySelector("#archiveToggle");
-    const isOpen = grid.classList.toggle("hidden") === false;
-    btn.setAttribute("aria-expanded", String(!grid.classList.contains("hidden")));
-    elements.boardView.querySelector(".archive-chevron")?.style.setProperty("transform", isOpen ? "rotate(180deg)" : "");
-  });
+  elements.boardView.innerHTML = columnsHtml;
 
   bindCardInteractions(elements.boardView);
 }
@@ -4948,10 +4951,6 @@ function maybeAutoAssignParent(dateStr) {
 // ─── Board week calendar ───────────────────────────────────────────────────────
 // Teams-style week view below the kanban columns. Cards with due dates appear
 // in their day column and can be dragged between days to reschedule.
-
-const _boardCal = {
-  weekStart: _boardCalGetWeekStart(new Date()),
-};
 
 function _boardCalGetWeekStart(date) {
   const d = new Date(date);
