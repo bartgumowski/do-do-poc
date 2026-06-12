@@ -1,4 +1,4 @@
-const APP_VERSION = "0.12.4";
+const APP_VERSION = "0.12.5";
 const APP_VERSION_DATE = "2026-06-12";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -3004,7 +3004,48 @@ function inferAmount(text) {
 
 function inferDueDate(lower) {
   const date = new Date();
-  const explicitDate = lower.match(/\b(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?\b/);
+
+  // Month name lookup - English and Polish (nominative + genitive forms)
+  const monthNames = [
+    ["january","jan","styczen","stycznia","stycznia"],
+    ["february","feb","luty","lutego"],
+    ["march","mar","marzec","marca"],
+    ["april","apr","kwiecien","kwietnia"],
+    ["may","maj","maja"],
+    ["june","jun","czerwiec","czerwca"],
+    ["july","jul","lipiec","lipca"],
+    ["august","aug","sierpien","sierpnia"],
+    ["september","sep","sept","wrzesien","wrzesnia"],
+    ["october","oct","pazdziernik","pazdziernika"],
+    ["november","nov","listopad","listopada"],
+    ["december","dec","grudzien","grudnia"],
+  ];
+
+  // Try "DD monthName" or "monthName DD" pattern (e.g. "10 june", "june 10")
+  let namedDateFound = false;
+  for (let m = 0; m < monthNames.length; m++) {
+    for (const name of monthNames[m]) {
+      const reDayFirst = new RegExp(`\\b(\\d{1,2})\\s+${name}(?:\\s+(\\d{2,4}))?\\b`);
+      const reMonthFirst = new RegExp(`\\b${name}\\s+(\\d{1,2})(?:\\s+(\\d{2,4}))?\\b`);
+      const matchDayFirst = lower.match(reDayFirst);
+      const matchMonthFirst = lower.match(reMonthFirst);
+      const match = matchDayFirst || matchMonthFirst;
+      if (match) {
+        const day = Number(matchDayFirst ? match[1] : match[1]);
+        const yearStr = matchDayFirst ? match[2] : match[2];
+        const year = yearStr
+          ? Number(yearStr.length === 2 ? `20${yearStr}` : yearStr)
+          : date.getFullYear();
+        date.setFullYear(year, m, day);
+        namedDateFound = true;
+        break;
+      }
+    }
+    if (namedDateFound) break;
+  }
+
+  // Numeric date format: DD.MM, DD/MM, DD-MM (only if no named date found)
+  const explicitDate = !namedDateFound && lower.match(/\b(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?\b/);
   if (explicitDate) {
     const day = Number(explicitDate[1]);
     const month = Number(explicitDate[2]) - 1;
@@ -3027,7 +3068,7 @@ function inferDueDate(lower) {
   const plDays = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
   const enDays = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
 
-  if (!explicitDate && !isToday && !isTomorrow && !isDayAfter && !isNextWeek
+  if (!namedDateFound && !explicitDate && !isToday && !isTomorrow && !isDayAfter && !isNextWeek
     && !enDays.some((d) => lower.includes(d))
     && !plDays.some((d) => lower.includes(d))) return "";
 
@@ -3063,7 +3104,8 @@ function extractPrimaryTime(lower) {
   const atTime = lower.match(/\b(?:at|o godzinie|o)\s+(\d{1,2})(?::(\d{2}))?\s?(am|pm)?\b/);
   if (atTime) return atTime;
 
-  const explicitTimes = lower.matchAll(/\b(\d{1,2}):(\d{2})\s?(am|pm)?\b/g);
+  // Match HH:MM or HH:M (e.g. "13:0" = 13:00) - require 1-2 digit minutes
+  const explicitTimes = lower.matchAll(/\b(\d{1,2}):(\d{1,2})\s?(am|pm)?\b/g);
   for (const match of explicitTimes) {
     const prefix = lower.slice(Math.max(0, match.index - 14), match.index);
     if (/(before|by|until|instead of)\s*$/.test(prefix)) continue;
