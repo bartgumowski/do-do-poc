@@ -3548,8 +3548,9 @@ function renderSpecialPanel(moduleName, part = "all") {
               <em>${_at("auto.delivery_hint")}</em>
             </span>
             <select id="reminderDelivery">
+              <option value="app-only" ${automation.reminderDelivery === "app-only" ? "selected" : ""}>${_at("auto.delivery_app_only")}</option>
               <option value="calendar-only" ${automation.reminderDelivery === "calendar-only" ? "selected" : ""}>${_at("auto.delivery_cal_only")}</option>
-              <option value="calendar-and-app" ${automation.reminderDelivery !== "calendar-only" ? "selected" : ""}>${_at("auto.delivery_cal_app")}</option>
+              <option value="calendar-and-app" ${automation.reminderDelivery === "calendar-and-app" || !["app-only","calendar-only"].includes(automation.reminderDelivery) ? "selected" : ""}>${_at("auto.delivery_cal_app")}</option>
             </select>
           </label>
         </div>

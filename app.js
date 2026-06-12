@@ -1,4 +1,4 @@
-const APP_VERSION = "0.11.1";
+const APP_VERSION = "0.11.2";
 const APP_VERSION_DATE = "2026-06-12";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -3252,7 +3252,7 @@ async function saveCard(event) {
         automated: !dialogPreset || dialogPreset === state.automationSettings.defaultReminderPreset,
       }
     : null;
-  const googleCalendar = due && state.automationSettings.syncFamilyCalendar
+  const googleCalendar = due && state.automationSettings.syncFamilyCalendar && shouldUseCalendarDelivery()
     ? {
         synced: true,
         provider: state.automationSettings.familyCalendarProvider,
@@ -3268,10 +3268,11 @@ async function saveCard(event) {
     || currentAuthSession?.user?.email?.split("@")[0]
     || "Parent A";
 
-  // Prefer GCal alert over app reminder when calendar is connected
+  // Decide reminder: when delivery is "app-only" or "calendar-and-app", keep app reminder.
+  // When delivery is "calendar-only" and GCal is connected, GCal alert handles it.
   const gcalConnected = Boolean(window.getGoogleCalendarConnected?.() || state.automationSettings.syncFamilyCalendar);
-  const reminder = gcalConnected
-    ? null  // GCal event alert handles delivery
+  const reminder = (gcalConnected && !shouldCreateAppReminder())
+    ? null  // calendar-only: GCal event alert handles delivery
     : (existing?.reminder || autoReminder);
 
   // Read recurrence from the picker
@@ -4244,7 +4245,13 @@ function getAutomationSettings() {
 }
 
 function shouldCreateAppReminder(settings = state.automationSettings) {
+  // "app-only" and "calendar-and-app" both create in-app reminders; "calendar-only" does not
   return Boolean(settings.automateReminders) && settings.reminderDelivery !== "calendar-only";
+}
+
+function shouldUseCalendarDelivery(settings = state.automationSettings) {
+  // "app-only" skips calendar alerts; "calendar-only" and "calendar-and-app" use them
+  return settings.reminderDelivery !== "app-only";
 }
 
 function updateAutomationSettings(nextSettings) {
@@ -4271,7 +4278,7 @@ function applyAutomationSettingsToCards() {
           }
         : card.reminder)
       : (card.reminder?.automated ? null : card.reminder);
-    const googleCalendar = state.automationSettings.syncFamilyCalendar
+    const googleCalendar = state.automationSettings.syncFamilyCalendar && shouldUseCalendarDelivery()
       ? {
           synced: true,
           provider: state.automationSettings.familyCalendarProvider,

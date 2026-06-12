@@ -73,7 +73,7 @@ export default async function handler(req, res) {
 
     // Fetch due cards
     const cardsRes = await fetch(
-      `${supabaseUrl}/rest/v1/unified_cards?select=id,title,details,topic,type,status,reminder_time,reminder_notified_at,pair_id&reminder_time=gte.${windowStart}&reminder_time=lte.${windowEnd}&reminder_notified_at=is.null&status=neq.done&status=neq.paid&deleted_at=is.null`,
+      `${supabaseUrl}/rest/v1/unified_cards?select=id,title,details,topic,type,status,assignee,reminder_time,reminder_notified_at,pair_id&reminder_time=gte.${windowStart}&reminder_time=lte.${windowEnd}&reminder_notified_at=is.null&status=neq.done&status=neq.paid&deleted_at=is.null`,
       {
         headers: {
           apikey: supabaseKey,
@@ -93,9 +93,9 @@ export default async function handler(req, res) {
 
     const pairIds = [...new Set(cards.map((c) => c.pair_id).filter(Boolean))];
 
-    // Fetch profiles with notification prefs
+    // Fetch profiles with notification prefs (include role for smart routing)
     const profilesRes = await fetch(
-      `${supabaseUrl}/rest/v1/profiles?select=id,display_name,pair_id,notification_prefs,timezone&pair_id=in.(${pairIds.join(",")})`,
+      `${supabaseUrl}/rest/v1/profiles?select=id,display_name,pair_id,notification_prefs,timezone,role&pair_id=in.(${pairIds.join(",")})`,
       {
         headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
       }
@@ -145,6 +145,7 @@ export default async function handler(req, res) {
         name: p.display_name || "Parent",
         prefs: p.notification_prefs || { email: true, push: true },
         timezone: p.timezone || "UTC",
+        pairRole: p.role || null, // "parent_a" | "parent_b"
       });
     });
 
@@ -153,7 +154,17 @@ export default async function handler(req, res) {
     const notifiedIds = [];
 
     for (const card of cards) {
-      const recipients = pairRecipients[card.pair_id] || [];
+      const allRecipients = pairRecipients[card.pair_id] || [];
+      if (!allRecipients.length) continue;
+
+      // Smart routing: only notify the assigned person unless "Both parents" or unassigned
+      const recipients = (() => {
+        if (!card.assignee || card.assignee === "Both parents") return allRecipients;
+        if (card.assignee === "Parent A") return allRecipients.filter((r) => r.pairRole === "parent_a");
+        if (card.assignee === "Parent B") return allRecipients.filter((r) => r.pairRole === "parent_b");
+        return allRecipients;
+      })();
+
       if (!recipients.length) continue;
 
       const topic = card.topic || "General";
