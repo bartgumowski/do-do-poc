@@ -1622,6 +1622,33 @@ function renderExpensesFeature() {
   const coPaid = paidCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0) - myPaid;
 
   const _t = window.t || ((k) => k);
+
+  // Settlement section: only show when balance != 0
+  const settlementSection = balanceAbs > 0.01 ? (() => {
+    const theyOwe = balance > 0.01; // coparent owes me
+    const amtStr = `${_sym} ${formatExpenseCurrency(balanceAbs)}`;
+    const whoOwes = theyOwe
+      ? `<span class="settlement-who-owes balance-positive">${escapeHtml(coparentName)} winien</span>`
+      : `<span class="settlement-who-owes balance-negative">Ty winien/winna</span>`;
+    const btnLabel = theyOwe
+      ? `Wyslij prosbe o przelew ${amtStr} do ${escapeHtml(coparentName)}`
+      : `Przelej ${amtStr} do ${escapeHtml(coparentName)}`;
+    return `
+      <div class="settlement-banner">
+        <div class="settlement-banner-top">
+          <div>
+            <span class="settlement-label">Do rozliczenia</span>
+            <strong class="settlement-amount">${amtStr}</strong>
+          </div>
+          <div>${whoOwes}</div>
+        </div>
+        <button class="settlement-request-btn" type="button" id="sendSettlementBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          ${escapeHtml(btnLabel)}
+        </button>
+      </div>`;
+  })() : "";
+
   featureModule.innerHTML = `
     <section class="finance-hero">
       <div>
@@ -1635,6 +1662,7 @@ function renderExpensesFeature() {
         <button class="ghost-button" type="button" id="exportExpensesButton">${_t("expense.export_csv") || "Export CSV"}</button>
       </div>
     </section>
+    ${settlementSection}
 
     <div class="expense-month-filter">
       <label style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;">
@@ -1688,6 +1716,10 @@ function renderExpensesFeature() {
   `;
 
   featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => openCardDialog());
+
+  featureModule.querySelector("#sendSettlementBtn")?.addEventListener("click", () => {
+    openSettlementModal({ expenseCards, balance, balanceAbs, coparentName, myName, _sym, selectedMonth });
+  });
 
   featureModule.querySelector("#expenseMonthSelect")?.addEventListener("change", (e) => {
     featureModule.dataset.expenseMonth = e.target.value;
@@ -1975,6 +2007,120 @@ function handleExpenseAction(cardId, action) {
   }
   // Fallback: open card dialog
   if (typeof window.openCardDialog === "function") window.openCardDialog(cardId);
+}
+
+// ─── Settlement modal ─────────────────────────────────────────────────────────
+
+async function openSettlementModal({ expenseCards, balance, balanceAbs, coparentName, myName, _sym, selectedMonth }) {
+  // Remove any leftover modal
+  document.getElementById("settlementModalBackdrop")?.remove();
+
+  const theyOwe = balance > 0.01;
+  const amtStr = `${_sym} ${formatExpenseCurrency(balanceAbs)}`;
+
+  // Build itemized list of unsettled expenses that contribute to the balance
+  const unsettled = expenseCards.filter((c) => c.status !== "Done" && c.payment_status !== "paid" && expenseAmount(c.amount) > 0);
+  const rows = unsettled.map((c) => {
+    const amt = expenseAmount(c.amount);
+    const share = c.payment_amount != null ? parseFloat(c.payment_amount) : amt / 2;
+    const dateStr = c.due ? new Date(c.due).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" }) : "";
+    return `
+      <div class="settlement-item">
+        <div class="settlement-item-left">
+          <span class="settlement-item-title">${escapeHtml(c.title || "Wydatek")}</span>
+          ${dateStr ? `<span class="settlement-item-date">${dateStr}</span>` : ""}
+        </div>
+        <div class="settlement-item-right">
+          <span class="settlement-item-total">${_sym} ${formatExpenseCurrency(amt)}</span>
+          <span class="settlement-item-share">Twoja polowa: ${_sym} ${formatExpenseCurrency(share)}</span>
+        </div>
+      </div>`;
+  }).join("");
+
+  const bodyText = theyOwe
+    ? `Hej! Prosze o przelew ${amtStr} za wspolne wydatki w ${selectedMonth}. Szczegoly w aplikacji Do-Do.`
+    : `Hej, wiem ze powinienem/powinnnam przelac ${amtStr} za ${selectedMonth}. Wyslane!`;
+
+  const backdrop = document.createElement("div");
+  backdrop.id = "settlementModalBackdrop";
+  backdrop.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;display:flex;align-items:flex-end;justify-content:center;";
+
+  backdrop.innerHTML = `
+    <div id="settlementModalSheet" style="background:var(--surface,#fff);border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:24px 20px 32px;box-shadow:0 -4px 32px rgba(0,0,0,.12);max-height:85vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="font-size:17px;font-weight:700;margin:0;">Rozliczenie - ${escapeHtml(selectedMonth)}</h3>
+        <button id="settlementCloseBtn" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:2px 6px;" aria-label="Zamknij">&times;</button>
+      </div>
+
+      <div style="background:var(--surface-raised,#f8f8f8);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:13px;color:var(--muted);">${theyOwe ? escapeHtml(coparentName) + " winien" : "Ty winien/winna"}</span>
+        <strong style="font-size:20px;color:${theyOwe ? "#15803d" : "#dc2626"};">${amtStr}</strong>
+      </div>
+
+      <p style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px;">Nierozliczone wydatki</p>
+      <div style="margin-bottom:16px;">
+        ${rows || `<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Brak nierozliczonych wydatkow</p>`}
+      </div>
+
+      <p style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Wiadomosc</p>
+      <textarea id="settlementMessageText" style="width:100%;min-height:72px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--ink);background:var(--surface-input);resize:vertical;box-sizing:border-box;" rows="3">${escapeHtml(bodyText)}</textarea>
+
+      <button id="settlementSendBtn" class="primary-button" type="button" style="width:100%;margin-top:14px;font-size:15px;padding:13px;">
+        <span id="settlementSendBtnLabel">
+          <svg style="vertical-align:middle;margin-right:6px;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Wyslij prosbe o przelew ${amtStr}
+        </span>
+      </button>
+      <p style="font-size:11px;color:var(--muted);text-align:center;margin:8px 0 0;">Prosby sa rejestrowane w niezmiennym logu rozliczen</p>
+    </div>`;
+
+  document.body.appendChild(backdrop);
+
+  // Close handlers
+  const close = () => backdrop.remove();
+  document.getElementById("settlementCloseBtn").addEventListener("click", close);
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+
+  // Send handler
+  document.getElementById("settlementSendBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("settlementSendBtn");
+    const labelEl = document.getElementById("settlementSendBtnLabel");
+    const msg = document.getElementById("settlementMessageText").value.trim();
+    if (!msg) return;
+
+    btn.disabled = true;
+    labelEl.textContent = "Wysylanie...";
+
+    try {
+      // 1. Send message to Expenses chat thread
+      if (typeof window.sendMessage === "function") {
+        await window.sendMessage("Expenses", msg);
+      }
+
+      // 2. Log settlement_requested to ledger for each unsettled card (immutable)
+      if (typeof window.appendExpenseLedger === "function") {
+        for (const c of unsettled) {
+          await window.appendExpenseLedger({
+            event_type: "settlement_requested",
+            card_id: c.id,
+            amount: expenseAmount(c.amount),
+            currency: _sym,
+            note: `Prosby o przelew ${amtStr} - ${selectedMonth}`,
+          }).catch(() => {});
+        }
+      }
+
+      // 3. Confirmation
+      labelEl.innerHTML = `<svg style="vertical-align:middle;margin-right:6px;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Wyslano!`;
+      btn.style.background = "#15803d";
+      setTimeout(() => close(), 1500);
+    } catch (err) {
+      console.error("Settlement send error:", err);
+      btn.disabled = false;
+      labelEl.textContent = "Blad - sprobuj ponownie";
+      btn.style.background = "#dc2626";
+    }
+  });
 }
 
 function expenseAmount(value) {

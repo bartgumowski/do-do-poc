@@ -7698,6 +7698,122 @@ html[data-theme="dark"] .card-type-vaccine {
 .balance-negative { color: #dc2626; font-weight: 700; }
 .balance-zero     { color: var(--muted); font-weight: 600; }
 
+/* ─── Settlement banner ──────────────────────────────────────────────────────── */
+
+.settlement-banner {
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  background: var(--surface-raised, #f8f9fa);
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 14px;
+}
+
+.settlement-banner-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.settlement-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.settlement-amount {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.settlement-who-owes {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settlement-request-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--ink, #1a1a1a);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  justify-content: center;
+  transition: opacity .15s;
+}
+
+.settlement-request-btn:hover { opacity: .85; }
+.settlement-request-btn:active { opacity: .7; }
+
+/* Settlement modal items */
+.settlement-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line, #e5e7eb);
+  gap: 8px;
+}
+
+.settlement-item:last-child { border-bottom: none; }
+
+.settlement-item-left { flex: 1; }
+
+.settlement-item-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.settlement-item-date {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.settlement-item-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.settlement-item-total {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.settlement-item-share {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Dark mode adjustments */
+html[data-theme="dark"] .settlement-banner {
+  background: var(--surface-raised, #1e1e1e);
+  border-color: var(--line, #2e2e2e);
+}
+
+html[data-theme="dark"] .settlement-request-btn {
+  background: var(--surface-alt, #2a2a2a);
+  color: #fff;
+  border: 1px solid var(--line, #3a3a3a);
+}
+
 /* ─── SEG-06: Receipt panel ──────────────────────────────────────────────────── */
 
 .receipt-upload-btn {
