@@ -2,6 +2,43 @@
 
 ---
 
+## v0.11.2 - 2026-06-12 - Smart notification routing + app-only reminders
+
+### 19.1 Smart notification routing
+- `remind.js` now sends reminders only to the assigned person - Parent A gets Parent A's cards, Parent B gets Parent B's
+- "Both parents" or no assignee sends to both (previous behaviour preserved)
+- Added `assignee` to cards query and `role` to profiles query in remind.js
+- Quiet hours still respected per recipient
+- Fixes notification spam that caused users to turn off all alerts
+
+### Reminder delivery: new "App only" option
+- Settings > Automation now has 3 delivery choices: **App only**, **Family calendar only**, **Calendar + Do-Do**
+- "App only" - Do-Do sends push/email alerts; Google Calendar not involved
+- "Family calendar only" - GCal event alert handles delivery; no in-app reminder
+- "Calendar + Do-Do" - both (unchanged from before)
+- Updated hint text and all 3 languages (EN, DE, PL)
+
+---
+
+## v0.11.1 - 2026-06-12 - Google Calendar import
+
+### Import any Google Calendar as Do-Do cards
+- New **Import from Google Calendar** panel in Settings (under Calendar connections).
+- Pick any calendar from your Google account - your personal calendar, a family calendar, a school calendar, anything you have access to.
+- Choose how many days ahead to import (7 to 365, default 30).
+- Two sync modes:
+  - **Import only** - events are pulled in as read-only cards. Great for a family or school calendar you just want to see on the board.
+  - **Two-way sync** - editing a card (title, notes, date) also updates the original Google Calendar event.
+- Imported cards appear on the board mixed with your regular cards. They show a teal globe badge with the calendar name so you can tell them apart at a glance.
+- Auto-syncs silently on every app load if a calendar is configured - no manual refresh needed.
+- No new API endpoints needed - all Google calls go through the existing OAuth token infrastructure.
+
+### Onboarding
+- New "Import from Google Calendar" toggle in the onboarding Calendar step.
+- If turned on, a prompt after setup sends you straight to Settings to pick which calendar.
+
+---
+
 ## v0.9.7 - 2026-06-11 - Shopping UX polish + PWA improvements
 
 ### Instant uncheck visual feedback
