@@ -20,6 +20,7 @@
       "nav.messages": "Messages",
       "nav.shopping": "Shopping",
       "nav.expenses": "Expenses",
+      "nav.przekazanie": "Przekazanie",
       "nav.settings": "Settings",
 
       // Board
@@ -416,6 +417,7 @@
       "nav.messages": "Nachrichten",
       "nav.shopping": "Einkauf",
       "nav.expenses": "Ausgaben",
+      "nav.przekazanie": "Übergabe",
       "nav.settings": "Einstellungen",
 
       "board.col.decide": "Zu entscheiden",
@@ -784,6 +786,7 @@
       "nav.messages": "Wiadomości",
       "nav.shopping": "Zakupy",
       "nav.expenses": "Koszty",
+      "nav.przekazanie": "Przekazanie",
       "nav.settings": "Ustawienia",
 
       "board.col.decide": "Do decyzji",

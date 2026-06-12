@@ -423,6 +423,14 @@ const featureData = {
       },
     ],
   },
+  przekazanie: {
+    eyebrow: "Przekazanie",
+    title: "Przekazanie dziecka",
+    summary: "Checklist rzeczy, notatka zdrowotna i przypomnienia przy zmianie opieki.",
+    actions: [],
+    stats: [],
+    sections: [],
+  },
   expenses: {
     eyebrow: "Expenses",
     title: "Shared expenses",
@@ -603,7 +611,7 @@ function switchModule(moduleName) {
 window.switchModule = switchModule;
 
 // --- Hash-based routing ---
-const VALID_MODULES = ["board", "calendar", "shopping", "expenses", "settings"];
+const VALID_MODULES = ["board", "calendar", "shopping", "expenses", "przekazanie", "settings"];
 
 const _origSwitchModule = switchModule;
 window.switchModule = function(moduleName) {
@@ -650,6 +658,11 @@ function renderFeature(moduleName, data) {
 
   if (moduleName === "settings") {
     renderSettingsFeature();
+    return;
+  }
+
+  if (moduleName === "przekazanie") {
+    renderPrzekazanieFeature();
     return;
   }
 
@@ -4806,4 +4819,295 @@ async function renderNotifPrefsPanel() {
       if (typeof showToast === "function") showToast("Could not send test notification");
     }
   });
+}
+
+// ─── Przekazanie (Child Handover) ─────────────────────────────────────────────
+
+const PRZEKAZANIE_KEY = "do-do-przekazanie-v1";
+
+function loadPrzekazanieData() {
+  try {
+    const raw = window.appStorage?.getItem(PRZEKAZANIE_KEY);
+    if (!raw) return { selectedChildren: [], checklist: [], reminders: [], healthNote: "" };
+    const parsed = JSON.parse(raw);
+    return {
+      selectedChildren: parsed.selectedChildren || [],
+      checklist: parsed.checklist || [],
+      reminders: parsed.reminders || [],
+      healthNote: parsed.healthNote || "",
+    };
+  } catch {
+    return { selectedChildren: [], checklist: [], reminders: [], healthNote: "" };
+  }
+}
+
+function savePrzekazanieData(data) {
+  try { window.appStorage?.setItem(PRZEKAZANIE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function _przekazNextHandoverLabel() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" });
+}
+
+function renderPrzekazanieFeature() {
+  const setup = window.getOnboardingState?.() || {};
+  const coparent = setup.parents?.coparent || "Co-rodzica";
+  const allChildren = (setup.children || []).map((c) => c.name || c).filter(Boolean);
+  const data = loadPrzekazanieData();
+
+  // Default: select all children if nothing stored yet
+  if (data.selectedChildren.length === 0 && allChildren.length > 0) {
+    data.selectedChildren = [...allChildren];
+    savePrzekazanieData(data);
+  }
+
+  const dateLabel = _przekazNextHandoverLabel();
+  const rzeczyLeft = data.checklist.filter((i) => !i.checked).length;
+  const remLeft = data.reminders.filter((i) => !i.checked).length;
+
+  featureModule.innerHTML = `
+    <div class="przekazanie-container" style="max-width:520px;margin:0 auto;padding:12px 16px 80px;">
+
+      <div class="feature-panel przekaz-header-panel" style="margin-bottom:12px;padding:14px 16px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 2px;">
+          Przekazanie do ${escapeFeatureHtml(coparent)}
+        </p>
+        <p style="font-size:13px;color:var(--muted);margin:0;">
+          Jutro rano, ${escapeFeatureHtml(dateLabel)}
+        </p>
+      </div>
+
+      ${allChildren.length > 0 ? `
+      <div class="feature-panel" style="margin-bottom:12px;padding:14px 16px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px;">Dotyczy dzieci</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${allChildren.map((child) => {
+            const active = data.selectedChildren.includes(child);
+            return `<button type="button" class="przekaz-child-chip${active ? " active" : ""}" data-child="${escapeFeatureHtml(child)}"
+              style="padding:8px 18px;border-radius:999px;border:2px solid ${active ? "var(--accent,#6366f1)" : "var(--border)"};
+              background:${active ? "rgba(99,102,241,.12)" : "transparent"};font-size:14px;font-weight:600;cursor:pointer;
+              color:var(--text);transition:all .15s;">
+              ${escapeFeatureHtml(child)}
+            </button>`;
+          }).join("")}
+        </div>
+      </div>
+      ` : ""}
+
+      <section class="feature-panel shopping-group" style="margin-bottom:12px;" id="przekazRzeczySection">
+        <div class="shopping-group-header">
+          <h3 style="text-transform:uppercase;font-size:11px;letter-spacing:.06em;">Checklist - Rzeczy</h3>
+          <div class="shopping-group-header-actions">
+            <span id="przekazRzeczyCounter">${rzeczyLeft} do spakowania</span>
+          </div>
+        </div>
+        <form class="shopping-capture" id="przekazRzeczyForm">
+          <div class="shopping-input-wrap">
+            <input data-przekaz-input="rzeczy" placeholder="Dodaj rzecz do spakowania..." autocomplete="off" autocapitalize="sentences" enterkeyhint="done" />
+            <button class="shopping-add" type="submit" aria-label="Dodaj">+</button>
+          </div>
+        </form>
+        <div class="shopping-list" id="przekazRzeczyList">
+          ${data.checklist.map((item) => _renderPrzekazItem(item, "rzeczy")).join("")}
+        </div>
+      </section>
+
+      <div class="feature-panel" style="margin-bottom:12px;padding:14px 16px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px;">Notatka zdrowotna</p>
+        <textarea id="przekazHealthNote" rows="3"
+          placeholder="np. Kasia kaszle od srody, bierze syrop 2x dziennie. Tomek ma zadanie z matematyki na piatek..."
+          style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:10px 12px;
+          font-size:14px;font-family:inherit;background:var(--input-bg,var(--card-bg));color:var(--text);
+          resize:vertical;min-height:76px;outline:none;">${escapeFeatureHtml(data.healthNote)}</textarea>
+      </div>
+
+      <section class="feature-panel shopping-group" style="margin-bottom:20px;" id="przekazReminderSection">
+        <div class="shopping-group-header">
+          <h3 style="text-transform:uppercase;font-size:11px;letter-spacing:.06em;">Wazne przypomnienia</h3>
+          <div class="shopping-group-header-actions">
+            <span id="przekazRemCounter">${remLeft} otwarte</span>
+          </div>
+        </div>
+        <form class="shopping-capture" id="przekazReminderForm">
+          <div class="shopping-input-wrap">
+            <input data-przekaz-input="reminders" placeholder="Dodaj przypomnienie..." autocomplete="off" autocapitalize="sentences" enterkeyhint="done" />
+            <button class="shopping-add" type="submit" aria-label="Dodaj">+</button>
+          </div>
+        </form>
+        <div class="shopping-list" id="przekazReminderList">
+          ${data.reminders.map((item) => _renderPrzekazItem(item, "reminders")).join("")}
+        </div>
+      </section>
+
+      <button class="primary-button" id="przekazSendBtn" type="button"
+        style="width:100%;min-height:52px;font-size:15px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true">
+          <path d="M22 2 11 13M22 2 15 22 11 13 2 9l20-7Z"/>
+        </svg>
+        Wyslij przekazanie do ${escapeFeatureHtml(coparent)}
+      </button>
+
+    </div>
+  `;
+
+  _bindPrzekazanieEvents(data, allChildren, coparent);
+}
+
+function _renderPrzekazItem(item, listKey) {
+  return `
+    <div class="shopping-row-wrap${item.checked ? " bought" : ""}">
+      <label class="shopping-row">
+        <input type="checkbox" data-przekaz-check="${escapeFeatureHtml(item.id)}" data-przekaz-list="${listKey}" ${item.checked ? "checked" : ""} />
+        <strong>${escapeFeatureHtml(item.label)}</strong>
+      </label>
+      <button class="shopping-delete-btn" type="button" data-przekaz-delete="${escapeFeatureHtml(item.id)}" data-przekaz-list="${listKey}" aria-label="Usun">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14">
+          <path d="M12 4 4 12M4 4l8 8"/>
+        </svg>
+      </button>
+    </div>
+  `;
+}
+
+function _bindPrzekazanieEvents(data, allChildren, coparent) {
+  const mod = featureModule;
+
+  // Child selector chips
+  mod.querySelectorAll(".przekaz-child-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const child = btn.dataset.child;
+      const idx = data.selectedChildren.indexOf(child);
+      if (idx >= 0) data.selectedChildren.splice(idx, 1);
+      else data.selectedChildren.push(child);
+      savePrzekazanieData(data);
+      const active = data.selectedChildren.includes(child);
+      btn.classList.toggle("active", active);
+      btn.style.borderColor = active ? "var(--accent,#6366f1)" : "var(--border)";
+      btn.style.background = active ? "rgba(99,102,241,.12)" : "transparent";
+    });
+  });
+
+  // Add rzeczy item
+  mod.querySelector("#przekazRzeczyForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = mod.querySelector("[data-przekaz-input='rzeczy']");
+    const label = input?.value.trim();
+    if (!label) return;
+    const item = { id: "prz-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7), label, checked: false };
+    data.checklist.push(item);
+    savePrzekazanieData(data);
+    mod.querySelector("#przekazRzeczyList")?.insertAdjacentHTML("beforeend", _renderPrzekazItem(item, "rzeczy"));
+    _bindPrzekazItemListeners(mod, data);
+    _updatePrzekazCounters(mod, data);
+    if (input) { input.value = ""; input.focus(); }
+  });
+
+  // Add reminder item
+  mod.querySelector("#przekazReminderForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = mod.querySelector("[data-przekaz-input='reminders']");
+    const label = input?.value.trim();
+    if (!label) return;
+    const item = { id: "prz-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7), label, checked: false };
+    data.reminders.push(item);
+    savePrzekazanieData(data);
+    mod.querySelector("#przekazReminderList")?.insertAdjacentHTML("beforeend", _renderPrzekazItem(item, "reminders"));
+    _bindPrzekazItemListeners(mod, data);
+    _updatePrzekazCounters(mod, data);
+    if (input) { input.value = ""; input.focus(); }
+  });
+
+  // Health note auto-save
+  mod.querySelector("#przekazHealthNote")?.addEventListener("input", (e) => {
+    data.healthNote = e.target.value;
+    savePrzekazanieData(data);
+  });
+
+  // Bind checkbox + delete for existing items
+  _bindPrzekazItemListeners(mod, data);
+
+  // Send button
+  mod.querySelector("#przekazSendBtn")?.addEventListener("click", () => _sendPrzekazanie(data, coparent));
+}
+
+function _bindPrzekazItemListeners(mod, data) {
+  // Only bind once per element using data-pbound attribute
+  mod.querySelectorAll("[data-przekaz-check]:not([data-pbound])").forEach((checkbox) => {
+    checkbox.dataset.pbound = "1";
+    checkbox.addEventListener("change", () => {
+      const id = checkbox.dataset.przekazCheck;
+      const listKey = checkbox.dataset.przekazList;
+      const list = listKey === "rzeczy" ? data.checklist : data.reminders;
+      const item = list.find((i) => i.id === id);
+      if (item) {
+        item.checked = checkbox.checked;
+        savePrzekazanieData(data);
+        checkbox.closest(".shopping-row-wrap")?.classList.toggle("bought", checkbox.checked);
+        _updatePrzekazCounters(mod, data);
+      }
+    });
+  });
+
+  mod.querySelectorAll("[data-przekaz-delete]:not([data-pbound])").forEach((btn) => {
+    btn.dataset.pbound = "1";
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.przekazDelete;
+      const listKey = btn.dataset.przekazList;
+      if (listKey === "rzeczy") data.checklist = data.checklist.filter((i) => i.id !== id);
+      else data.reminders = data.reminders.filter((i) => i.id !== id);
+      savePrzekazanieData(data);
+      btn.closest(".shopping-row-wrap")?.remove();
+      _updatePrzekazCounters(mod, data);
+    });
+  });
+}
+
+function _updatePrzekazCounters(mod, data) {
+  const rc = mod.querySelector("#przekazRzeczyCounter");
+  if (rc) rc.textContent = `${data.checklist.filter((i) => !i.checked).length} do spakowania`;
+  const rem = mod.querySelector("#przekazRemCounter");
+  if (rem) rem.textContent = `${data.reminders.filter((i) => !i.checked).length} otwarte`;
+}
+
+async function _sendPrzekazanie(data, coparent) {
+  const btn = featureModule.querySelector("#przekazSendBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    // Build summary message
+    const childrenStr = data.selectedChildren.join(", ") || "dzieci";
+    const unchecked = data.checklist.filter((i) => !i.checked).map((i) => i.label);
+    const reminders = data.reminders.filter((i) => !i.checked).map((i) => i.label);
+    const bodyLines = [];
+    if (unchecked.length) bodyLines.push("Do spakowania: " + unchecked.join(", "));
+    if (data.healthNote.trim()) bodyLines.push(data.healthNote.trim().slice(0, 100));
+    if (reminders.length) bodyLines.push("Przypomnienia: " + reminders.join(", "));
+
+    // Fire push notification if permission granted
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.showNotification(`Przekazanie - ${childrenStr}`, {
+          body: bodyLines.join("\n") || "Checklist gotowa.",
+          icon: "./assets/dodo-icon.png",
+          badge: "./assets/dodo-icon.png",
+          tag: "do-do-przekazanie",
+        });
+      } catch {}
+    }
+
+    // Reset health note and re-save
+    data.healthNote = "";
+    savePrzekazanieData(data);
+
+    showFeatureToast(`Przekazanie wyslane do ${coparent}!`);
+    // Re-render with cleared health note, checklist stays (co-parent may want to see)
+    setTimeout(() => renderPrzekazanieFeature(), 400);
+  } catch (err) {
+    console.error("przekazanie send error:", err);
+    showFeatureToast("Blad - sprobuj ponownie.");
+    if (btn) btn.disabled = false;
+  }
 }
