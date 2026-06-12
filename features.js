@@ -2506,12 +2506,10 @@ function renderCalendarFeature(data) {
       <div class="custody-week-overview" aria-label="Week custody overview">
         ${weekDays.map((d) => {
           const k = toCalendarKey(d);
-          const owner = getCustodyOwner(d);
-          const dotColor = owner === "mine" ? custody.myColor : owner === "co" ? custody.coColor : "transparent";
           const evts = eventsForDate(k);
           const isSelected = k === calendarState.selected;
-          return `<button class="custody-week-ov-day${isSelected ? " selected" : ""}" type="button" data-calendar-day="${k}" title="${weekdayLabel(d)} ${d.getDate()}">
-            <span class="custody-week-ov-bar" style="background:${dotColor};opacity:${owner ? "1" : "0"};"></span>
+          const custClass = getCustodyClass(d);
+          return `<button class="custody-week-ov-day${isSelected ? " selected" : ""}${custClass ? " " + custClass : ""}" type="button" data-calendar-day="${k}" title="${weekdayLabel(d)} ${d.getDate()}">
             <span class="custody-week-ov-label">${weekdayLabel(d)}</span>
             <strong class="custody-week-ov-num">${d.getDate()}</strong>
             ${evts.length ? `<em class="custody-week-ov-count">${evts.length}</em>` : ""}
@@ -2585,7 +2583,10 @@ function renderCalendarFeature(data) {
               <span>Moje tytu&#322;y</span>
             </label>`;
           })()}
-          <button class="secondary-button feature-action" data-action="Add Do">${window.t?.("cal.add_do") ?? "Add Do"}</button>
+          <button class="toolbar-new-card feature-action" style="display:inline-flex;" data-action="Add Do">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
+            ${window.t?.("cal.add_do") ?? "Add Do"}
+          </button>
         </div>
       </div>
       ${weekOverview}
@@ -3014,10 +3015,12 @@ function _bindWeekGridDragDrop(container) {
 }
 
 function renderDayView() {
+  const d = parseCalendarKey(calendarState.selected);
+  const custodyClass = getCustodyClass(d);
   return `
-    <div class="day-heading">
-      <span>${weekdayLabel(parseCalendarKey(calendarState.selected))}</span>
-      <strong>${formatAgendaDate(parseCalendarKey(calendarState.selected))}</strong>
+    <div class="day-heading${custodyClass ? " " + custodyClass : ""}">
+      <span>${weekdayLabel(d)}</span>
+      <strong>${formatAgendaDate(d)}</strong>
     </div>
     ${renderDaySchedule(calendarState.selected)}
   `;

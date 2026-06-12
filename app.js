@@ -1,4 +1,4 @@
-const APP_VERSION = "0.12.5";
+const APP_VERSION = "0.12.9";
 const APP_VERSION_DATE = "2026-06-12";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -454,6 +454,7 @@ const elements = {
   childInput: document.querySelector("#childInput"),
   dueInput: document.querySelector("#dueInput"),
   amountInput: document.querySelector("#amountInput"),
+  lockAssigneeInput: document.querySelector("#lockAssigneeInput"),
   detailsInput: document.querySelector("#detailsInput"),
   commentPanel: document.querySelector("#commentPanel"),
   commentList: document.querySelector("#commentList"),
@@ -1423,6 +1424,7 @@ function render() {
   renderAttention();
   renderBoard(cards);
   renderList(cards);
+  renderBoardCalendar(cards);
 
   elements.boardView.classList.toggle("hidden", state.view !== "board");
   elements.listView.classList.toggle("hidden", state.view !== "list");
@@ -1897,6 +1899,7 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     setSelectValue(elements.assigneeInput, card.assignee);
     setSelectValue(elements.childInput, card.child);
     elements.dueInput.value = card.due ? card.due.slice(0, 16) : "";
+    if (elements.lockAssigneeInput) elements.lockAssigneeInput.checked = card.lockAssignee || false;
     // Recurrence
     const recInput = document.querySelector("#recurrenceInput");
     const recDaysRow = document.querySelector("#recurrenceDaysRow");
@@ -1955,6 +1958,7 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     elements.amountInput.value = "";
     // Pre-fill due date from calendar selection or passed-in prefill
     elements.dueInput.value = prefill.due ? prefill.due.slice(0, 16) : "";
+    if (elements.lockAssigneeInput) elements.lockAssigneeInput.checked = false;
     elements.detailsInput.value = prefill.details || "";
     elements.cardReminderPresetInput.value = state.automationSettings.defaultReminderPreset || "60";
     elements.cardReminderTimeInput.value = "";
@@ -2731,6 +2735,18 @@ function deriveFieldsFromShortInfo(rawText, options = {}) {
     updateReminderCustomVisibility();
   }
 
+  // Auto-set recurrence from text
+  const inferredRecurrence = inferRecurrence(lower);
+  if (inferredRecurrence) {
+    const recInput = document.querySelector("#recurrenceInput");
+    const daysRow = document.querySelector("#recurrenceDaysRow");
+    if (recInput) {
+      recInput.value = inferredRecurrence;
+      const showDays = ["weekly", "biweekly"].includes(inferredRecurrence);
+      daysRow?.classList.toggle("hidden", !showDays);
+    }
+  }
+
   renderDerivedTags();
   if (!options.silent) showToast("Do tags derived from info");
 
@@ -2820,9 +2836,23 @@ function renderMiniCal() {
       <tbody>${cells}</tbody>
     </table>
     ${dueVal ? `<button class="mc-clear" type="button" id="miniCalClear">&#215; Clear date</button>` : ""}
+    ${(() => {
+      const cs = window.getCustodySchedule?.();
+      if (!cs?.enabled) return "";
+      const locked = elements.lockAssigneeInput?.checked || false;
+      return `<label class="mc-lock-assignee-row">
+        <input type="checkbox" id="mcLockAssigneeVis"${locked ? " checked" : ""}>
+        <span>Don't assign scheduled parent</span>
+      </label>`;
+    })()}
   `;
   el.dataset.viewYear = viewYear;
   el.dataset.viewMonth = viewMonth;
+
+  // Sync visible lock-assignee checkbox <-> hidden input
+  el.querySelector("#mcLockAssigneeVis")?.addEventListener("change", (e) => {
+    if (elements.lockAssigneeInput) elements.lockAssigneeInput.checked = e.target.checked;
+  });
 
   el.querySelector("#miniCalPrev")?.addEventListener("click", () => {
     let m = parseInt(el.dataset.viewMonth) - 1;
@@ -2853,6 +2883,7 @@ function renderMiniCal() {
       }
       if (elements.dueInput) elements.dueInput.value = `${dateStr}T${timeStr}`;
       renderDerivedTags();
+      maybeAutoAssignParent(dateStr);
     });
   });
 
@@ -2887,11 +2918,29 @@ function formatDueTag(value) {
 }
 
 function makeTitleFromText(text) {
-  const raw = text
+  let raw = text
     .replace(/^(please|can you|could you|remind me to|we need to)\s+/i, "")
     .split(/[.!?]/)[0]
-    .trim()
-    .slice(0, 72) || "New Do";
+    .trim();
+
+  // Strip metadata tokens so they don't pollute the title
+  // Date: "10 june", "10 czerwca", "10.06", numeric dates
+  raw = raw.replace(/\b\d{1,2}\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|stycze[nń]|lut[ey]|marzec|kwiecie[nń]|maj|czerwiec|lipiec|sierpie[nń]|wrzesie[nń]|pa[zź]dziernik|listopad|grudzie[nń])\b/gi, "");
+  raw = raw.replace(/\b\d{1,2}[.\/-]\d{1,2}(?:[.\/-]\d{2,4})?\b/g, "");
+  // Time: "o 17:30", "at 13:00", "13:0", "do 19:30" / "to 19:30"
+  raw = raw.replace(/\b(?:o\s+godzinie|o\s+|at\s+)\d{1,2}:\d{1,2}(?:\s*(?:am|pm))?\b/gi, "");
+  raw = raw.replace(/\b(?:do|to|until)\s+\d{1,2}:\d{1,2}\b/gi, "");
+  raw = raw.replace(/\b\d{1,2}:\d{1,2}(?:\s*(?:am|pm))?\b/g, "");
+  // Recurrence phrases
+  raw = raw.replace(/\b(?:recurring\s+)?(?:every|each|co)\s+(?:week|day|month|two weeks?|tydzien|tydzie[nń]|dzie[nń]|miesi[aą]c)\b/gi, "");
+  raw = raw.replace(/\b(?:co\s+)?(?:poniedzia[lł]ek|wtorek|[sś]rod[ęa]|czwartek|pi[aą]tek|sobot[ęa]|niedziel[ęa]|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, "");
+  raw = raw.replace(/\b(?:weekly|daily|monthly|biweekly|recurring\s+ever[y]?)\b/gi, "");
+  // Reminder phrases
+  raw = raw.replace(/\b(?:reminder?|remind\s+me|alert|notify)\s+\d+\s*(?:h(?:r|ours?)?|min(?:utes?)?)\s*(?:before|earlier)?\b/gi, "");
+  raw = raw.replace(/\b\d+\s*h(?:r|ours?)?\s*(?:before|reminder|alert)\b/gi, "");
+
+  // Clean up leftover whitespace/punctuation
+  raw = raw.replace(/\s{2,}/g, " ").replace(/^[\s,\-]+|[\s,\-]+$/g, "").trim().slice(0, 72) || "New Do";
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
@@ -2956,6 +3005,21 @@ function inferChild(lower) {
   if (lower.includes("ava") && lower.includes("leo")) return "Ava + Leo";
   if (lower.includes("leo")) return "Leo";
   return family.children[0]?.name || "Ava";
+}
+
+// Infer recurrence from natural language text.
+// Returns "weekly" | "daily" | "biweekly" | "monthly" | null
+function inferRecurrence(lower) {
+  // Polish "co sroda/środa" (every Wednesday) etc. - "co [weekday]" implies weekly
+  if (/\bco\s+(?:poniedzia[lł]ek|wtorek|[sś]rod[ęa]|czwartek|pi[aą]tek|sobot[ęa]|niedziel[ęa])\b/.test(lower)) return "weekly";
+  // English "every [weekday]"
+  if (/\bevery\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(lower)) return "weekly";
+  // "recurring ever" is a common voice recognition artifact for "recurring every (week)"
+  if (/\b(?:recurring\s+ever\b|every\s+week|each\s+week|weekly|co\s+tydzie[nń]|ka[zż]d[yą]\s+tydzie[nń])\b/.test(lower)) return "weekly";
+  if (/\b(?:every\s+two\s+weeks?|bi.?weekly|every\s+other\s+week|co\s+dwa\s+tygodnie)\b/.test(lower)) return "biweekly";
+  if (/\b(?:every\s+day|each\s+day|daily|codziennie)\b/.test(lower)) return "daily";
+  if (/\b(?:every\s+month|each\s+month|monthly|co\s+miesi[aą]c)\b/.test(lower)) return "monthly";
+  return null;
 }
 
 // Returns the current user's real name (from onboarding or auth), never "Parent A"
@@ -3065,17 +3129,29 @@ function inferDueDate(lower) {
   if (isDayAfter) date.setDate(date.getDate() + 2);
   if (isNextWeek) date.setDate(date.getDate() + 7);
 
-  const plDays = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
+  // Polish day names including unaccented voice-recognition variants and "co sroda" style
+  // Order: Sun=0, Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6
+  const plDays = [
+    ["niedziela", "niedziel"],
+    ["poniedziałek", "poniedzialk"],
+    ["wtorek"],
+    ["środa", "sroda", "środ", "srod"],
+    ["czwartek"],
+    ["piątek", "piatek", "piątk"],
+    ["sobota", "sobot"],
+  ];
   const enDays = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+
+  const hasPlDay = plDays.some((variants) => variants.some((v) => lower.includes(v)));
 
   if (!namedDateFound && !explicitDate && !isToday && !isTomorrow && !isDayAfter && !isNextWeek
     && !enDays.some((d) => lower.includes(d))
-    && !plDays.some((d) => lower.includes(d))) return "";
+    && !hasPlDay) return "";
 
   // English day-of-week
   const targetDayEn = enDays.findIndex((d) => lower.includes(d));
   // Polish day-of-week
-  const targetDayPl = plDays.findIndex((d) => lower.includes(d));
+  const targetDayPl = plDays.findIndex((variants) => variants.some((v) => lower.includes(v)));
   const targetDay = targetDayEn >= 0 ? targetDayEn : targetDayPl;
   if (targetDay >= 0) {
     const current = date.getDay();
@@ -3412,6 +3488,13 @@ async function saveCard(event) {
     ? { freq: recurrenceFreq, days: recurrenceDays, ...(customDates.length ? { customDates } : {}) }
     : null;
 
+  // Auto-assign the scheduled parent for the due date unless the user opted out
+  const lockAssignee = elements.lockAssigneeInput?.checked || false;
+  if (!lockAssignee && due) {
+    const schedParent = getCustodyParentForDate(due.slice(0, 10));
+    if (schedParent) setSelectValue(elements.assigneeInput, schedParent);
+  }
+
   const card = {
     id,
     title: elements.titleInput.value.trim(),
@@ -3428,6 +3511,7 @@ async function saveCard(event) {
     reminder,
     googleCalendar,
     recurrence,
+    lockAssignee,
     author: existing?.author || authorName,
     createdAt: existing?.createdAt || Date.now(),
     lastEditedAt: Date.now(),
@@ -4833,4 +4917,208 @@ function initNotifications() {
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
     subscribeToPush().catch(() => {});
   }
+}
+
+// ─── Custody auto-assign ──────────────────────────────────────────────────────
+// Returns the parent name ("Parent A" / "Parent B" etc.) who has custody on
+// a given date string "YYYY-MM-DD", or null if schedule is off / day is split.
+function getCustodyParentForDate(dateStr) {
+  if (!dateStr) return null;
+  const getCustodyOwner = window.getCustodyOwner;
+  if (typeof getCustodyOwner !== "function") return null;
+  const date = new Date(dateStr + "T12:00:00");
+  const owner = getCustodyOwner(date);
+  if (!owner || owner === "split") return null;
+  const setup = getOnboardingState() || {};
+  if (owner === "mine") return setup.parents?.primary || "Parent A";
+  if (owner === "co")   return setup.parents?.coparent || "Parent B";
+  return null;
+}
+
+// Call this after a due date changes in the card dialog.
+// Sets assigneeInput to the scheduled parent unless locked.
+function maybeAutoAssignParent(dateStr) {
+  if (elements.lockAssigneeInput?.checked) return; // user opted out
+  const parent = getCustodyParentForDate(dateStr);
+  if (!parent) return;
+  setSelectValue(elements.assigneeInput, parent);
+  renderDerivedTags();
+}
+
+// ─── Board week calendar ───────────────────────────────────────────────────────
+// Teams-style week view below the kanban columns. Cards with due dates appear
+// in their day column and can be dragged between days to reschedule.
+
+const _boardCal = {
+  weekStart: _boardCalGetWeekStart(new Date()),
+};
+
+function _boardCalGetWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun
+  const diff = (day === 0) ? -6 : 1 - day; // shift to Mon
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function _boardCalDayKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function _boardCalCardDay(card) {
+  if (!card.due) return null;
+  return card.due.slice(0, 10);
+}
+
+function renderBoardCalendar(cards) {
+  const section = document.getElementById("boardCalSection");
+  const grid = document.getElementById("boardCalGrid");
+  const titleEl = document.getElementById("boardCalTitle");
+  if (!section || !grid || !titleEl) return;
+
+  const ws = _boardCal.weekStart;
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(ws);
+    d.setDate(ws.getDate() + i);
+    return d;
+  });
+
+  // Title: "June 2026"
+  const firstDay = days[0];
+  const lastDay = days[6];
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  if (firstDay.getMonth() === lastDay.getMonth()) {
+    titleEl.textContent = `${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()}`;
+  } else {
+    titleEl.textContent = `${monthNames[firstDay.getMonth()]} - ${monthNames[lastDay.getMonth()]} ${lastDay.getFullYear()}`;
+  }
+
+  const todayKey = _boardCalDayKey(new Date());
+  const activeCards = (cards || state.cards).filter((c) => !isCardArchived(c));
+
+  // Map day key -> cards due that day
+  const cardsByDay = {};
+  days.forEach((d) => { cardsByDay[_boardCalDayKey(d)] = []; });
+  activeCards.forEach((card) => {
+    const k = _boardCalCardDay(card);
+    if (k && cardsByDay[k] !== undefined) cardsByDay[k].push(card);
+  });
+
+  const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  grid.innerHTML = `
+    <div class="bcal-grid">
+      ${days.map((d, i) => {
+        const k = _boardCalDayKey(d);
+        const isToday = k === todayKey;
+        const daycards = cardsByDay[k] || [];
+        // Custody class for header tint (mine / co / split)
+        const custodyClass = window.getCustodyClass ? window.getCustodyClass(d) : "";
+        return `
+          <div class="bcal-col" data-bcal-day="${k}">
+            <div class="bcal-col-head${isToday ? " bcal-today" : ""}${custodyClass ? " " + custodyClass : ""}">
+              <span class="bcal-dow">${DOW[i]}</span>
+              <strong class="bcal-num">${d.getDate()}</strong>
+            </div>
+            <div class="bcal-col-body" data-bcal-drop="${k}">
+              ${daycards.length
+                ? daycards.map((card) => {
+                    const isDone = card.status === "Done";
+                    const isUrgent = card.status === "Important";
+                    const colorClass = isDone ? "bcal-card-done" : isUrgent ? "bcal-card-urgent" : "bcal-card-normal";
+                    const time = card.due?.slice(11, 16);
+                    const timeLabel = (time && time !== "00:00") ? `<span class="bcal-card-time">${time}</span>` : "";
+                    const assignee = card.assignee || "";
+                    const initial = assignee ? assignee.charAt(0).toUpperCase() : "";
+                    return `<div class="bcal-card ${colorClass}" draggable="true" data-bcal-card="${card.id}" title="${escapeHtml(card.title)}">
+                      <span class="bcal-card-title">${escapeHtml(card.title)}</span>
+                      ${timeLabel}
+                      ${initial ? `<span class="bcal-card-avatar">${initial}</span>` : ""}
+                    </div>`;
+                  }).join("")
+                : `<span class="bcal-empty">Clear</span>`}
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  _bindBoardCalDragDrop(grid);
+
+  // Nav buttons - bind once, rebind each render
+  const prev = document.getElementById("boardCalPrev");
+  const next = document.getElementById("boardCalNext");
+  if (prev) {
+    prev.onclick = () => {
+      _boardCal.weekStart = new Date(_boardCal.weekStart);
+      _boardCal.weekStart.setDate(_boardCal.weekStart.getDate() - 7);
+      renderBoardCalendar(state.cards);
+    };
+  }
+  if (next) {
+    next.onclick = () => {
+      _boardCal.weekStart = new Date(_boardCal.weekStart);
+      _boardCal.weekStart.setDate(_boardCal.weekStart.getDate() + 7);
+      renderBoardCalendar(state.cards);
+    };
+  }
+}
+
+function _bindBoardCalDragDrop(container) {
+  let dragCardId = null;
+
+  // Cards are draggable
+  container.querySelectorAll("[data-bcal-card]").forEach((el) => {
+    el.addEventListener("dragstart", (e) => {
+      dragCardId = el.dataset.bcalCard;
+      e.dataTransfer.effectAllowed = "move";
+      el.classList.add("bcal-dragging");
+    });
+    el.addEventListener("dragend", () => {
+      dragCardId = null;
+      container.querySelectorAll(".bcal-dragging").forEach((x) => x.classList.remove("bcal-dragging"));
+      container.querySelectorAll(".bcal-drop-over").forEach((x) => x.classList.remove("bcal-drop-over"));
+    });
+    el.addEventListener("click", () => window.openCardDialog?.(el.dataset.bcalCard));
+  });
+
+  // Drop targets - the day body columns
+  container.querySelectorAll("[data-bcal-drop]").forEach((col) => {
+    col.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      container.querySelectorAll(".bcal-drop-over").forEach((x) => x.classList.remove("bcal-drop-over"));
+      col.classList.add("bcal-drop-over");
+    });
+    col.addEventListener("dragleave", (e) => {
+      if (!col.contains(e.relatedTarget)) col.classList.remove("bcal-drop-over");
+    });
+    col.addEventListener("drop", (e) => {
+      e.preventDefault();
+      col.classList.remove("bcal-drop-over");
+      if (!dragCardId) return;
+      const newDay = col.dataset.bcalDrop; // "YYYY-MM-DD"
+      const card = state.cards.find((c) => c.id === dragCardId);
+      if (!card) return;
+      // Preserve existing time if present, else 00:00
+      const existingTime = card.due?.slice(11, 16) || "00:00";
+      const newDue = `${newDay}T${existingTime}`;
+      if (newDue === card.due?.slice(0, 16)) return;
+      // Also update assignee to the parent who has custody on the new day,
+      // unless this card was saved with lockAssignee = true
+      if (!card.lockAssignee) {
+        const schedParent = getCustodyParentForDate(newDay);
+        if (schedParent) {
+          const idx = state.cards.findIndex((c) => c.id === dragCardId);
+          if (idx >= 0) {
+            state.cards[idx] = { ...state.cards[idx], assignee: schedParent };
+            if (window.saveCardToSupabase) window.saveCardToSupabase(state.cards[idx]).catch(() => {});
+          }
+        }
+      }
+      window.patchCardDue?.(dragCardId, newDue);
+    });
+  });
 }

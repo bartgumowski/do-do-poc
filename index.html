@@ -424,6 +424,15 @@
             <div class="board-view" id="boardView" aria-label="Coordination board"></div>
             <div class="list-view hidden" id="listView" aria-label="Coordination list"></div>
           </section>
+
+          <section class="board-cal-section" id="boardCalSection" aria-label="Week calendar">
+            <div class="board-cal-nav">
+              <button class="round-nav" type="button" id="boardCalPrev" aria-label="Previous week">&#8249;</button>
+              <span class="board-cal-nav-title" id="boardCalTitle"></span>
+              <button class="round-nav" type="button" id="boardCalNext" aria-label="Next week">&#8250;</button>
+            </div>
+            <div class="board-cal-grid" id="boardCalGrid"></div>
+          </section>
         </div>
 
         <section class="feature-module hidden" id="featureModule" aria-live="polite"></section>
@@ -573,6 +582,7 @@
                 </select>
                 <input id="dueInput" type="datetime-local" tabindex="-1" />
                 <input id="amountInput" tabindex="-1" />
+                <input id="lockAssigneeInput" type="checkbox" tabindex="-1" />
               </div>
             </section>
 
