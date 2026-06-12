@@ -2457,6 +2457,8 @@ function renderMessage(initial, name, text, time, own, tags = []) {
 
 function renderCalendarFeature(data) {
   window._lastFeatureData = data; // store for custody dialog refresh
+  // Week view is replaced by the Teams calendar below - redirect to month
+  if (calendarState.view === "week") calendarState.view = "month";
   syncCalendarEventsFromCards();
   const selectedDate = parseCalendarKey(calendarState.selected);
   const selectedEvents = eventsForDate(calendarState.selected);
@@ -2535,7 +2537,7 @@ function renderCalendarFeature(data) {
         <button class="round-nav" type="button" data-calendar-nav="1" aria-label="Next ${calendarState.view === "month" ? "month" : "week"}">›</button>
       </div>
       <div class="calendar-view-switcher" aria-label="Calendar views">
-        ${["month", "week", "day"].map((view) => `
+        ${["month", "day"].map((view) => `
           <button class="${calendarState.view === view ? "active" : ""}" type="button" data-calendar-view="${view}">${window.t?.(`cal.view.${view}`) ?? capitalize(view)}</button>
         `).join("")}
       </div>
