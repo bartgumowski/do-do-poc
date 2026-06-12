@@ -2053,6 +2053,33 @@ svg {
   height: 14px;
 }
 
+/* Calendar-import cards get a teal tint to distinguish from family-sync badge */
+.card-cal-import {
+  background: rgba(0, 150, 136, 0.10);
+  color: rgba(0, 110, 100, 0.85);
+}
+html[data-theme="dark"] .card-cal-import {
+  background: rgba(0, 188, 166, 0.15);
+  color: rgba(0, 220, 190, 0.9);
+}
+
+/* Import calendar settings */
+.import-cal-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.import-range-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.import-cal-action-row {
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .card-footer {
   display: flex;
   justify-content: space-between;

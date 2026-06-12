@@ -1,5 +1,5 @@
-const APP_VERSION = "0.11.0";
-const APP_VERSION_DATE = "2026-06-11";
+const APP_VERSION = "0.11.1";
+const APP_VERSION_DATE = "2026-06-12";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
 // To add a new market: add an entry to LOCALE_CONFIGS and add the corresponding
@@ -118,6 +118,10 @@ const defaultAutomationSettings = {
   defaultReminderPreset: "60",
   reminderDelivery: "calendar-and-app",
   everyoneCanEdit: true,
+  importCalendarId: null,
+  importCalendarName: null,
+  importCalendarDaysAhead: 30,
+  importCalendarSyncMode: null,
 };
 window.appStorage = window.appStorage || createStorage();
 const storage = window.appStorage;
@@ -402,6 +406,7 @@ const elements = {
   onboardingFamilyCalendarProvider: document.querySelector("#onboardingFamilyCalendarProvider"),
   onboardingWorkCalendar: document.querySelector("#onboardingWorkCalendar"),
   onboardingWorkCalendarProvider: document.querySelector("#onboardingWorkCalendarProvider"),
+  onboardingImportCalendar: document.querySelector("#onboardingImportCalendar"),
   onboardingAutomateReminders: document.querySelector("#onboardingAutomateReminders"),
   onboardingReminderPreset: document.querySelector("#onboardingReminderPreset"),
   onboardingAddChild: document.querySelector("#onboardingAddChild"),
@@ -1247,6 +1252,7 @@ function completeOnboarding(event) {
       automateReminders: Boolean(elements.onboardingAutomateReminders?.checked),
       reminderPreset: elements.onboardingReminderPreset?.value || "60",
       reminderDelivery: "calendar-and-app",
+      importCalendar: Boolean(elements.onboardingImportCalendar?.checked),
     },
     completedAt: new Date().toISOString(),
   };
@@ -1267,6 +1273,12 @@ function completeOnboarding(event) {
   applyOnboardingState(setup);
   persist();
   document.body.classList.remove("onboarding-locked");
+  // If user opted in to calendar import, nudge them to finish setup in Settings
+  if (setup.calendar?.importCalendar) {
+    setTimeout(() => {
+      showToast("Go to Settings > Calendar connections to pick which calendar to import.");
+    }, 1200);
+  }
   // Save family, profile, children, and pair to Supabase
   if (window.saveOnboardingToSupabase && window.getCurrentUserId?.()) {
     window.saveOnboardingToSupabase(setup, window.getCurrentUserId()).then((result) => {
@@ -1674,6 +1686,12 @@ function renderUnifiedCard(card, options = {}) {
         <div class="card-sync">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v4M17 3v4M4 11h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
           <span>${card.googleCalendar.provider === "outlook" ? "Outlook" : "Google Calendar"}</span>
+        </div>
+      ` : ""}
+      ${card.calendarImport ? `
+        <div class="card-sync card-cal-import" title="${card.calendarImport.syncMode === "two-way" ? "Two-way sync" : "Imported from calendar"}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/></svg>
+          <span>${escapeHtml(card.calendarImport.calendarName || "Calendar")}</span>
         </div>
       ` : ""}
 
@@ -3341,6 +3359,10 @@ async function saveCard(event) {
     // Also push to Apple Calendar if connected
     if (card.due && window.pushCardToAppleCalendar) {
       window.pushCardToAppleCalendar(savedCard).catch(() => {});
+    }
+    // Two-way sync: push edits back to the source import calendar
+    if (savedCard.calendarImport?.syncMode === "two-way" && window.updateImportedCalendarEvent) {
+      window.updateImportedCalendarEvent(savedCard).catch(() => {});
     }
     if (window.saveCardToSupabase) {
       try {

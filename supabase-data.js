@@ -85,6 +85,7 @@ function cardToDbRow(card, pairId, userId) {
       comments: card.comments || [],
       reminder: card.reminder || null,
       googleCalendar: card.googleCalendar || null,
+      calendarImport: card.calendarImport || null,
       acknowledged: card.acknowledged || false,
       createdAt: card.createdAt || Date.now(),
     },
@@ -107,6 +108,7 @@ function dbRowToCard(row) {
     comments: meta.comments || [],
     reminder: meta.reminder || null,
     googleCalendar: meta.googleCalendar || null,
+    calendarImport: meta.calendarImport || null,
     acknowledged: meta.acknowledged || false,
     createdAt: meta.createdAt || new Date(row.created_at).getTime(),
     payment_intent_id: row.payment_intent_id || null,
@@ -605,6 +607,9 @@ async function initGoogleCalendar(session) {
     _initFamilyCalendar(token),
     _loadCoParentBusySlots(),
   ]);
+
+  // Auto-sync import calendar if configured
+  _autoSyncImportCalendar().catch(() => {});
 }
 
 // ─── Level 1: Work calendar busy blocks ───────────────────────────────────────
@@ -933,6 +938,182 @@ async function deleteCardFromFamilyCalendar(card) {
   } catch (err) {
     console.warn("Delete from family calendar failed:", err.message);
   }
+}
+
+// ─── Calendar Import feature ──────────────────────────────────────────────────
+// Lets users pull events from any Google Calendar they own into Do-Do as cards.
+// Cards created this way get a calendarImport metadata block so they show a
+// distinct badge and (optionally) push edits back to the source calendar.
+
+async function listUserCalendars() {
+  const token = await _ensureFreshGoogleToken();
+  if (!token) return [];
+  try {
+    const res = await _gcalFetch(
+      "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader",
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.items || []).map((cal) => ({
+      id: cal.id,
+      name: cal.summary || cal.id,
+      primary: Boolean(cal.primary),
+      backgroundColor: cal.backgroundColor || "#4285f4",
+    }));
+  } catch (err) {
+    console.warn("listUserCalendars failed:", err.message);
+    return [];
+  }
+}
+
+async function importCalendarAsCards(calendarId, calendarName, daysAhead, syncMode) {
+  if (!calendarId) return { created: 0, updated: 0, total: 0 };
+  const token = await _ensureFreshGoogleToken();
+  if (!token) return { created: 0, updated: 0, total: 0 };
+
+  try {
+    const now = new Date();
+    const endDate = new Date(now.getTime() + (Math.max(1, daysAhead || 30)) * 24 * 60 * 60 * 1000);
+    const url = new URL(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
+    );
+    url.searchParams.set("timeMin", now.toISOString());
+    url.searchParams.set("timeMax", endDate.toISOString());
+    url.searchParams.set("maxResults", "250");
+    url.searchParams.set("singleEvents", "true");
+    url.searchParams.set("orderBy", "startTime");
+
+    const res = await _gcalFetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return { created: 0, updated: 0, total: 0 };
+
+    const data = await res.json();
+    const events = (data.items || []).filter((e) => e.status !== "cancelled");
+
+    // Build lookup of existing imported cards by Google event ID
+    const existingByEventId = {};
+    if (typeof state !== "undefined" && Array.isArray(state.cards)) {
+      for (const card of state.cards) {
+        if (card.calendarImport?.eventId) {
+          existingByEventId[card.calendarImport.eventId] = card;
+        }
+      }
+    }
+
+    let created = 0, updated = 0;
+
+    for (const event of events) {
+      const existing = existingByEventId[event.id];
+      const allDay = Boolean(event.start?.date && !event.start?.dateTime);
+      // For all-day events, set time to 09:00 local so the card gets a sensible due time
+      const due = event.start?.dateTime || (event.start?.date ? `${event.start.date}T09:00:00` : null);
+
+      const importMeta = {
+        eventId: event.id,
+        calendarId,
+        calendarName: calendarName || calendarId,
+        syncMode: syncMode || "import-only",
+        importedAt: existing?.calendarImport?.importedAt || new Date().toISOString(),
+        lastSyncedAt: new Date().toISOString(),
+        source: "gcal-import",
+        htmlLink: event.htmlLink || null,
+        allDay,
+      };
+
+      if (existing) {
+        // For two-way sync, update the card if the event title/time changed
+        if (syncMode === "two-way") {
+          const changed =
+            existing.title !== (event.summary || "Calendar event") ||
+            existing.due !== due ||
+            existing.details !== (event.description || "");
+          if (changed) {
+            const updated_card = {
+              ...existing,
+              title: event.summary || "Calendar event",
+              details: event.description || "",
+              due: due || existing.due,
+              calendarImport: importMeta,
+            };
+            await saveCardToSupabase(updated_card);
+            updated++;
+          }
+        }
+      } else {
+        // Create a new card for this event
+        const newCard = {
+          id: `gcal-import-${event.id}`,
+          title: event.summary || "Calendar event",
+          details: event.description || "",
+          due: due || "",
+          status: "To Do",
+          topic: "Schedule",
+          type: "Task",
+          assignee: "",
+          child: "",
+          amount: "",
+          comments: [],
+          reminder: null,
+          googleCalendar: null,
+          acknowledged: false,
+          createdAt: Date.now(),
+          calendarImport: importMeta,
+        };
+        await saveCardToSupabase(newCard);
+        created++;
+      }
+    }
+
+    return { created, updated, total: events.length };
+  } catch (err) {
+    console.warn("importCalendarAsCards failed:", err.message);
+    return { created: 0, updated: 0, total: 0 };
+  }
+}
+
+// Push a card edit back to the source calendar event (two-way sync)
+async function updateImportedCalendarEvent(card) {
+  const imp = card?.calendarImport;
+  if (!imp?.eventId || !imp?.calendarId || imp.syncMode !== "two-way") return;
+
+  const token = await _ensureFreshGoogleToken();
+  if (!token) return;
+
+  try {
+    const due = card.due ? new Date(card.due) : null;
+    const start = due ? due.toISOString() : null;
+    const end = due ? new Date(due.getTime() + 60 * 60 * 1000).toISOString() : null;
+
+    const eventBody = {
+      summary: card.title || "Do-Do event",
+      description: card.details || "",
+      ...(start && { start: { dateTime: start }, end: { dateTime: end } }),
+    };
+
+    await _gcalFetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(imp.calendarId)}/events/${encodeURIComponent(imp.eventId)}`,
+      {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(eventBody),
+      }
+    );
+  } catch (err) {
+    console.warn("updateImportedCalendarEvent failed:", err.message);
+  }
+}
+
+// Auto-sync on app load if the user has configured an import calendar
+async function _autoSyncImportCalendar() {
+  let settings;
+  try {
+    settings = JSON.parse(localStorage.getItem("kinship-automation-settings-v2") || "{}");
+  } catch {
+    return;
+  }
+  const { importCalendarId, importCalendarName, importCalendarDaysAhead, importCalendarSyncMode } = settings;
+  if (!importCalendarId || !importCalendarSyncMode) return;
+  await importCalendarAsCards(importCalendarId, importCalendarName, importCalendarDaysAhead, importCalendarSyncMode);
 }
 
 // ─── Merge events for the calendar view ───────────────────────────────────────
@@ -1278,6 +1459,9 @@ window.initGoogleCalendar = initGoogleCalendar;
 window.getGoogleCalendarEvents = getGoogleCalendarEvents;
 window.pushCardToFamilyCalendar = pushCardToFamilyCalendar;
 window.deleteCardFromFamilyCalendar = deleteCardFromFamilyCalendar;
+window.listUserCalendars = listUserCalendars;
+window.importCalendarAsCards = importCalendarAsCards;
+window.updateImportedCalendarEvent = updateImportedCalendarEvent;
 window.initAppleCalendar = initAppleCalendar;
 window.pushCardToAppleCalendar = pushCardToAppleCalendar;
 window.deleteCardFromAppleCalendar = deleteCardFromAppleCalendar;

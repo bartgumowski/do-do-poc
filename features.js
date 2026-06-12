@@ -1041,6 +1041,84 @@ function bindAutomationSettings() {
     window.switchModule("settings");
   });
 
+  // ─── Calendar Import wiring ───────────────────────────────────────────────────
+  const importCalSelect   = featureModule.querySelector("#importCalendarSelect");
+  const refreshCalListBtn = featureModule.querySelector("#refreshCalendarListBtn");
+  const importDaysInput   = featureModule.querySelector("#importCalDaysAhead");
+  const importSyncMode    = featureModule.querySelector("#importCalSyncMode");
+  const importNowBtn      = featureModule.querySelector("#runCalendarImportBtn");
+  const importStatusMsg   = featureModule.querySelector("#importCalStatusMsg");
+
+  async function _loadCalendarList() {
+    if (!importCalSelect) return;
+    if (!window.listUserCalendars) {
+      importCalSelect.innerHTML = '<option value="">Sign in with Google first</option>';
+      return;
+    }
+    importCalSelect.innerHTML = '<option value="">Loading...</option>';
+    importCalSelect.disabled = true;
+    const cals = await window.listUserCalendars().catch(() => []);
+    importCalSelect.disabled = false;
+    if (!cals.length) {
+      importCalSelect.innerHTML = '<option value="">No calendars found - check Google sign-in</option>';
+      return;
+    }
+    const currentId = window.getAutomationSettings?.().importCalendarId || "";
+    importCalSelect.innerHTML = '<option value="">-- pick a calendar --</option>' +
+      cals.map((c) => {
+        const selected = c.id === currentId ? " selected" : "";
+        const label = c.name + (c.primary ? " (primary)" : "");
+        return `<option value="${escapeHtml(c.id)}" data-name="${escapeHtml(c.name)}"${selected}>${escapeHtml(label)}</option>`;
+      }).join("");
+  }
+
+  // Load calendar list on settings open
+  _loadCalendarList();
+  refreshCalListBtn?.addEventListener("click", _loadCalendarList);
+
+  importNowBtn?.addEventListener("click", async () => {
+    const calId   = importCalSelect?.value?.trim();
+    const calName = importCalSelect?.options[importCalSelect.selectedIndex]?.dataset?.name || calId;
+    const days    = parseInt(importDaysInput?.value || "30", 10) || 30;
+    const mode    = importSyncMode?.value || "import-only";
+
+    if (!calId) {
+      showFeatureToast("Pick a calendar first.");
+      return;
+    }
+
+    // Save settings before importing
+    window.updateAutomationSettings?.({
+      importCalendarId:       calId,
+      importCalendarName:     calName,
+      importCalendarDaysAhead: days,
+      importCalendarSyncMode: mode,
+    });
+
+    const btn = importNowBtn;
+    btn.textContent = "Importing...";
+    btn.disabled = true;
+    if (importStatusMsg) importStatusMsg.innerHTML = "<em>Importing...</em>";
+
+    try {
+      const result = await window.importCalendarAsCards(calId, calName, days, mode);
+      const msg = result.created
+        ? `Imported ${result.created} new card${result.created !== 1 ? "s" : ""}${result.updated ? `, updated ${result.updated}` : ""} from ${escapeHtml(calName)}.`
+        : result.updated
+          ? `Updated ${result.updated} card${result.updated !== 1 ? "s" : ""}.`
+          : `No new events found in the next ${days} days.`;
+      showFeatureToast(msg);
+      if (importStatusMsg) importStatusMsg.innerHTML = `<em>Last sync: <strong>${escapeHtml(calName)}</strong> - ${result.total} event${result.total !== 1 ? "s" : ""} checked</em>`;
+      window.render?.();
+    } catch (err) {
+      showFeatureToast("Import failed. Check your Google connection.");
+      if (importStatusMsg) importStatusMsg.innerHTML = "<em>Import failed - try again.</em>";
+    } finally {
+      btn.textContent = "Import now";
+      btn.disabled = false;
+    }
+  });
+
   // Co-parent calendar status - async update
   const coParentStatusEl = featureModule.querySelector("#coParentCalStatus");
   if (coParentStatusEl) {
@@ -3560,6 +3638,55 @@ function renderSpecialPanel(moduleName, part = "all") {
              </div>`
         }
         `; })()}
+      </section>
+
+      <section class="feature-panel calendar-import-settings">
+        <div class="feature-panel-header">
+          <h3>Import from Google Calendar</h3>
+          <span class="feature-badge ${automation.importCalendarId ? "badge-connected" : "badge-pending"}">${automation.importCalendarId ? "Active" : "Set up"}</span>
+        </div>
+        <p class="feature-note">Pull events from any Google Calendar into your Do-Do board as cards. Updates automatically on each app load.</p>
+        <div class="settings-control-list">
+          <div class="settings-connection-row">
+            <span>
+              <strong>Calendar to import</strong>
+              <em>Pick which of your Google Calendars to import events from.</em>
+            </span>
+            <div class="import-cal-selector">
+              <select id="importCalendarSelect">
+                <option value="">${automation.importCalendarId ? "Loading..." : "-- pick a calendar --"}</option>
+                ${automation.importCalendarId ? `<option value="${escapeHtml(automation.importCalendarId)}" selected>${escapeHtml(automation.importCalendarName || automation.importCalendarId)}</option>` : ""}
+              </select>
+              <button class="ghost-button" type="button" id="refreshCalendarListBtn" title="Refresh list">&#8635;</button>
+            </div>
+          </div>
+          <div class="settings-connection-row">
+            <span>
+              <strong>Import range</strong>
+              <em>How many days ahead to import events.</em>
+            </span>
+            <div class="import-range-selector">
+              <input type="number" id="importCalDaysAhead" min="7" max="365" value="${automation.importCalendarDaysAhead || 30}" style="width:4.5rem;text-align:center;" />
+              <span>days</span>
+            </div>
+          </div>
+          <div class="settings-connection-row">
+            <span>
+              <strong>Sync mode</strong>
+              <em>Import only: pull events as read-only cards. Two-way: editing a card also updates the calendar event.</em>
+            </span>
+            <select id="importCalSyncMode">
+              <option value="import-only" ${automation.importCalendarSyncMode !== "two-way" ? "selected" : ""}>Import only</option>
+              <option value="two-way" ${automation.importCalendarSyncMode === "two-way" ? "selected" : ""}>Two-way sync</option>
+            </select>
+          </div>
+          <div class="settings-connection-row import-cal-action-row">
+            <span id="importCalStatusMsg">
+              ${automation.importCalendarId ? `<em>Last source: <strong>${escapeHtml(automation.importCalendarName || automation.importCalendarId)}</strong></em>` : "<em>No calendar linked yet.</em>"}
+            </span>
+            <button class="secondary-button" type="button" id="runCalendarImportBtn">Import now</button>
+          </div>
+        </div>
       </section>
 
       <section class="feature-panel coparent-calendar-section">
