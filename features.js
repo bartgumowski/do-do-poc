@@ -1315,10 +1315,13 @@ function _renderShoppingBoard(lists) {
         saveShoppingLists(nextLists);
         _renderShoppingBoard(nextLists);
       } else {
-        // Supabase item (UUID)
+        // Supabase item (UUID) - also scrub from localStorage cache so re-render works even if Supabase refresh is slow
         await window.deleteShoppingItem?.(id);
+        const nextLists = loadShoppingLists();
+        ["groceries", "other"].forEach((k) => { nextLists[k] = (nextLists[k] || []).filter((item) => item.id !== id); });
+        saveShoppingLists(nextLists);
         const refreshed = await window.loadShoppingItems?.();
-        if (refreshed) _renderShoppingBoard(refreshed);
+        _renderShoppingBoard(refreshed || nextLists);
       }
       showFeatureToast(window.t?.("toast.removed") ?? "Removed");
     });
