@@ -2605,7 +2605,28 @@ function renderCalendarFeature(data) {
       </div>
     </section>
     </div>
+
+    <!-- Teams-style calendar below the main calendar content -->
+    <section class="board-cal-section cal-page-variant" id="calPageBcalSection" aria-label="Teams calendar">
+      <div class="board-cal-nav">
+        <button class="round-nav bcal-edge-btn" type="button" id="calPageBcalPrev" aria-label="Previous">&#8249;</button>
+        <div class="board-cal-nav-center">
+          <span class="board-cal-nav-title" id="calPageBcalTitle"></span>
+          <div class="bcal-toggle">
+            <button class="bcal-toggle-btn active" type="button" id="calPageBcalToggleWeek">Week</button>
+            <button class="bcal-toggle-btn" type="button" id="calPageBcalToggle3Day">3 Days</button>
+          </div>
+        </div>
+        <button class="round-nav bcal-edge-btn" type="button" id="calPageBcalNext" aria-label="Next">&#8250;</button>
+      </div>
+      <div class="board-cal-grid-wrap" id="calPageBcalGrid"></div>
+    </section>
   `;
+
+  // Render the shared Teams calendar into the calendar page slot
+  if (typeof renderBoardCalendar === "function") {
+    renderBoardCalendar(window._lastCards || []);
+  }
 
   featureModule.querySelectorAll(".feature-action").forEach((button) => {
     button.addEventListener("click", () => {

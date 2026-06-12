@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do-Do UX Audit - Feature Map & Journey Maps</title>
+<style>
+  :root {
+    --brand: #65d6c6;
+    --brand-dark: #3bb8a7;
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --surface2: #f0f2f5;
+    --border: #e2e6ea;
+    --text: #1a1f2e;
+    --text2: #5a6477;
+    --text3: #8a94a6;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --pink: #ec4899;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    background: linear-gradient(135deg, #1a1f2e 0%, #2a3142 100%);
+    color: white;
+    padding: 40px 48px 32px;
+  }
+  .page-header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .page-header h1 span { color: var(--brand); }
+  .page-header p { color: #9ca3b8; margin-top: 6px; font-size: 15px; }
+  .header-meta { display: flex; gap: 24px; margin-top: 20px; }
+  .header-meta .pill {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    color: #c5cae0;
+  }
+
+  /* ── Nav ── */
+  .sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 48px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+  }
+  .sticky-nav a {
+    text-decoration: none;
+    color: var(--text2);
+    padding: 12px 16px;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .sticky-nav a:hover { color: var(--text); border-bottom-color: var(--border); }
+  .sticky-nav a.active { color: var(--brand-dark); border-bottom-color: var(--brand); }
+
+  /* ── Content ── */
+  .content { max-width: 1200px; margin: 0 auto; padding: 40px 48px; }
+
+  /* ── Section ── */
+  .section { margin-bottom: 64px; }
+  .section-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title .icon {
+    width: 32px; height: 32px;
+    background: var(--brand);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    color: white;
+    flex-shrink: 0;
+  }
+  .section-desc { color: var(--text2); margin-bottom: 28px; font-size: 14px; }
+
+  /* ── Feature Map ── */
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+  .module-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .module-card-header {
+    padding: 16px 20px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .module-icon {
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .module-card-header h3 { font-size: 15px; font-weight: 600; }
+  .module-card-header p { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .feature-list { padding: 12px 0; }
+  .feature-item {
+    padding: 6px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .feature-item:hover { background: var(--bg); }
+  .feature-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--brand);
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .feature-item .tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .tag-ai { background: #f3e8ff; color: #7c3aed; }
+  .tag-paid { background: #fef3c7; color: #92400e; }
+  .tag-new { background: #dcfce7; color: #166534; }
+
+  /* ── Journey Maps ── */
+  .journey-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 32px;
+    overflow: hidden;
+  }
+  .journey-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .journey-icon {
+    width: 44px; height: 44px;
+    border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .journey-header h3 { font-size: 16px; font-weight: 700; }
+  .journey-header p { font-size: 13px; color: var(--text2); margin-top: 3px; }
+  .journey-meta { display: flex; gap: 12px; margin-top: 8px; }
+  .journey-meta-pill {
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    background: var(--bg);
+    color: var(--text2);
+    border: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  /* Journey steps row */
+  .journey-steps {
+    padding: 24px;
+    overflow-x: auto;
+  }
+  .steps-scroll {
+    display: flex;
+    gap: 0;
+    min-width: max-content;
+  }
+  .step {
+    position: relative;
+    width: 160px;
+    flex-shrink: 0;
+  }
+  .step:last-child { width: 140px; }
+  .step-connector {
+    position: absolute;
+    top: 19px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+  .step:last-child .step-connector { display: none; }
+  .step-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 8px;
+  }
+  .step-circle {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+  .step-circle.active {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: white;
+  }
+  .step-circle.decision {
+    border-color: var(--amber);
+    background: #fffbeb;
+    color: var(--amber);
+  }
+  .step-circle.error {
+    border-color: var(--red);
+    background: #fef2f2;
+    color: var(--red);
+  }
+  .step-circle.success {
+    border-color: var(--green);
+    background: #f0fdf4;
+    color: var(--green);
+  }
+  .step-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .step-sub {
+    font-size: 10px;
+    text-align: center;
+    color: var(--text3);
+    line-height: 1.3;
+  }
+
+  /* Journey rows: emotion + friction + touchpoint */
+  .journey-rows {
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .journey-row {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    min-width: max-content;
+  }
+  .journey-row:last-child { border-bottom: none; }
+  .row-label {
+    width: 120px;
+    flex-shrink: 0;
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+  }
+  .row-cells {
+    display: flex;
+    flex: 1;
+  }
+  .row-cell {
+    width: 160px;
+    flex-shrink: 0;
+    padding: 10px 12px;
+    border-right: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.4;
+  }
+  .row-cell:last-child { border-right: none; }
+
+  /* Emotion emojis */
+  .emotion { font-size: 18px; display: block; margin-bottom: 3px; }
+
+  /* Friction items */
+  .friction-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #fef2f2;
+    color: #b91c1c;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    margin-bottom: 3px;
+    font-weight: 500;
+  }
+  .friction-item::before { content: "!"; font-weight: 700; }
+  .opportunity-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f0fdf4;
+    color: #166534;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    margin-bottom: 3px;
+    font-weight: 500;
+  }
+  .opportunity-item::before { content: "+"; font-weight: 700; }
+
+  /* Summary bar */
+  .journey-summary {
+    padding: 16px 24px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .summary-block { font-size: 12px; }
+  .summary-block strong { display: block; color: var(--text); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; color: var(--text3); }
+
+  /* Colors for module icons */
+  .bg-teal { background: #ccfbf1; }
+  .bg-blue { background: #dbeafe; }
+  .bg-amber { background: #fef3c7; }
+  .bg-green { background: #dcfce7; }
+  .bg-purple { background: #f3e8ff; }
+  .bg-red { background: #fee2e2; }
+  .bg-pink { background: #fce7f3; }
+  .bg-slate { background: #e2e8f0; }
+  .bg-orange { background: #ffedd5; }
+  .bg-indigo { background: #e0e7ff; }
+
+  /* ── Separator ── */
+  .sep { height: 1px; background: var(--border); margin: 8px 0 24px; }
+
+  /* Print */
+  @media print {
+    .sticky-nav { display: none; }
+    .journey-card { break-inside: avoid; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .toc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .toc-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .toc-item:hover { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(101,214,198,0.15); }
+  .toc-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Do-Do <span>UX Audit</span></h1>
+  <p>Feature Map + User Journey Maps - v0.11.0 - June 2026</p>
+  <div class="header-meta">
+    <span class="pill">Product: coordination app for co-parents</span>
+    <span class="pill">Markets: Poland (pilot), CH, DE/AT</span>
+    <span class="pill">Platform: PWA (web + mobile)</span>
+    <span class="pill">6 modules + onboarding</span>
+    <span class="pill">10 user journeys mapped</span>
+  </div>
+</div>
+
+<nav class="sticky-nav">
+  <a href="#feature-map" class="active">Feature Map</a>
+  <a href="#j1">1. Sign Up</a>
+  <a href="#j2">2. Onboard</a>
+  <a href="#j3">3. Invite Co-parent</a>
+  <a href="#j4">4. Create a Card</a>
+  <a href="#j5">5. Respond to a Card</a>
+  <a href="#j6">6. Expense Flow</a>
+  <a href="#j7">7. Shopping List</a>
+  <a href="#j8">8. Custody Calendar</a>
+  <a href="#j9">9. Calendar Sync</a>
+  <a href="#j10">10. Upgrade</a>
+</nav>
+
+<div class="content">
+
+<!-- ======================================================= FEATURE MAP -->
+<section class="section" id="feature-map">
+  <div class="section-title">
+    <div class="icon">&#9783;</div>
+    Feature Map
+  </div>
+  <p class="section-desc">All features grouped by module. <span style="background:#f3e8ff;color:#7c3aed;padding:1px 6px;border-radius:8px;font-size:11px;font-weight:600;">AI</span> = AI-powered &nbsp; <span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;font-size:11px;font-weight:600;">PAID</span> = requires Family plan</p>
+  <div class="module-grid">
+
+    <!-- Auth -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-slate">&#128274;</div>
+        <div>
+          <h3>Authentication</h3>
+          <p>Sign in, verification, guest access</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>Sign in with Google OAuth</div>
+        <div class="feature-item"><div class="feature-dot"></div>Sign in with Apple</div>
+        <div class="feature-item"><div class="feature-dot"></div>Email + password sign in / sign up</div>
+        <div class="feature-item"><div class="feature-dot"></div>Email verification gate</div>
+        <div class="feature-item"><div class="feature-dot"></div>Guest preview mode (read-only board)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Invite token acceptance flow</div>
+        <div class="feature-item"><div class="feature-dot"></div>Session persistence (PWA restart)</div>
+      </div>
+    </div>
+
+    <!-- Onboarding -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-teal">&#127775;</div>
+        <div>
+          <h3>Onboarding</h3>
+          <p>First-run setup wizard</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>Parent A + Co-parent name entry</div>
+        <div class="feature-item"><div class="feature-dot"></div>Co-parent invite by email</div>
+        <div class="feature-item"><div class="feature-dot"></div>First child name entry</div>
+        <div class="feature-item"><div class="feature-dot"></div>Pet name entry</div>
+        <div class="feature-item"><div class="feature-dot"></div>Family calendar sync setup (Google / Apple)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Work calendar sync setup</div>
+        <div class="feature-item"><div class="feature-dot"></div>Reminder automation toggle + preset</div>
+        <div class="feature-item"><div class="feature-dot"></div>Seed demo cards on first load</div>
+      </div>
+    </div>
+
+    <!-- Board -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-blue">&#128203;</div>
+        <div>
+          <h3>Board</h3>
+          <p>Kanban coordination board - primary view</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>3-column kanban: To Decide / Mine / Done</div>
+        <div class="feature-item"><div class="feature-dot"></div>Daily summary panel (today's agenda)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Attention strip (cards needing response)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Inline quick-add card capture</div>
+        <div class="feature-item"><div class="feature-dot"></div>AI natural language card creation <span class="tag tag-ai">AI</span><span class="tag tag-paid">PAID</span></div>
+        <div class="feature-item"><div class="feature-dot"></div>Voice input for card creation <span class="tag tag-ai">AI</span><span class="tag tag-paid">PAID</span></div>
+        <div class="feature-item"><div class="feature-dot"></div>Card types: Request, Event, Expense, Info, etc.</div>
+        <div class="feature-item"><div class="feature-dot"></div>Topics: Schedule, School, Medical, Expenses, General</div>
+        <div class="feature-item"><div class="feature-dot"></div>Assignee + child tagging</div>
+        <div class="feature-item"><div class="feature-dot"></div>Due date + amount fields</div>
+        <div class="feature-item"><div class="feature-dot"></div>Archive section</div>
+        <div class="feature-item"><div class="feature-dot"></div>List view toggle</div>
+        <div class="feature-item"><div class="feature-dot"></div>Conflict detection <span class="tag tag-ai">AI</span></div>
+        <div class="feature-item"><div class="feature-dot"></div>AI conflict resolution suggestions <span class="tag tag-ai">AI</span></div>
+        <div class="feature-item"><div class="feature-dot"></div>Presence indicator (partner online)</div>
+      </div>
+    </div>
+
+    <!-- Card Dialog -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-indigo">&#128196;</div>
+        <div>
+          <h3>Card Detail Dialog</h3>
+          <p>Full card edit and collaboration</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>All field editing (title, topic, type, status, etc.)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Details / description field</div>
+        <div class="feature-item"><div class="feature-dot"></div>Comments thread</div>
+        <div class="feature-item"><div class="feature-dot"></div>Activity log</div>
+        <div class="feature-item"><div class="feature-dot"></div>Reminder setup (preset + custom time)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Recurrence rules</div>
+        <div class="feature-item"><div class="feature-dot"></div>Payment request panel (expense cards)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Receipt photo upload</div>
+        <div class="feature-item"><div class="feature-dot"></div>AI summary of card <span class="tag tag-ai">AI</span></div>
+        <div class="feature-item"><div class="feature-dot"></div>Acknowledge / confirm action</div>
+        <div class="feature-item"><div class="feature-dot"></div>Move to Done / archive</div>
+      </div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-green">&#128197;</div>
+        <div>
+          <h3>Calendar</h3>
+          <p>Shared schedule and custody view</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>Monthly grid with custody color coding</div>
+        <div class="feature-item"><div class="feature-dot"></div>Custody schedule: 7-7, 2-2-3, 5-2 patterns</div>
+        <div class="feature-item"><div class="feature-dot"></div>Day-level custody overrides</div>
+        <div class="feature-item"><div class="feature-dot"></div>Split-day custody</div>
+        <div class="feature-item"><div class="feature-dot"></div>Vacation schedule overlays</div>
+        <div class="feature-item"><div class="feature-dot"></div>Events from board cards</div>
+        <div class="feature-item"><div class="feature-dot"></div>Google Calendar 2-way sync <span class="tag tag-paid">PAID</span></div>
+        <div class="feature-item"><div class="feature-dot"></div>Apple CalDAV sync <span class="tag tag-paid">PAID</span></div>
+        <div class="feature-item"><div class="feature-dot"></div>Work calendar busy slots (privacy-safe)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Calendar change requests (propose / approve / decline)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Conflict detection between events</div>
+      </div>
+    </div>
+
+    <!-- Shopping -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-amber">&#128722;</div>
+        <div>
+          <h3>Shopping Lists</h3>
+          <p>Shared real-time grocery lists</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>Default lists: Groceries + Other</div>
+        <div class="feature-item"><div class="feature-dot"></div>Custom lists (create / delete)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Add item by text input</div>
+        <div class="feature-item"><div class="feature-dot"></div>Add item by voice / mic</div>
+        <div class="feature-item"><div class="feature-dot"></div>Paste multi-item (bulk add)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Tick off / mark bought</div>
+        <div class="feature-item"><div class="feature-dot"></div>Clear bought items</div>
+        <div class="feature-item"><div class="feature-dot"></div>Real-time sync with co-parent</div>
+        <div class="feature-item"><div class="feature-dot"></div>Bought items can become an expense</div>
+      </div>
+    </div>
+
+    <!-- Expenses -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-orange">&#128176;</div>
+        <div>
+          <h3>Expenses</h3>
+          <p>Shared cost tracking and payments</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>Expense cards with amount + topic</div>
+        <div class="feature-item"><div class="feature-dot"></div>Status flow: submitted - approved - disputed - paid</div>
+        <div class="feature-item"><div class="feature-dot"></div>Receipt photo upload</div>
+        <div class="feature-item"><div class="feature-dot"></div>Balance summary (who owes whom)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Payment request (Stripe PaymentIntent)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Hosted payment page (/pay/:id)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Apple Pay / Google Pay / card</div>
+        <div class="feature-item"><div class="feature-dot"></div>Custody period context for expenses</div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-pink">&#128276;</div>
+        <div>
+          <h3>Notifications</h3>
+          <p>Reminders, push, email</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>Web push notifications (VAPID)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Email reminders (cron, via Resend)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Reminder presets: 15m, 30m, 1h, 2h, 1d</div>
+        <div class="feature-item"><div class="feature-dot"></div>Custom reminder time</div>
+        <div class="feature-item"><div class="feature-dot"></div>Quiet hours settings</div>
+        <div class="feature-item"><div class="feature-dot"></div>Reminder delivery: calendar + app, or app only</div>
+        <div class="feature-item"><div class="feature-dot"></div>Test notification button</div>
+        <div class="feature-item"><div class="feature-dot"></div>Notification permission prompt (deferred)</div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-slate">&#9881;</div>
+        <div>
+          <h3>Settings</h3>
+          <p>Profile, family, integrations, account</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>Parent name editing</div>
+        <div class="feature-item"><div class="feature-dot"></div>Children CRUD (add, rename, remove)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Pets CRUD</div>
+        <div class="feature-item"><div class="feature-dot"></div>Caregivers CRUD</div>
+        <div class="feature-item"><div class="feature-dot"></div>Custody schedule config (type, colors, reference date)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Subscription management (Stripe portal)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Co-parent invite (link + email)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Theme: light / dark / system</div>
+        <div class="feature-item"><div class="feature-dot"></div>Language + currency selection</div>
+        <div class="feature-item"><div class="feature-dot"></div>GDPR: data export (JSON)</div>
+        <div class="feature-item"><div class="feature-dot"></div>GDPR: account deletion</div>
+      </div>
+    </div>
+
+    <!-- Subscription -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-purple">&#11088;</div>
+        <div>
+          <h3>Subscription</h3>
+          <p>Monetization - Family plan</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>Free tier (limited cards, no AI)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Family plan: monthly or annual billing</div>
+        <div class="feature-item"><div class="feature-dot"></div>14-day free trial</div>
+        <div class="feature-item"><div class="feature-dot"></div>Localized pricing: PLN / EUR / CHF</div>
+        <div class="feature-item"><div class="feature-dot"></div>Currency override in settings</div>
+        <div class="feature-item"><div class="feature-dot"></div>Stripe Checkout + Customer Portal</div>
+        <div class="feature-item"><div class="feature-dot"></div>Upgrade prompts at feature gates</div>
+        <div class="feature-item"><div class="feature-dot"></div>Past-due / trial status handling</div>
+      </div>
+    </div>
+
+    <!-- PWA / Offline -->
+    <div class="module-card">
+      <div class="module-card-header">
+        <div class="module-icon bg-teal">&#128246;</div>
+        <div>
+          <h3>PWA + Offline</h3>
+          <p>App shell, sync, install</p>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div>Service worker + offline cache</div>
+        <div class="feature-item"><div class="feature-dot"></div>Background sync (IndexedDB queue)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Last-page memory across PWA restarts</div>
+        <div class="feature-item"><div class="feature-dot"></div>Real-time sync via Supabase Realtime</div>
+        <div class="feature-item"><div class="feature-dot"></div>Presence indicators (partner online)</div>
+        <div class="feature-item"><div class="feature-dot"></div>PWA install banner (planned)</div>
+        <div class="feature-item"><div class="feature-dot"></div>Cookie consent banner + preferences</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ======================================================= JOURNEY MAPS -->
+<section class="section" id="journeys">
+  <div class="section-title">
+    <div class="icon">&#8594;</div>
+    User Journey Maps
+  </div>
+  <p class="section-desc">Step-by-step journeys for every major task. Each map shows steps, emotion, friction points, and opportunities.</p>
+
+  <div class="toc-grid">
+    <a class="toc-item" href="#j1"><div class="toc-num">1</div>Sign Up (new user)</a>
+    <a class="toc-item" href="#j2"><div class="toc-num">2</div>Onboarding setup</a>
+    <a class="toc-item" href="#j3"><div class="toc-num">3</div>Invite co-parent</a>
+    <a class="toc-item" href="#j4"><div class="toc-num">4</div>Create a card</a>
+    <a class="toc-item" href="#j5"><div class="toc-num">5</div>Respond to a card</a>
+    <a class="toc-item" href="#j6"><div class="toc-num">6</div>Expense + payment</a>
+    <a class="toc-item" href="#j7"><div class="toc-num">7</div>Shopping list</a>
+    <a class="toc-item" href="#j8"><div class="toc-num">8</div>Custody calendar</a>
+    <a class="toc-item" href="#j9"><div class="toc-num">9</div>Calendar sync setup</a>
+    <a class="toc-item" href="#j10"><div class="toc-num">10</div>Upgrade to Family plan</a>
+  </div>
+</section>
+
+<!-- ================================================== J1: Sign Up -->
+<div class="journey-card" id="j1">
+  <div class="journey-header">
+    <div class="journey-icon bg-slate">&#128274;</div>
+    <div>
+      <h3>Journey 1 - Sign Up (New User)</h3>
+      <p>A new user arrives at do-do.app for the first time and creates an account.</p>
+      <div class="journey-meta">
+        <span class="journey-meta-pill">Persona: Parent A (initiator)</span>
+        <span class="journey-meta-pill">Entry: direct URL, word of mouth</span>
+        <span class="journey-meta-pill">Critical: yes - first impression</span>
+      </div>
+    </div>
+  </div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">1</div>
+          <div class="step-label">Land on app</div>
+          <div class="step-sub">Auth screen shown</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle active">2</div>
+          <div class="step-label">Choose method</div>
+          <div class="step-sub">Google / Apple / email</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">3</div>
+          <div class="step-label">Authenticate</div>
+          <div class="step-sub">OAuth or form submit</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle decision">?</div>
+          <div class="step-label">Email verify?</div>
+          <div class="step-sub">OAuth = skip. Email = verify gate</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">5</div>
+          <div class="step-label">Verify email</div>
+          <div class="step-sub">(email only) click link in inbox</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle success">&#10003;</div>
+          <div class="step-label">Enter app</div>
+          <div class="step-sub">Onboarding screen shown</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-rows">
+    <div class="journey-row">
+      <div class="row-label">Emotion</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="emotion">&#128064;</span>Curious, hopeful. "Is this for me?"</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Easy choice. Recognizable options.</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Routine. Minor friction with OAuth pop-ups.</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Neutral - decision is invisible to user.</div>
+        <div class="row-cell"><span class="emotion">&#128542;</span>Frustrated. Inbox hunt interrupts momentum.</div>
+        <div class="row-cell"><span class="emotion">&#128513;</span>Relief and excitement to start.</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Touchpoint</div>
+      <div class="row-cells">
+        <div class="row-cell">Auth screen (landing)</div>
+        <div class="row-cell">Auth provider buttons</div>
+        <div class="row-cell">Google / Apple popup or form</div>
+        <div class="row-cell">System check (internal)</div>
+        <div class="row-cell">Verify email screen + inbox email</div>
+        <div class="row-cell">App loads, onboarding screen</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Friction</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="friction-item">No value prop on auth screen</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">OAuth pop-up blockers (mobile)</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">Email verify breaks flow</span><span class="friction-item">No resend button visible</span></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Opportunity</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="opportunity-item">Add 1-line tagline + screenshot to auth screen</span></div>
+        <div class="row-cell"><span class="opportunity-item">Add "Guest preview" CTA prominently</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Prominent resend + "check spam" tip</span><span class="opportunity-item">Auto-poll and advance when verified</span></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-summary">
+    <div class="summary-block"><strong>Goal</strong>Account created, onboarding starts</div>
+    <div class="summary-block"><strong>Biggest drop risk</strong>Email verification dead-end</div>
+    <div class="summary-block"><strong>Quick win</strong>Add tagline to auth screen so users know what the app does before signing up</div>
+  </div>
+</div>
+
+<!-- ================================================== J2: Onboarding -->
+<div class="journey-card" id="j2">
+  <div class="journey-header">
+    <div class="journey-icon bg-teal">&#127775;</div>
+    <div>
+      <h3>Journey 2 - Onboarding Setup</h3>
+      <p>First-time setup: naming parents, adding a child, optionally inviting co-parent and connecting calendars.</p>
+      <div class="journey-meta">
+        <span class="journey-meta-pill">Persona: Parent A (first account)</span>
+        <span class="journey-meta-pill">Frequency: once</span>
+        <span class="journey-meta-pill">Critical: yes - activates core value</span>
+      </div>
+    </div>
+  </div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle active">1</div>
+          <div class="step-label">See setup form</div>
+          <div class="step-sub">Single-page wizard</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">2</div>
+          <div class="step-label">Enter names</div>
+          <div class="step-sub">Parent A, co-parent, child</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">3</div>
+          <div class="step-label">Enter invite email</div>
+          <div class="step-sub">(optional) co-parent email</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">4</div>
+          <div class="step-label">Calendar choices</div>
+          <div class="step-sub">Family + work calendar toggles</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">5</div>
+          <div class="step-label">Reminder prefs</div>
+          <div class="step-sub">Auto-remind toggle + preset</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle success">&#10003;</div>
+          <div class="step-label">Submit</div>
+          <div class="step-sub">Board loads with seed cards</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-rows">
+    <div class="journey-row">
+      <div class="row-label">Emotion</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="emotion">&#128564;</span>Slightly overwhelmed. "How long is this?"</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Quick to fill. Feels personal and warm.</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Unsure. "Do I need to do this now?"</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Uncertain. Calendar connect is complex.</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Good - quick choice.</div>
+        <div class="row-cell"><span class="emotion">&#129321;</span>Excited. Board visible with real examples.</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Touchpoint</div>
+      <div class="row-cells">
+        <div class="row-cell">Onboarding screen (single form)</div>
+        <div class="row-cell">Text inputs for names</div>
+        <div class="row-cell">Email invite field</div>
+        <div class="row-cell">Calendar toggle + provider select</div>
+        <div class="row-cell">Reminder toggle + preset dropdown</div>
+        <div class="row-cell">Board with seed cards + invite toast</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Friction</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="friction-item">All fields on one screen - feels long</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">Invite email optional but feels like a blocker</span></div>
+        <div class="row-cell"><span class="friction-item">Calendar connect requires auth - out of scope here</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">No progress indicator</span><span class="friction-item">Can't add 2nd child here</span></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Opportunity</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="opportunity-item">Break into 2-3 steps with progress bar</span></div>
+        <div class="row-cell"><span class="opportunity-item">Pre-fill "Parent A" with user's real name from OAuth</span></div>
+        <div class="row-cell"><span class="opportunity-item">Make invite clearly optional with "do later" link</span></div>
+        <div class="row-cell"><span class="opportunity-item">Move calendar connect to Settings / post-onboard nudge</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Show celebratory "your board is ready" moment</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-summary">
+    <div class="summary-block"><strong>Goal</strong>Family configured, board ready</div>
+    <div class="summary-block"><strong>Biggest friction</strong>All fields on one screen; calendar connect complexity</div>
+    <div class="summary-block"><strong>Quick win</strong>Pre-fill Parent A name from OAuth; make invite email clearly skippable</div>
+  </div>
+</div>
+
+<!-- ================================================== J3: Invite -->
+<div class="journey-card" id="j3">
+  <div class="journey-header">
+    <div class="journey-icon bg-blue">&#128231;</div>
+    <div>
+      <h3>Journey 3 - Invite Co-parent (and acceptance)</h3>
+      <p>Sending an invite link to a co-parent and the co-parent accepting it and joining the family workspace.</p>
+      <div class="journey-meta">
+        <span class="journey-meta-pill">Personas: Parent A (sender) + Parent B (recipient)</span>
+        <span class="journey-meta-pill">2 sides: send + accept</span>
+        <span class="journey-meta-pill">Critical: yes - unlocks collaboration</span>
+      </div>
+    </div>
+  </div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">1</div>
+          <div class="step-label">Parent A goes to Settings</div>
+          <div class="step-sub">Finds invite panel</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle active">2</div>
+          <div class="step-label">Enter email + send</div>
+          <div class="step-sub">Or copies link manually</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">3</div>
+          <div class="step-label">Parent B gets email</div>
+          <div class="step-sub">Invite email from Resend</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">4</div>
+          <div class="step-label">Parent B clicks link</div>
+          <div class="step-sub">/invite/:token</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle decision">?</div>
+          <div class="step-label">Has account?</div>
+          <div class="step-sub">Yes: join. No: sign up first.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle">6</div>
+          <div class="step-label">Accept invite</div>
+          <div class="step-sub">Joined to same family</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-connector"></div>
+        <div class="step-inner">
+          <div class="step-circle success">&#10003;</div>
+          <div class="step-label">Shared board</div>
+          <div class="step-sub">Both parents see same cards</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-rows">
+    <div class="journey-row">
+      <div class="row-label">Emotion</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="emotion">&#128269;</span>Finding invite in settings - not obvious</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Simple. "Done."</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Parent B: "What is this app?"</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Neutral - link works</div>
+        <div class="row-cell"><span class="emotion">&#128542;</span>Forced sign-up if no account yet</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Clear confirmation</div>
+        <div class="row-cell"><span class="emotion">&#129321;</span>Both parents see shared board</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Touchpoint</div>
+      <div class="row-cells">
+        <div class="row-cell">Settings - invite panel (below subscription)</div>
+        <div class="row-cell">Email field + "Save and send invite" button</div>
+        <div class="row-cell">Invite email (Resend)</div>
+        <div class="row-cell">Invite screen (/invite/:token)</div>
+        <div class="row-cell">Auth screen (if new user)</div>
+        <div class="row-cell">Invite acceptance confirm</div>
+        <div class="row-cell">Board with shared cards</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Friction</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="friction-item">Invite buried in Settings - hard to find</span></div>
+        <div class="row-cell"><span class="friction-item">Button label "Zapisz i wyslij zaproszenie" is in Polish even for non-PL</span></div>
+        <div class="row-cell"><span class="friction-item">Email may land in spam</span><span class="friction-item">No context for Parent B about what the app is</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">Parent B must create account before joining - high drop risk</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Opportunity</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="opportunity-item">Surface invite prominently after onboarding</span></div>
+        <div class="row-cell"><span class="opportunity-item">Fix hardcoded Polish button label</span></div>
+        <div class="row-cell"><span class="opportunity-item">Invite email should show 1-2 sentences about Do-Do</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Allow Parent B to accept invite before creating account (deferred auth)</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-summary">
+    <div class="summary-block"><strong>Goal</strong>Both parents on shared workspace</div>
+    <div class="summary-block"><strong>Biggest drop risk</strong>Parent B forced to sign up before accepting</div>
+    <div class="summary-block"><strong>Quick win</strong>Add a "Invite co-parent" shortcut card on the board after onboarding, not just buried in Settings</div>
+  </div>
+</div>
+
+<!-- ================================================== J4: Create Card -->
+<div class="journey-card" id="j4">
+  <div class="journey-header">
+    <div class="journey-icon bg-indigo">&#10133;</div>
+    <div>
+      <h3>Journey 4 - Create a Card (3 paths)</h3>
+      <p>Adding a new coordination item to the board. Three entry paths: quick form, full form, or AI/voice.</p>
+      <div class="journey-meta">
+        <span class="journey-meta-pill">Frequency: daily core action</span>
+        <span class="journey-meta-pill">3 paths: Quick / Full / AI+Voice</span>
+        <span class="journey-meta-pill">Critical: yes - primary value action</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:16px 24px 0;font-size:12px;font-weight:600;color:var(--text3);">PATH A - Quick inline add (fastest)</div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle active">1</div><div class="step-label">Tap "+ Add"</div><div class="step-sub">Inline capture opens</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">2</div><div class="step-label">Type title</div><div class="step-sub">Short description</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">3</div><div class="step-label">Pick type/topic</div><div class="step-sub">Dropdowns</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle success">&#10003;</div><div class="step-label">Save</div><div class="step-sub">Card on board</div></div></div>
+    </div>
+  </div>
+
+  <div style="padding:8px 24px 0;font-size:12px;font-weight:600;color:var(--text3);">PATH B - Full card dialog</div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle active">1</div><div class="step-label">Tap "New card"</div><div class="step-sub">Full dialog opens</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">2</div><div class="step-label">Fill fields</div><div class="step-sub">Title, topic, type, assignee, child, due, amount</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">3</div><div class="step-label">Add details</div><div class="step-sub">Description text</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">4</div><div class="step-label">Set reminder</div><div class="step-sub">(optional)</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">5</div><div class="step-label">Set recurrence</div><div class="step-sub">(optional)</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle success">&#10003;</div><div class="step-label">Save</div><div class="step-sub">Card on board, partner synced</div></div></div>
+    </div>
+  </div>
+
+  <div style="padding:8px 24px 0;font-size:12px;font-weight:600;color:var(--text3);">PATH C - AI / Voice (Family plan)</div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle active">1</div><div class="step-label">Tap mic / AI</div><div class="step-sub">Voice or text input</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">2</div><div class="step-label">Speak / type</div><div class="step-sub">"Remind Leo dentist Friday 3pm"</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">3</div><div class="step-label">AI interprets</div><div class="step-sub">Claude Haiku extracts fields</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">4</div><div class="step-label">Review prefilled card</div><div class="step-sub">User corrects if needed</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle success">&#10003;</div><div class="step-label">Confirm + save</div><div class="step-sub">Card created instantly</div></div></div>
+    </div>
+  </div>
+
+  <div class="journey-rows">
+    <div class="journey-row">
+      <div class="row-label">Emotion</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="emotion">&#128522;</span>Path A: fast and easy. Satisfying.</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Path B: slightly tedious - many fields</div>
+        <div class="row-cell"><span class="emotion">&#129321;</span>Path C: feels magical when it works</div>
+        <div class="row-cell"><span class="emotion">&#128542;</span>Path C: frustrating if AI misreads</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Card on board = satisfaction</div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Friction</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="friction-item">Quick add requires min-viable fields still</span></div>
+        <div class="row-cell"><span class="friction-item">Path B: 6+ fields before card is created</span></div>
+        <div class="row-cell"><span class="friction-item">AI path behind paywall - free users can't use it</span></div>
+        <div class="row-cell"><span class="friction-item">Voice requires mic permission prompt</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Opportunity</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="opportunity-item">Make title-only quick add work with smart defaults</span></div>
+        <div class="row-cell"><span class="opportunity-item">Progressive disclosure: show advanced fields only on expand</span></div>
+        <div class="row-cell"><span class="opportunity-item">Let free users try AI once to create habit</span></div>
+        <div class="row-cell"><span class="opportunity-item">Pre-request mic permission during onboarding</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-summary">
+    <div class="summary-block"><strong>Goal</strong>Card saved, partner sees it instantly</div>
+    <div class="summary-block"><strong>Best path</strong>AI/Voice when it works - show it off</div>
+    <div class="summary-block"><strong>Quick win</strong>Allow title-only submission in quick add; AI fills in everything else</div>
+  </div>
+</div>
+
+<!-- ================================================== J5: Respond to Card -->
+<div class="journey-card" id="j5">
+  <div class="journey-header">
+    <div class="journey-icon bg-green">&#9993;</div>
+    <div>
+      <h3>Journey 5 - Respond to a Card</h3>
+      <p>Parent B receives a notification, opens the card, reads it, comments or acknowledges, and moves it to Done.</p>
+      <div class="journey-meta">
+        <span class="journey-meta-pill">Persona: Parent B (responder)</span>
+        <span class="journey-meta-pill">Entry: push notification or attention strip</span>
+        <span class="journey-meta-pill">Frequency: daily</span>
+      </div>
+    </div>
+  </div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle active">1</div><div class="step-label">Receive push</div><div class="step-sub">Notification on phone</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">2</div><div class="step-label">Tap notification</div><div class="step-sub">App opens on card</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">3</div><div class="step-label">Read card</div><div class="step-sub">Title, details, comments</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle decision">?</div><div class="step-label">Action needed?</div><div class="step-sub">Comment / Ack / Done / Dispute</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">5</div><div class="step-label">Add comment</div><div class="step-sub">Type reply</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">6</div><div class="step-label">Acknowledge / Done</div><div class="step-sub">Move status</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle success">&#10003;</div><div class="step-label">Partner notified</div><div class="step-sub">Status synced</div></div></div>
+    </div>
+  </div>
+  <div class="journey-rows">
+    <div class="journey-row">
+      <div class="row-label">Emotion</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="emotion">&#128276;</span>Alert. May feel urgent or anxious.</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Good deep link = no friction.</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Card is clear and skimmable.</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Deciding what to do - choice paralysis if unclear</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Quick reply - satisfying</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Done = closure</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Relief. Loop closed.</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Touchpoint</div>
+      <div class="row-cells">
+        <div class="row-cell">Push notification (OS)</div>
+        <div class="row-cell">Deep link -> card dialog</div>
+        <div class="row-cell">Card dialog - info section</div>
+        <div class="row-cell">Action buttons in card dialog</div>
+        <div class="row-cell">Comment input</div>
+        <div class="row-cell">Status change / ack button</div>
+        <div class="row-cell">Real-time sync to Parent A</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Friction</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="friction-item">Push requires permission - some users deny it</span></div>
+        <div class="row-cell"><span class="friction-item">Deep link may not work if PWA not installed</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">Ack vs comment vs Done actions not clearly differentiated</span></div>
+        <div class="row-cell"><span class="friction-item">Comment box not visible without scrolling on mobile</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Opportunity</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="opportunity-item">Offer email fallback with action link in body</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Bold the "what you need to do" part of the card details</span></div>
+        <div class="row-cell"><span class="opportunity-item">Large tappable action chips at bottom of card: Yes / No / Later</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">1-tap "Done" from the attention strip without opening dialog</span></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-summary">
+    <div class="summary-block"><strong>Goal</strong>Request acknowledged, loop closed</div>
+    <div class="summary-block"><strong>Key insight</strong>The response speed is a core value metric - reduce it as much as possible</div>
+    <div class="summary-block"><strong>Quick win</strong>Add Yes/No quick-reply chips to the attention strip cards</div>
+  </div>
+</div>
+
+<!-- ================================================== J6: Expense -->
+<div class="journey-card" id="j6">
+  <div class="journey-header">
+    <div class="journey-icon bg-orange">&#128176;</div>
+    <div>
+      <h3>Journey 6 - Expense + Payment</h3>
+      <p>Parent A submits a shared expense with receipt. Parent B approves and pays via Stripe.</p>
+      <div class="journey-meta">
+        <span class="journey-meta-pill">Personas: Parent A (submitter) + Parent B (payer)</span>
+        <span class="journey-meta-pill">Status flow: submitted - approved - paid</span>
+        <span class="journey-meta-pill">Involves: Stripe payment + receipt upload</span>
+      </div>
+    </div>
+  </div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle active">1</div><div class="step-label">Go to Expenses</div><div class="step-sub">Module tab</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">2</div><div class="step-label">Create expense card</div><div class="step-sub">Amount, topic, details</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">3</div><div class="step-label">Upload receipt</div><div class="step-sub">(optional) photo</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">4</div><div class="step-label">Request payment</div><div class="step-sub">Stripe PaymentIntent created</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">5</div><div class="step-label">Parent B sees card</div><div class="step-sub">Push / attention strip</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle decision">?</div><div class="step-label">Approve or dispute?</div><div class="step-sub"></div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">7</div><div class="step-label">Pay via /pay/:id</div><div class="step-sub">Apple Pay / Google Pay / card</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle success">&#10003;</div><div class="step-label">Paid status</div><div class="step-sub">Balance updated</div></div></div>
+    </div>
+  </div>
+  <div class="journey-rows">
+    <div class="journey-row">
+      <div class="row-label">Emotion</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="emotion">&#128522;</span>Navigation clear</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Form familiar but amount field placement unclear</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Receipt upload = trust builder</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Requesting feels transactional - slightly awkward</div>
+        <div class="row-cell"><span class="emotion">&#128542;</span>Parent B: feels put on the spot</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Dispute = potential conflict trigger</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Payment page is clean and fast</div>
+        <div class="row-cell"><span class="emotion">&#129321;</span>Done. No more awkward money talk.</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Friction</div>
+      <div class="row-cells">
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">Amount field is same as all other cards - easy to miss it's special</span></div>
+        <div class="row-cell"><span class="friction-item">Receipt upload UI not prominent</span></div>
+        <div class="row-cell"><span class="friction-item">Two steps: create card AND then request payment - not obvious</span></div>
+        <div class="row-cell"><span class="friction-item">Parent B may not know what "expenses" section is</span></div>
+        <div class="row-cell"><span class="friction-item">Dispute flow - where does it go? No clear resolution path</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Opportunity</div>
+      <div class="row-cells">
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Dedicated "New Expense" flow separate from generic card</span></div>
+        <div class="row-cell"><span class="opportunity-item">Camera icon with "Add receipt" as primary CTA</span></div>
+        <div class="row-cell"><span class="opportunity-item">Merge card creation + payment request into 1 step for expenses</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Define dispute flow - auto-create a discussion card</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-summary">
+    <div class="summary-block"><strong>Goal</strong>Expense settled, no awkward money conversations</div>
+    <div class="summary-block"><strong>Core value</strong>Removing the emotional friction of asking for money back</div>
+    <div class="summary-block"><strong>Quick win</strong>Prominent "New Expense" button on Expenses screen that shortcuts to amount+receipt fields directly</div>
+  </div>
+</div>
+
+<!-- ================================================== J7: Shopping -->
+<div class="journey-card" id="j7">
+  <div class="journey-header">
+    <div class="journey-icon bg-amber">&#128722;</div>
+    <div>
+      <h3>Journey 7 - Shopping List (Daily Use)</h3>
+      <p>Adding items to the shared list, checking off while shopping, clearing bought items.</p>
+      <div class="journey-meta">
+        <span class="journey-meta-pill">Frequency: daily / weekly</span>
+        <span class="journey-meta-pill">Context: often in-store on mobile</span>
+        <span class="journey-meta-pill">Key: speed and one-handed use</span>
+      </div>
+    </div>
+  </div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle active">1</div><div class="step-label">Open Shopping</div><div class="step-sub">Tab tap</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">2</div><div class="step-label">Select list</div><div class="step-sub">Groceries / Other / Custom</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">3</div><div class="step-label">Add item</div><div class="step-sub">Type, voice, or paste bulk</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">4</div><div class="step-label">In store: tick off</div><div class="step-sub">Tap to mark bought</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">5</div><div class="step-label">Clear bought</div><div class="step-sub">One button</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle success">&#10003;</div><div class="step-label">Real-time synced</div><div class="step-sub">Co-parent sees changes live</div></div></div>
+    </div>
+  </div>
+  <div class="journey-rows">
+    <div class="journey-row">
+      <div class="row-label">Emotion</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="emotion">&#128522;</span>Fast to reach</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Clear list options</div>
+        <div class="row-cell"><span class="emotion">&#129321;</span>Voice add = feels modern, hands-free</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Satisfying to tick off</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Clear bought = clean slate</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Co-parent additions appear live = magic</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Friction</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="friction-item">Shopping is 4th tab - not highest priority placement</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">Voice button location not immediately obvious</span></div>
+        <div class="row-cell"><span class="friction-item">Tick target size may be small on mobile</span></div>
+        <div class="row-cell"><span class="friction-item">"Clear bought" - easy to tap by accident</span></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Opportunity</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="opportunity-item">Promote Shopping to 2nd tab on mobile (frequent use)</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Floating mic button as main CTA</span></div>
+        <div class="row-cell"><span class="opportunity-item">Larger tap target for checkbox</span></div>
+        <div class="row-cell"><span class="opportunity-item">Undo snackbar after "Clear bought"</span></div>
+        <div class="row-cell"><span class="opportunity-item">Show "X just added milk" toast from partner</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-summary">
+    <div class="summary-block"><strong>Goal</strong>Both parents maintain one shared list effortlessly</div>
+    <div class="summary-block"><strong>Strength</strong>Real-time sync + voice input = key differentiator</div>
+    <div class="summary-block"><strong>Quick win</strong>Undo for "Clear bought" to prevent accidental data loss</div>
+  </div>
+</div>
+
+<!-- ================================================== J8: Custody Calendar -->
+<div class="journey-card" id="j8">
+  <div class="journey-header">
+    <div class="journey-icon bg-green">&#128337;</div>
+    <div>
+      <h3>Journey 8 - Set Up Custody Calendar</h3>
+      <p>Configuring the custody schedule, setting colors, adding a vacation override, and requesting a custody change.</p>
+      <div class="journey-meta">
+        <span class="journey-meta-pill">Frequency: setup once, occasional edits</span>
+        <span class="journey-meta-pill">Complexity: medium-high</span>
+        <span class="journey-meta-pill">Emotional weight: high (sensitive topic)</span>
+      </div>
+    </div>
+  </div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle active">1</div><div class="step-label">Open Calendar</div><div class="step-sub">Module tab</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">2</div><div class="step-label">See custody colours</div><div class="step-sub">Default 7-7 pattern shown</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">3</div><div class="step-label">Open schedule settings</div><div class="step-sub">Custody dialog</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">4</div><div class="step-label">Choose pattern</div><div class="step-sub">7-7 / 2-2-3 / 5-2</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">5</div><div class="step-label">Set reference date</div><div class="step-sub">When pattern starts</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">6</div><div class="step-label">Choose colours</div><div class="step-sub">Mine vs co-parent</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">7</div><div class="step-label">Add vacation</div><div class="step-sub">(optional) date range</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">8</div><div class="step-label">Request swap</div><div class="step-sub">Tap day -> change request</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle success">&#10003;</div><div class="step-label">Partner approves</div><div class="step-sub">Calendar updated</div></div></div>
+    </div>
+  </div>
+  <div class="journey-rows">
+    <div class="journey-row">
+      <div class="row-label">Emotion</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="emotion">&#128522;</span>Clear visual on first open</div>
+        <div class="row-cell"><span class="emotion">&#128064;</span>Unsure if defaults are correct</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Finding the settings - not obvious</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Pattern options: "What is 2-2-3?"</div>
+        <div class="row-cell"><span class="emotion">&#128542;</span>Reference date concept confusing</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Colour picking = fun, personal</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Vacation overlays - process unclear</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Swap request - "will this cause conflict?"</div>
+        <div class="row-cell"><span class="emotion">&#129321;</span>Approved = clarity and peace of mind</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Friction</div>
+      <div class="row-cells">
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">No onboarding hint that custody is pre-set</span></div>
+        <div class="row-cell"><span class="friction-item">No visible "Edit custody" button on calendar view</span></div>
+        <div class="row-cell"><span class="friction-item">Pattern labels lack short descriptions</span></div>
+        <div class="row-cell"><span class="friction-item">"Reference date" needs explanation</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">Vacation entry UI not prominent</span></div>
+        <div class="row-cell"><span class="friction-item">Change request - partner may not see it quickly</span></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Opportunity</div>
+      <div class="row-cells">
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Show "Is this your schedule?" prompt on first calendar open</span></div>
+        <div class="row-cell"><span class="opportunity-item">Edit pencil icon directly on calendar header</span></div>
+        <div class="row-cell"><span class="opportunity-item">Add visual diagram per pattern (small calendar preview)</span></div>
+        <div class="row-cell"><span class="opportunity-item">Tooltip: "The Monday your week with [child] starts"</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Swap request sends push to co-parent immediately</span></div>
+        <div class="row-cell"></div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-summary">
+    <div class="summary-block"><strong>Goal</strong>Custody schedule accurate, both parents aligned visually</div>
+    <div class="summary-block"><strong>Emotional note</strong>Custody is a sensitive topic - language matters; avoid clinical terms</div>
+    <div class="summary-block"><strong>Quick win</strong>Add a tooltip explaining "reference date" and show a preview of the schedule before saving</div>
+  </div>
+</div>
+
+<!-- ================================================== J9: Calendar Sync -->
+<div class="journey-card" id="j9">
+  <div class="journey-header">
+    <div class="journey-icon bg-blue">&#128101;</div>
+    <div>
+      <h3>Journey 9 - Connect Calendar (Google / Apple)</h3>
+      <p>A user on the Family plan connects their Google Calendar for 2-way sync.</p>
+      <div class="journey-meta">
+        <span class="journey-meta-pill">Requires: Family plan</span>
+        <span class="journey-meta-pill">OAuth: Google or Apple CalDAV</span>
+        <span class="journey-meta-pill">Complexity: medium (OAuth involved)</span>
+      </div>
+    </div>
+  </div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle active">1</div><div class="step-label">Go to Settings</div><div class="step-sub">Calendar section</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">2</div><div class="step-label">Toggle family cal</div><div class="step-sub">Enable sync</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle decision">?</div><div class="step-label">Paid plan?</div><div class="step-sub">Yes: continue. No: upgrade wall.</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">4</div><div class="step-label">Tap Connect</div><div class="step-sub">Google OAuth popup</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">5</div><div class="step-label">Grant permissions</div><div class="step-sub">Calendar read+write</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">6</div><div class="step-label">Token saved</div><div class="step-sub">Status badge turns green</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle success">&#10003;</div><div class="step-label">Cards appear in Google Cal</div><div class="step-sub">2-way sync active</div></div></div>
+    </div>
+  </div>
+  <div class="journey-rows">
+    <div class="journey-row">
+      <div class="row-label">Emotion</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="emotion">&#128522;</span>Clear path</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Toggle alone doesn't explain what happens</div>
+        <div class="row-cell"><span class="emotion">&#128542;</span>Upgrade wall is a hard stop and frustration</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Google OAuth popup - familiar but slightly annoying</div>
+        <div class="row-cell"><span class="emotion">&#128542;</span>Broad calendar permissions feel invasive</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Green badge = reassurance it worked</div>
+        <div class="row-cell"><span class="emotion">&#129321;</span>Events in native calendar = wow moment</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Friction</div>
+      <div class="row-cells">
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">No preview of what "sync" means before enabling</span></div>
+        <div class="row-cell"><span class="friction-item">Upgrade wall mid-setup breaks the intent</span></div>
+        <div class="row-cell"><span class="friction-item">OAuth popup blocked on mobile PWA</span></div>
+        <div class="row-cell"><span class="friction-item">Requesting full calendar access - privacy concern</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">No confirmation that first sync completed</span></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Opportunity</div>
+      <div class="row-cells">
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Show "What syncs?" tooltip before toggle</span></div>
+        <div class="row-cell"><span class="opportunity-item">Offer trial starting from this moment - not a dead end</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Explain: "We only read events you create in Do-Do"</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Show "Synced X events to your Google Calendar" toast</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-summary">
+    <div class="summary-block"><strong>Goal</strong>Do-Do cards visible in native calendar app</div>
+    <div class="summary-block"><strong>Key moment</strong>Seeing the first event in Google Calendar - this is the "aha" that justifies the paid plan</div>
+    <div class="summary-block"><strong>Quick win</strong>Trigger the "Start your trial" flow from within the calendar sync toggle - not a separate upgrade page</div>
+  </div>
+</div>
+
+<!-- ================================================== J10: Upgrade -->
+<div class="journey-card" id="j10">
+  <div class="journey-header">
+    <div class="journey-icon bg-purple">&#11088;</div>
+    <div>
+      <h3>Journey 10 - Upgrade to Family Plan</h3>
+      <p>A free-tier user hits a paywall and converts to a paid subscription via Stripe.</p>
+      <div class="journey-meta">
+        <span class="journey-meta-pill">Entry: upgrade prompt at feature gate</span>
+        <span class="journey-meta-pill">Payment: Stripe Checkout</span>
+        <span class="journey-meta-pill">Critical: monetization core flow</span>
+      </div>
+    </div>
+  </div>
+  <div class="journey-steps">
+    <div class="steps-scroll">
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle active">1</div><div class="step-label">Hit paywall</div><div class="step-sub">AI / calendar / unlimited card</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">2</div><div class="step-label">See upgrade prompt</div><div class="step-sub">Modal with pricing</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">3</div><div class="step-label">Choose billing</div><div class="step-sub">Monthly vs annual</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">4</div><div class="step-label">Tap Upgrade</div><div class="step-sub">Redirect to Stripe Checkout</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">5</div><div class="step-label">Enter payment</div><div class="step-sub">Card / Apple Pay / Google Pay</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">6</div><div class="step-label">Confirmation</div><div class="step-sub">Stripe success page</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle success">&#10003;</div><div class="step-label">Return to app</div><div class="step-sub">Features unlocked</div></div></div>
+    </div>
+  </div>
+  <div class="journey-rows">
+    <div class="journey-row">
+      <div class="row-label">Emotion</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="emotion">&#128542;</span>Blocked. Interrupted. Frustration.</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Evaluating value. "Is it worth it?"</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Annual saving is compelling if shown clearly</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Clean redirect to Stripe</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Apple Pay / Google Pay = frictionless</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Clear confirmation</div>
+        <div class="row-cell"><span class="emotion">&#129321;</span>Feature unlocked - immediate reward</div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Friction</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="friction-item">Paywall feels abrupt if no prior nudge</span></div>
+        <div class="row-cell"><span class="friction-item">Upgrade prompt is generic - not tied to the specific blocked feature</span></div>
+        <div class="row-cell"><span class="friction-item">Annual vs monthly: annual saving not prominent enough</span></div>
+        <div class="row-cell"><span class="friction-item">Leaving the app to Stripe feels like abandonment</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="friction-item">Return to app after payment - may lose context</span></div>
+        <div class="row-cell"><span class="friction-item">No "feature is now unlocked" moment</span></div>
+      </div>
+    </div>
+    <div class="journey-row">
+      <div class="row-label">Opportunity</div>
+      <div class="row-cells">
+        <div class="row-cell"><span class="opportunity-item">Soft nudges before the hard wall ("You have 2 free cards left")</span></div>
+        <div class="row-cell"><span class="opportunity-item">Context-specific upgrade: "Unlock AI to add this card by voice"</span></div>
+        <div class="row-cell"><span class="opportunity-item">Show annual as default with monthly as small option</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">14-day trial as default CTA - lower commitment</span></div>
+        <div class="row-cell"></div>
+        <div class="row-cell"><span class="opportunity-item">Redirect back to the blocked feature after upgrade</span><span class="opportunity-item">Confetti / celebration on first unlock</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="journey-summary">
+    <div class="summary-block"><strong>Goal</strong>User subscribed, features unlocked</div>
+    <div class="summary-block"><strong>Best lever</strong>Context-specific upgrade prompts convert better than generic ones</div>
+    <div class="summary-block"><strong>Quick win</strong>Default CTA to "Start 14-day trial" instead of showing price immediately - lower the commitment threshold</div>
+  </div>
+</div>
+
+<!-- ======================================================= SUMMARY -->
+<section class="section" id="summary">
+  <div class="section-title">
+    <div class="icon">&#9889;</div>
+    Top Friction Points & Quick Wins
+  </div>
+  <p class="section-desc">Highest-impact issues across all journeys, ranked by ease vs. impact.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;">
+      <h4 style="font-size:14px;font-weight:700;color:var(--red);margin-bottom:16px;">&#9888; Top Friction Points</h4>
+      <ol style="padding-left:18px;display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--text2);">
+        <li>Email verification dead-end with no clear resend (J1)</li>
+        <li>Co-parent invite buried in Settings (J3)</li>
+        <li>Parent B must sign up before accepting invite (J3)</li>
+        <li>Onboarding is a single long form with no progress indicator (J2)</li>
+        <li>Hardcoded Polish button label on invite panel (J3)</li>
+        <li>AI card creation gated behind paywall - free users never see the wow moment (J4)</li>
+        <li>Custody "reference date" concept is confusing without explanation (J8)</li>
+        <li>Upgrade wall is abrupt with no prior soft nudging (J10)</li>
+        <li>Expense: creating a card and requesting payment are 2 separate steps (J6)</li>
+        <li>No "Clear bought" undo in shopping list (J7)</li>
+      </ol>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;">
+      <h4 style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:16px;">&#10024; Quick Wins</h4>
+      <ol style="padding-left:18px;display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--text2);">
+        <li>Add "Resend verification email" button + auto-advance when verified</li>
+        <li>Surface "Invite co-parent" card on empty board after onboarding</li>
+        <li>Fix hardcoded Polish on invite button</li>
+        <li>Pre-fill Parent A name from Google OAuth during onboarding</li>
+        <li>Add Yes/No quick-reply chips to attention strip cards (no dialog needed)</li>
+        <li>Add Undo snackbar after "Clear bought items"</li>
+        <li>Add tooltip for "reference date" in custody settings</li>
+        <li>Make upgrade CTA context-specific (tied to blocked feature)</li>
+        <li>Default upgrade CTA to "Start 14-day trial" not monthly price</li>
+        <li>Show first sync confirmation toast after calendar connect</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+// Highlight active nav item on scroll
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.sticky-nav a');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 80) current = s.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+});
+</script>
+</body>
+</html>

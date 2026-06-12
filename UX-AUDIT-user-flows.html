@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do-Do — User Flows</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222636;
+    --border: #2e3347;
+    --text: #e8eaf0;
+    --text2: #8b92a8;
+    --text3: #555e78;
+    --brand: #65d6c6;
+    --brand-dim: #1e3d38;
+    --green: #4ade80;
+    --green-dim: #14301e;
+    --amber: #fbbf24;
+    --amber-dim: #2d2208;
+    --red: #f87171;
+    --red-dim: #2d1414;
+    --blue: #60a5fa;
+    --blue-dim: #112240;
+    --purple: #a78bfa;
+    --purple-dim: #1e1635;
+    --radius: 8px;
+    --mono: "SF Mono", "Fira Code", "Consolas", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  .header {
+    padding: 36px 48px 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+  .header h1 span { color: var(--brand); }
+  .header p { color: var(--text2); margin-top: 6px; font-size: 13px; }
+  .header-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  /* ── Layout ── */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-group { margin-bottom: 6px; }
+  .sidebar-group-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    padding: 10px 20px 4px;
+  }
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 20px;
+    color: var(--text2);
+    text-decoration: none;
+    font-size: 12px;
+    border-left: 2px solid transparent;
+    transition: all 0.1s;
+    white-space: nowrap;
+  }
+  .sidebar-link:hover { color: var(--text); background: var(--surface2); }
+  .sidebar-link.active { color: var(--brand); border-left-color: var(--brand); background: var(--brand-dim); }
+  .sidebar-link .num {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text3);
+    min-width: 16px;
+  }
+  .main { flex: 1; padding: 32px 48px 80px; max-width: 860px; }
+
+  /* ── Section ── */
+  .section-group {
+    margin-bottom: 56px;
+  }
+  .group-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text3);
+    margin-bottom: 20px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Flow Card ── */
+  .flow {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .flow-header {
+    padding: 14px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface2);
+  }
+  .flow-num {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text3);
+    min-width: 22px;
+  }
+  .flow-header h3 { font-size: 14px; font-weight: 600; color: var(--text); }
+  .flow-header .goal-pill {
+    margin-left: auto;
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid #1e4a2a;
+    white-space: nowrap;
+  }
+  .flow-body {
+    padding: 20px 24px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.9;
+  }
+
+  /* ── Flow Syntax ── */
+  .f-goal { color: var(--brand); font-weight: 700; }
+  .f-step { color: var(--text); }
+  .f-system { color: var(--text2); font-style: italic; }
+  .f-decision { color: var(--amber); font-weight: 600; }
+  .f-yes { color: var(--green); font-weight: 600; }
+  .f-no { color: var(--red); font-weight: 600; }
+  .f-branch { color: var(--text3); }
+  .f-success { color: var(--green); font-weight: 700; }
+  .f-dead { color: var(--red); }
+  .f-gate { color: var(--purple); font-weight: 600; }
+  .f-note { color: var(--text3); font-style: italic; }
+  .f-screen { color: var(--blue); }
+
+  /* Indentation helpers */
+  .i0 { margin-left: 0; }
+  .i1 { margin-left: 20px; }
+  .i2 { margin-left: 40px; }
+  .i3 { margin-left: 60px; }
+  .i4 { margin-left: 80px; }
+  .i5 { margin-left: 100px; }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 6px 0;
+  }
+
+  /* Scroll */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Do-Do <span>User Flows</span></h1>
+  <p>Every step a user takes to reach each goal. Branches at every decision point.</p>
+  <div class="header-pills">
+    <span class="pill">→ step the user takes</span>
+    <span class="pill"><span style="color:var(--blue)">[ screen ]</span> screen/element shown</span>
+    <span class="pill"><span style="color:var(--amber)">[ decision? ]</span> yes/no branch</span>
+    <span class="pill"><span style="color:var(--purple)">[ GATE ]</span> paywall or permission</span>
+    <span class="pill"><span style="color:var(--green)">✓ GOAL REACHED</span></span>
+    <span class="pill"><span style="color:var(--red)">✗ dead end</span></span>
+  </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Auth</div>
+    <a class="sidebar-link" href="#f1"><span class="num">01</span>Sign up (new user)</a>
+    <a class="sidebar-link" href="#f2"><span class="num">02</span>Sign in (returning)</a>
+    <a class="sidebar-link" href="#f3"><span class="num">03</span>Forgot password</a>
+    <a class="sidebar-link" href="#f4"><span class="num">04</span>Guest preview</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Onboarding</div>
+    <a class="sidebar-link" href="#f5"><span class="num">05</span>First-time setup</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Co-parent</div>
+    <a class="sidebar-link" href="#f6"><span class="num">06</span>Send invite</a>
+    <a class="sidebar-link" href="#f7"><span class="num">07</span>Accept invite</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Board — Cards</div>
+    <a class="sidebar-link" href="#f8"><span class="num">08</span>Create card (quick)</a>
+    <a class="sidebar-link" href="#f9"><span class="num">09</span>Create card (full)</a>
+    <a class="sidebar-link" href="#f10"><span class="num">10</span>Create card (AI/voice)</a>
+    <a class="sidebar-link" href="#f11"><span class="num">11</span>Edit a card</a>
+    <a class="sidebar-link" href="#f12"><span class="num">12</span>Comment on a card</a>
+    <a class="sidebar-link" href="#f13"><span class="num">13</span>Acknowledge / confirm</a>
+    <a class="sidebar-link" href="#f14"><span class="num">14</span>Move to Done / archive</a>
+    <a class="sidebar-link" href="#f15"><span class="num">15</span>Set a reminder</a>
+    <a class="sidebar-link" href="#f16"><span class="num">16</span>Set recurrence</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Expenses</div>
+    <a class="sidebar-link" href="#f17"><span class="num">17</span>Submit expense + receipt</a>
+    <a class="sidebar-link" href="#f18"><span class="num">18</span>Request payment</a>
+    <a class="sidebar-link" href="#f19"><span class="num">19</span>Pay an expense</a>
+    <a class="sidebar-link" href="#f20"><span class="num">20</span>Dispute an expense</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Shopping</div>
+    <a class="sidebar-link" href="#f21"><span class="num">21</span>Add items to list</a>
+    <a class="sidebar-link" href="#f22"><span class="num">22</span>Tick off while shopping</a>
+    <a class="sidebar-link" href="#f23"><span class="num">23</span>Create custom list</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Calendar</div>
+    <a class="sidebar-link" href="#f24"><span class="num">24</span>Set up custody schedule</a>
+    <a class="sidebar-link" href="#f25"><span class="num">25</span>Override a custody day</a>
+    <a class="sidebar-link" href="#f26"><span class="num">26</span>Add vacation period</a>
+    <a class="sidebar-link" href="#f27"><span class="num">27</span>Request custody swap</a>
+    <a class="sidebar-link" href="#f28"><span class="num">28</span>Approve / decline swap</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Integrations</div>
+    <a class="sidebar-link" href="#f29"><span class="num">29</span>Connect Google Calendar</a>
+    <a class="sidebar-link" href="#f30"><span class="num">30</span>Connect Apple Calendar</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Notifications</div>
+    <a class="sidebar-link" href="#f31"><span class="num">31</span>Enable push notifications</a>
+    <a class="sidebar-link" href="#f32"><span class="num">32</span>Set quiet hours</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Subscription</div>
+    <a class="sidebar-link" href="#f33"><span class="num">33</span>Upgrade (from paywall)</a>
+    <a class="sidebar-link" href="#f34"><span class="num">34</span>Manage / cancel plan</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Settings</div>
+    <a class="sidebar-link" href="#f35"><span class="num">35</span>Add / edit a child</a>
+    <a class="sidebar-link" href="#f36"><span class="num">36</span>Change theme</a>
+    <a class="sidebar-link" href="#f37"><span class="num">37</span>Change currency</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">Account</div>
+    <a class="sidebar-link" href="#f38"><span class="num">38</span>Export my data (GDPR)</a>
+    <a class="sidebar-link" href="#f39"><span class="num">39</span>Delete account (GDPR)</a>
+  </div>
+
+</nav>
+
+<main class="main">
+
+<!-- ═══════════════════════════════════════════════════ AUTH -->
+<div class="section-group">
+<div class="group-title">Authentication</div>
+
+<!-- F1 -->
+<div class="flow" id="f1">
+  <div class="flow-header">
+    <span class="flow-num">01</span>
+    <h3>Sign Up — New User</h3>
+    <span class="goal-pill">✓ Account created, app open</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Create a new account and enter the app</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ User opens do-do.app in browser</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Auth screen]</span> loads with 3 sign-in options</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-decision">[ Which method? ]</div>
+<div class="i0 f-branch">│</div>
+<div class="i1 f-yes">PATH A — Google OAuth</div>
+<div class="i1 f-step">→ Tap "Sign in with Google"</div>
+<div class="i1 f-system">  ↳ Google consent popup opens</div>
+<div class="i1 f-step">→ Select Google account from list</div>
+<div class="i1 f-step">→ Tap "Allow"</div>
+<div class="i1 f-system">  ↳ Popup closes, redirected back to app</div>
+<div class="i1 f-system">  ↳ Email is auto-verified (Google accounts always verified)</div>
+<div class="i1 f-step">→ App checks if onboarding was completed</div>
+<div class="i1 f-decision">  [ First time? ]</div>
+<div class="i2 f-yes">YES → <span class="f-screen">[Onboarding screen]</span> shown → see Flow 05</div>
+<div class="i2 f-no">NO  → <span class="f-screen">[Board]</span> loads directly</div>
+<div class="i0 f-branch">│</div>
+<div class="i1 f-yes">PATH B — Apple Sign In</div>
+<div class="i1 f-step">→ Tap "Sign in with Apple"</div>
+<div class="i1 f-system">  ↳ Apple auth sheet appears</div>
+<div class="i1 f-step">→ Authenticate with Face ID / Touch ID / password</div>
+<div class="i1 f-decision">  [ Hide email? ]</div>
+<div class="i2 f-yes">YES → Apple generates relay email address</div>
+<div class="i2 f-no">NO  → Real email used</div>
+<div class="i1 f-system">  ↳ Redirected back to app, auto-verified</div>
+<div class="i1 f-decision">  [ First time? ]</div>
+<div class="i2 f-yes">YES → <span class="f-screen">[Onboarding screen]</span></div>
+<div class="i2 f-no">NO  → <span class="f-screen">[Board]</span></div>
+<div class="i0 f-branch">│</div>
+<div class="i1 f-yes">PATH C — Email + Password</div>
+<div class="i1 f-step">→ Tap "Email" option (or just fills email field)</div>
+<div class="i1 f-step">→ Type email address</div>
+<div class="i1 f-step">→ Type password</div>
+<div class="i1 f-step">→ Tap "Create account"</div>
+<div class="i1 f-system">  ↳ Supabase creates account</div>
+<div class="i1 f-system">  ↳ <span class="f-screen">[Verify email screen]</span> shown ("Check your inbox")</div>
+<div class="i1 f-step">→ User opens email inbox</div>
+<div class="i1 f-decision">  [ Email arrived? ]</div>
+<div class="i2 f-yes">YES → Taps verify link in email</div>
+<div class="i2 f-no">NO  → Checks spam folder</div>
+<div class="i3 f-decision">  [ In spam? ]</div>
+<div class="i4 f-yes">YES → Marks as not spam, taps link</div>
+<div class="i4 f-no">NO  → Waits or taps "Resend email" <span class="f-dead">(no resend button currently)</span></div>
+<div class="i2 f-system">↳ Link opens app tab, session verified</div>
+<div class="i1 f-decision">  [ First time? ]</div>
+<div class="i2 f-yes">YES → <span class="f-screen">[Onboarding screen]</span></div>
+<div class="i2 f-no">NO  → <span class="f-screen">[Board]</span></div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-success">✓ GOAL REACHED — User authenticated, app open</div>
+  </div>
+</div>
+
+<!-- F2 -->
+<div class="flow" id="f2">
+  <div class="flow-header">
+    <span class="flow-num">02</span>
+    <h3>Sign In — Returning User</h3>
+    <span class="goal-pill">✓ Board loaded</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Return to the app and reach the board</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Open app (browser or PWA icon)</div>
+<div class="i0 f-decision">[ Session still active? ]</div>
+<div class="i1 f-yes">YES → <span class="f-screen">[Board]</span> loads immediately (no login needed)</div>
+<div class="i1 f-success">    ✓ GOAL REACHED</div>
+<div class="i1 f-no">NO  → <span class="f-screen">[Auth screen]</span> shown</div>
+<div class="i2 f-step">→ Tap same sign-in method used at registration</div>
+<div class="i2 f-decision">  [ Method was Google? ]</div>
+<div class="i3 f-yes">YES → Tap "Sign in with Google" → selects account → auto-signed in</div>
+<div class="i3 f-no">NO  → Type email + password → tap Sign in</div>
+<div class="i2 f-decision">  [ Credentials correct? ]</div>
+<div class="i3 f-yes">YES → <span class="f-screen">[Board]</span> loads</div>
+<div class="i3 f-no">NO  → Error message shown → try again or → see Flow 03</div>
+<div class="i0 f-success">✓ GOAL REACHED — Board loaded</div>
+  </div>
+</div>
+
+<!-- F3 -->
+<div class="flow" id="f3">
+  <div class="flow-header">
+    <span class="flow-num">03</span>
+    <h3>Forgot Password / Reset</h3>
+    <span class="goal-pill">✓ New password set, signed in</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Regain access after forgetting password</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ On <span class="f-screen">[Auth screen]</span>, tap "Forgot password?" link</div>
+<div class="i0 f-system">  ↳ Password reset form shown</div>
+<div class="i0 f-step">→ Type email address</div>
+<div class="i0 f-step">→ Tap "Send reset link"</div>
+<div class="i0 f-system">  ↳ Supabase sends reset email</div>
+<div class="i0 f-system">  ↳ Confirmation message shown on screen</div>
+<div class="i0 f-step">→ Open email inbox</div>
+<div class="i0 f-decision">[ Reset email arrived? ]</div>
+<div class="i1 f-yes">YES → Tap reset link in email</div>
+<div class="i1 f-no">NO  → Check spam → wait → request again</div>
+<div class="i0 f-system">  ↳ New browser tab opens with reset form</div>
+<div class="i0 f-step">→ Type new password</div>
+<div class="i0 f-step">→ Confirm new password</div>
+<div class="i0 f-step">→ Tap "Set new password"</div>
+<div class="i0 f-decision">[ Passwords match + strong enough? ]</div>
+<div class="i1 f-yes">YES → Password saved → signed in → <span class="f-screen">[Board]</span></div>
+<div class="i1 f-no">NO  → Error shown → correct and resubmit</div>
+<div class="i0 f-success">✓ GOAL REACHED — Signed in with new password</div>
+  </div>
+</div>
+
+<!-- F4 -->
+<div class="flow" id="f4">
+  <div class="flow-header">
+    <span class="flow-num">04</span>
+    <h3>Guest Preview (no account)</h3>
+    <span class="goal-pill">✓ Sees demo board</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: See what the app looks like before signing up</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ On <span class="f-screen">[Auth screen]</span>, tap "Preview" or "See a demo"</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Guest preview screen]</span> loads with read-only board</div>
+<div class="i0 f-step">→ Scrolls through demo cards (read-only)</div>
+<div class="i0 f-step">→ Taps a card</div>
+<div class="i0 f-system">  ↳ Card detail shown (read-only, no edit)</div>
+<div class="i0 f-step">→ Decides to sign up</div>
+<div class="i0 f-decision">[ Taps sign-up CTA? ]</div>
+<div class="i1 f-yes">YES → <span class="f-screen">[Auth screen]</span> shown → Flow 01</div>
+<div class="i1 f-no">NO  → Continues browsing demo → eventually exits or signs up</div>
+<div class="i0 f-success">✓ GOAL REACHED — User saw app value, moved to sign-up</div>
+  </div>
+</div>
+
+</div><!-- /auth group -->
+
+
+<!-- ═══════════════════════════════════════════════════ ONBOARDING -->
+<div class="section-group">
+<div class="group-title">Onboarding</div>
+
+<!-- F5 -->
+<div class="flow" id="f5">
+  <div class="flow-header">
+    <span class="flow-num">05</span>
+    <h3>First-Time Setup</h3>
+    <span class="goal-pill">✓ Family configured, board ready</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Configure family workspace and reach the board</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-system">  ↳ Triggered automatically after first sign-in</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Onboarding screen]</span> locks the app until completed</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ See setup form (single page, all fields visible)</div>
+<div class="i0 f-step">→ Tap "Your name" field → type own name (e.g. "Anna")</div>
+<div class="i0 f-step">→ Tap "Co-parent name" field → type co-parent's name (e.g. "Marek")</div>
+<div class="i0 f-step">→ Tap "Co-parent email" field</div>
+<div class="i0 f-decision">[ Want to invite co-parent now? ]</div>
+<div class="i1 f-yes">YES → Type co-parent email address</div>
+<div class="i1 f-no">NO  → Leave blank (can do later in Settings → Flow 06)</div>
+<div class="i0 f-step">→ Tap "Child's name" field → type child's name</div>
+<div class="i0 f-decision">[ Have a pet to add? ]</div>
+<div class="i1 f-yes">YES → Tap "Pet name" field → type pet name</div>
+<div class="i1 f-no">NO  → Skip (tap "Skip pet")</div>
+<div class="i0 f-step">→ See "Family calendar" toggle</div>
+<div class="i0 f-decision">[ Want to sync a shared calendar? ]</div>
+<div class="i1 f-yes">YES → Toggle on → select provider (Google / Apple)</div>
+<div class="i1 f-no">NO  → Leave off (can connect later in Settings)</div>
+<div class="i0 f-step">→ See "Work calendar" toggle</div>
+<div class="i0 f-decision">[ Want to add work busy times? ]</div>
+<div class="i1 f-yes">YES → Toggle on → select provider</div>
+<div class="i1 f-no">NO  → Leave off</div>
+<div class="i0 f-step">→ See "Automatic reminders" toggle</div>
+<div class="i0 f-decision">[ Want auto-reminders on cards? ]</div>
+<div class="i1 f-yes">YES → Toggle on → select reminder preset (15m / 30m / 1h / 2h / 1d)</div>
+<div class="i1 f-no">NO  → Leave off</div>
+<div class="i0 f-step">→ Tap "Let's go" / Submit button</div>
+<div class="i0 f-system">  ↳ Config saved to localStorage + Supabase</div>
+<div class="i0 f-system">  ↳ Family workspace created in DB</div>
+<div class="i0 f-decision">[ Co-parent email was entered? ]</div>
+<div class="i1 f-yes">YES →</div>
+<div class="i2 f-system">↳ Invite email sent via Resend</div>
+<div class="i2 f-decision">[ Email sent successfully? ]</div>
+<div class="i3 f-yes">YES → Toast: "Invite sent to [email]"</div>
+<div class="i3 f-no">NO  → Fallback: invite link shown to copy manually</div>
+<div class="i1 f-no">NO  → No invite action taken</div>
+<div class="i0 f-system">  ↳ Seed demo cards loaded on board</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Board]</span> shown</div>
+<div class="i0 f-success">✓ GOAL REACHED — Family set up, board ready</div>
+  </div>
+</div>
+
+</div><!-- /onboarding -->
+
+
+<!-- ═══════════════════════════════════════════════════ CO-PARENT -->
+<div class="section-group">
+<div class="group-title">Co-Parent Collaboration</div>
+
+<!-- F6 -->
+<div class="flow" id="f6">
+  <div class="flow-header">
+    <span class="flow-num">06</span>
+    <h3>Send Invite to Co-Parent</h3>
+    <span class="goal-pill">✓ Invite delivered</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Invite co-parent to join the shared workspace</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-gate">[ REQUIRES: Family plan OR trial active ]</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap "Settings" in sidebar / bottom tab</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Settings screen]</span> loads</div>
+<div class="i0 f-step">→ Scroll down to "Invite Co-Parent" panel</div>
+<div class="i0 f-decision">[ On paid plan? ]</div>
+<div class="i1 f-no">NO → Upgrade prompt shown → see Flow 33</div>
+<div class="i1 f-yes">YES →</div>
+<div class="i1 f-step">→ Tap email input field</div>
+<div class="i1 f-step">→ Type co-parent email address</div>
+<div class="i1 f-step">→ Tap "Save and send invite"</div>
+<div class="i1 f-system">  ↳ API call to /api/invite-email</div>
+<div class="i1 f-decision">  [ Email sent? ]</div>
+<div class="i2 f-yes">YES → Toast: "Invite sent to [email]"</div>
+<div class="i2 f-no">NO  → Invite link shown in text input below button</div>
+<div class="i3 f-step">→ Tap "Copy link"</div>
+<div class="i3 f-step">→ Share link manually via WhatsApp / SMS / etc.</div>
+<div class="i0 f-success">✓ GOAL REACHED — Invite sent or link copied</div>
+  </div>
+</div>
+
+<!-- F7 -->
+<div class="flow" id="f7">
+  <div class="flow-header">
+    <span class="flow-num">07</span>
+    <h3>Accept Invite — Co-Parent (Recipient)</h3>
+    <span class="goal-pill">✓ Joined shared board</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Join the family workspace after receiving an invite</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Co-parent receives invite email</div>
+<div class="i0 f-step">→ Opens email</div>
+<div class="i0 f-step">→ Taps "Accept invite" button in email</div>
+<div class="i0 f-system">  ↳ Browser opens /invite/:token</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Invite screen]</span> shown (validates token)</div>
+<div class="i0 f-decision">[ Token valid? ]</div>
+<div class="i1 f-no">NO  →</div>
+<div class="i2 f-decision">  [ Already accepted? ]</div>
+<div class="i3 f-yes">YES → Message: "Invite already accepted" → sign in → board</div>
+<div class="i3 f-no">NO  → Error: "Invite link invalid or expired" <span class="f-dead">✗ dead end — ask sender to resend</span></div>
+<div class="i1 f-yes">YES →</div>
+<div class="i1 f-system">  ↳ Token + family info shown on screen</div>
+<div class="i1 f-decision">  [ Already has a Do-Do account? ]</div>
+<div class="i2 f-yes">YES →</div>
+<div class="i3 f-step">→ Tap "Sign in to accept"</div>
+<div class="i3 f-system">  ↳ Auth flow (Flow 02)</div>
+<div class="i3 f-system">  ↳ After sign-in, invite auto-accepted</div>
+<div class="i3 f-system">  ↳ Joined to the family workspace</div>
+<div class="i3 f-system">  ↳ <span class="f-screen">[Board]</span> loads with shared cards</div>
+<div class="i2 f-no">NO  →</div>
+<div class="i3 f-step">→ Tap "Create account to accept"</div>
+<div class="i3 f-system">  ↳ Sign-up flow (Flow 01)</div>
+<div class="i3 f-system">  ↳ After account created + verified, invite token re-applied</div>
+<div class="i3 f-system">  ↳ Skips onboarding (joins existing family instead)</div>
+<div class="i3 f-system">  ↳ <span class="f-screen">[Board]</span> loads with shared cards</div>
+<div class="i0 f-success">✓ GOAL REACHED — Co-parent joined, both see same board</div>
+  </div>
+</div>
+
+</div><!-- /co-parent -->
+
+
+<!-- ═══════════════════════════════════════════════════ BOARD — CARDS -->
+<div class="section-group">
+<div class="group-title">Board — Cards</div>
+
+<!-- F8 -->
+<div class="flow" id="f8">
+  <div class="flow-header">
+    <span class="flow-num">08</span>
+    <h3>Create Card — Quick Inline Add</h3>
+    <span class="goal-pill">✓ Card on board</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Add a card to the board as fast as possible</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ On <span class="f-screen">[Board]</span>, tap the "+ Add" / inline capture button</div>
+<div class="i0 f-system">  ↳ Inline capture row expands below the column header</div>
+<div class="i0 f-step">→ Tap title text field</div>
+<div class="i0 f-step">→ Type card title (e.g. "Dentist appointment")</div>
+<div class="i0 f-step">→ Tap Topic dropdown → select topic (Schedule / School / Medical / Expenses / General)</div>
+<div class="i0 f-step">→ Tap Type dropdown → select type (Request / Event / Expense / Info / etc.)</div>
+<div class="i0 f-decision">[ Need to set assignee now? ]</div>
+<div class="i1 f-yes">YES → Tap Assignee dropdown → select parent</div>
+<div class="i1 f-no">NO  → Leave default</div>
+<div class="i0 f-step">→ Tap "Save" or press Enter</div>
+<div class="i0 f-system">  ↳ Card saved to Supabase</div>
+<div class="i0 f-system">  ↳ Card appears in correct column on board</div>
+<div class="i0 f-system">  ↳ Co-parent sees card appear in real-time (Supabase Realtime)</div>
+<div class="i0 f-success">✓ GOAL REACHED — Card on board, both parents see it</div>
+  </div>
+</div>
+
+<!-- F9 -->
+<div class="flow" id="f9">
+  <div class="flow-header">
+    <span class="flow-num">09</span>
+    <h3>Create Card — Full Form</h3>
+    <span class="goal-pill">✓ Detailed card on board</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Create a card with all details, reminder, and assignee</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ On <span class="f-screen">[Board]</span>, tap "New card" button (or expand card dialog from quick add)</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Card dialog]</span> opens, empty</div>
+<div class="i0 f-step">→ Tap "Title" field → type card title</div>
+<div class="i0 f-step">→ Tap "Topic" dropdown → select topic</div>
+<div class="i0 f-step">→ Tap "Type" dropdown → select type</div>
+<div class="i0 f-step">→ Tap "Status" dropdown → select status (Important / Waiting / To Do / etc.)</div>
+<div class="i0 f-step">→ Tap "Assignee" dropdown → select who it's assigned to</div>
+<div class="i0 f-step">→ Tap "Child" dropdown → select which child it's about</div>
+<div class="i0 f-step">→ Tap "Due date" field → date+time picker opens → select date → select time → confirm</div>
+<div class="i0 f-decision">[ Is this an expense? ]</div>
+<div class="i1 f-yes">YES → Tap "Amount" field → type amount (e.g. "86.50")</div>
+<div class="i1 f-no">NO  → Skip amount</div>
+<div class="i0 f-step">→ Scroll down to "Details" text area</div>
+<div class="i0 f-step">→ Tap details field → type description / instructions</div>
+<div class="i0 f-step">→ Scroll to "Reminder" section</div>
+<div class="i0 f-decision">[ Want a reminder? ]</div>
+<div class="i1 f-yes">YES → Toggle reminder on → select preset OR pick custom time → see Flow 15</div>
+<div class="i1 f-no">NO  → Leave off</div>
+<div class="i0 f-step">→ Scroll to "Recurrence" section</div>
+<div class="i0 f-decision">[ Is this a recurring event? ]</div>
+<div class="i1 f-yes">YES → Configure recurrence → see Flow 16</div>
+<div class="i1 f-no">NO  → Leave off</div>
+<div class="i0 f-step">→ Tap "Save" button (top or bottom of dialog)</div>
+<div class="i0 f-system">  ↳ Card saved to Supabase</div>
+<div class="i0 f-system">  ↳ Dialog closes</div>
+<div class="i0 f-system">  ↳ Card appears in correct kanban column</div>
+<div class="i0 f-system">  ↳ Co-parent sees card in real-time</div>
+<div class="i0 f-decision">[ Reminder was set + notification permission granted? ]</div>
+<div class="i1 f-yes">YES → Reminder scheduled, push or email will fire at set time</div>
+<div class="i1 f-no">NO  → Prompt to enable push may appear on next visit</div>
+<div class="i0 f-success">✓ GOAL REACHED — Fully detailed card on board</div>
+  </div>
+</div>
+
+<!-- F10 -->
+<div class="flow" id="f10">
+  <div class="flow-header">
+    <span class="flow-num">10</span>
+    <h3>Create Card — AI / Voice Input</h3>
+    <span class="goal-pill">✓ Card created from natural language</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Create a card by speaking or typing a natural sentence</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-gate">[ REQUIRES: Family plan ]</div>
+<div class="i0 f-decision">[ On paid plan? ]</div>
+<div class="i1 f-no">NO → Upgrade prompt shown → see Flow 33</div>
+<div class="i1 f-yes">YES →</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-decision">[ Voice or text input? ]</div>
+<div class="i0 f-branch">│</div>
+<div class="i1 f-yes">PATH A — Voice</div>
+<div class="i1 f-step">→ Tap mic button in capture area</div>
+<div class="i1 f-decision">  [ Mic permission granted? ]</div>
+<div class="i2 f-no">NO  → Browser permission prompt shown</div>
+<div class="i3 f-decision">  [ User grants mic? ]</div>
+<div class="i4 f-yes">YES → Mic enabled → continue</div>
+<div class="i4 f-no">NO  → <span class="f-dead">✗ Cannot use voice — use text path instead</span></div>
+<div class="i2 f-yes">YES → Mic active, listening indicator shown</div>
+<div class="i2 f-step">→ Speak the card (e.g. "Remind Leo about dentist on Friday at 3pm, it's medical")</div>
+<div class="i2 f-step">→ Stop speaking (or tap stop button)</div>
+<div class="i2 f-system">  ↳ Speech transcribed to text</div>
+<div class="i2 f-system">  ↳ Transcript shown in input field</div>
+<div class="i2 f-step">→ (optional) Edit transcript if transcription was wrong</div>
+<div class="i2 f-step">→ Tap "Interpret" button</div>
+<div class="i1 f-yes">PATH B — Text</div>
+<div class="i1 f-step">→ Tap AI/text input field in capture area</div>
+<div class="i1 f-step">→ Type natural language (e.g. "Swap Friday pickup, urgent, assign to Marek")</div>
+<div class="i1 f-step">→ Tap "Interpret" button</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-system">  ↳ API call to /api/interpret (Claude Haiku)</div>
+<div class="i0 f-system">  ↳ Loading state shown</div>
+<div class="i0 f-decision">[ API responds? ]</div>
+<div class="i1 f-yes">YES → Fields pre-filled in card dialog (title, topic, type, assignee, due date, child)</div>
+<div class="i1 f-no">NO  → Error shown → fallback to manual form (Flow 09)</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Card dialog]</span> opens with pre-filled fields</div>
+<div class="i0 f-step">→ Review each pre-filled field</div>
+<div class="i0 f-decision">[ Any field wrong? ]</div>
+<div class="i1 f-yes">YES → Tap the wrong field → correct it manually</div>
+<div class="i1 f-no">NO  → All fields correct</div>
+<div class="i0 f-step">→ Tap "Save"</div>
+<div class="i0 f-system">  ↳ Card saved, appears on board</div>
+<div class="i0 f-success">✓ GOAL REACHED — Card created from natural language</div>
+  </div>
+</div>
+
+<!-- F11 -->
+<div class="flow" id="f11">
+  <div class="flow-header">
+    <span class="flow-num">11</span>
+    <h3>Edit an Existing Card</h3>
+    <span class="goal-pill">✓ Card updated</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Change a field on an existing card</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ On <span class="f-screen">[Board]</span>, tap the card to open it</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Card dialog]</span> opens with current values</div>
+<div class="i0 f-step">→ Tap the field to edit</div>
+<div class="i0 f-step">→ Change the value</div>
+<div class="i0 f-system">  ↳ Change tracked in activity log automatically</div>
+<div class="i0 f-step">→ Tap "Save"</div>
+<div class="i0 f-system">  ↳ Updated to Supabase</div>
+<div class="i0 f-system">  ↳ Co-parent sees updated card in real-time</div>
+<div class="i0 f-decision">[ Was there a conflict with co-parent's edits? ]</div>
+<div class="i1 f-yes">YES → Conflict banner shown with both versions + AI suggestion</div>
+<div class="i2 f-step">→ Read AI suggestion</div>
+<div class="i2 f-step">→ Choose: accept suggestion / keep mine / keep theirs</div>
+<div class="i2 f-system">  ↳ Resolved version saved</div>
+<div class="i1 f-no">NO  → Saved cleanly</div>
+<div class="i0 f-success">✓ GOAL REACHED — Card updated, both parents see changes</div>
+  </div>
+</div>
+
+<!-- F12 -->
+<div class="flow" id="f12">
+  <div class="flow-header">
+    <span class="flow-num">12</span>
+    <h3>Comment on a Card</h3>
+    <span class="goal-pill">✓ Comment sent, partner notified</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Reply to a card with a message</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap card on board</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Card dialog]</span> opens</div>
+<div class="i0 f-step">→ Scroll down to "Comments" section</div>
+<div class="i0 f-step">→ Tap comment input field</div>
+<div class="i0 f-step">→ Type message</div>
+<div class="i0 f-step">→ Tap Send (arrow button)</div>
+<div class="i0 f-system">  ↳ Comment saved to Supabase</div>
+<div class="i0 f-system">  ↳ Comment appears in thread with author name + timestamp</div>
+<div class="i0 f-system">  ↳ Co-parent receives push / email notification</div>
+<div class="i0 f-success">✓ GOAL REACHED — Comment visible to both parents</div>
+  </div>
+</div>
+
+<!-- F13 -->
+<div class="flow" id="f13">
+  <div class="flow-header">
+    <span class="flow-num">13</span>
+    <h3>Acknowledge / Confirm a Request</h3>
+    <span class="goal-pill">✓ Request confirmed</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Confirm you've seen and accepted a request card</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ See card in "To Decide" or "Attention" strip on board</div>
+<div class="i0 f-step">→ Tap card to open it</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Card dialog]</span> opens</div>
+<div class="i0 f-step">→ Read details + any comments</div>
+<div class="i0 f-decision">[ Accept the request? ]</div>
+<div class="i1 f-yes">YES → Tap "Acknowledge" or "Confirm" button</div>
+<div class="i2 f-system">  ↳ acknowledged = true saved</div>
+<div class="i2 f-system">  ↳ Card status may auto-move to "Waiting" or "To Do"</div>
+<div class="i2 f-system">  ↳ Requesting parent notified</div>
+<div class="i1 f-no">NO  → Tap comment field → type why you can't → see Flow 12</div>
+<div class="i1 f-note">OR  → Dispute → see Flow 20 (if expense)</div>
+<div class="i0 f-success">✓ GOAL REACHED — Both parents know request is accepted</div>
+  </div>
+</div>
+
+<!-- F14 -->
+<div class="flow" id="f14">
+  <div class="flow-header">
+    <span class="flow-num">14</span>
+    <h3>Move to Done / Archive</h3>
+    <span class="goal-pill">✓ Card closed</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Mark a card as completed and remove from active view</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap card on board</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Card dialog]</span> opens</div>
+<div class="i0 f-step">→ Tap "Status" dropdown</div>
+<div class="i0 f-step">→ Select "Done"</div>
+<div class="i0 f-system">  ↳ Card moves to Done column on board</div>
+<div class="i0 f-step">→ Tap "Save"</div>
+<div class="i0 f-decision">[ Want to fully archive it? ]</div>
+<div class="i1 f-yes">YES → In Done column, tap card → tap "Archive" action</div>
+<div class="i2 f-system">  ↳ Card moved to archive section (collapsed at bottom of board)</div>
+<div class="i1 f-no">NO  → Card stays in Done column (visible)</div>
+<div class="i0 f-success">✓ GOAL REACHED — Card closed, board stays clean</div>
+  </div>
+</div>
+
+<!-- F15 -->
+<div class="flow" id="f15">
+  <div class="flow-header">
+    <span class="flow-num">15</span>
+    <h3>Set a Reminder on a Card</h3>
+    <span class="goal-pill">✓ Reminder scheduled</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Get notified before a card's due date</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Open card (tap on board or from dialog)</div>
+<div class="i0 f-step">→ Scroll to "Reminder" section in card dialog</div>
+<div class="i0 f-step">→ Toggle reminder on</div>
+<div class="i0 f-decision">[ Use preset or custom time? ]</div>
+<div class="i1 f-yes">PRESET → Select from dropdown: 15 min / 30 min / 1 hr / 2 hr / 1 day before</div>
+<div class="i1 f-no">CUSTOM → Tap "Custom" → date+time picker → select exact reminder time</div>
+<div class="i0 f-decision">[ Select delivery method? ]</div>
+<div class="i1 f-yes">Calendar + app → reminder appears in calendar AND sends push/email</div>
+<div class="i1 f-no">App only → push/email only, not added to calendar</div>
+<div class="i0 f-step">→ Tap "Save" on card</div>
+<div class="i0 f-system">  ↳ Reminder saved</div>
+<div class="i0 f-decision">[ Push notification permission granted? ]</div>
+<div class="i1 f-no">NO  → Permission prompt shown at save</div>
+<div class="i2 f-decision">  [ User grants? ]</div>
+<div class="i3 f-yes">YES → Subscription saved → reminder will fire</div>
+<div class="i3 f-no">NO  → Email-only reminder (if email connected)</div>
+<div class="i1 f-yes">YES → Reminder scheduled → push / email will fire at set time</div>
+<div class="i0 f-success">✓ GOAL REACHED — Reminder will notify at scheduled time</div>
+  </div>
+</div>
+
+<!-- F16 -->
+<div class="flow" id="f16">
+  <div class="flow-header">
+    <span class="flow-num">16</span>
+    <h3>Set Recurrence on a Card</h3>
+    <span class="goal-pill">✓ Card repeats automatically</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Make a card repeat on a schedule</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Open card dialog</div>
+<div class="i0 f-step">→ Scroll to "Recurrence" section</div>
+<div class="i0 f-step">→ Toggle recurrence on</div>
+<div class="i0 f-step">→ Select frequency (daily / weekly / every 2 weeks / monthly / yearly)</div>
+<div class="i0 f-step">→ Set start date (defaults to card due date)</div>
+<div class="i0 f-decision">[ Set an end date? ]</div>
+<div class="i1 f-yes">YES → Toggle "End date" → pick date</div>
+<div class="i1 f-no">NO  → Repeats indefinitely</div>
+<div class="i0 f-step">→ Tap "Save"</div>
+<div class="i0 f-system">  ↳ Recurrence rule saved</div>
+<div class="i0 f-system">  ↳ New card instance auto-created when current one is marked Done</div>
+<div class="i0 f-success">✓ GOAL REACHED — Card will repeat on schedule</div>
+  </div>
+</div>
+
+</div><!-- /board cards -->
+
+
+<!-- ═══════════════════════════════════════════════════ EXPENSES -->
+<div class="section-group">
+<div class="group-title">Expenses</div>
+
+<!-- F17 -->
+<div class="flow" id="f17">
+  <div class="flow-header">
+    <span class="flow-num">17</span>
+    <h3>Submit an Expense with Receipt</h3>
+    <span class="goal-pill">✓ Expense card created with receipt</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Log a shared expense and attach proof</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap "Expenses" in sidebar / bottom tab</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Expenses module]</span> loads with expense list + balance summary</div>
+<div class="i0 f-step">→ Tap "+ New" or create a new card from board with type "Expense"</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Card dialog]</span> opens</div>
+<div class="i0 f-step">→ Type title (e.g. "Dentist invoice - Leo")</div>
+<div class="i0 f-step">→ Set Topic → "Medical" (or relevant topic)</div>
+<div class="i0 f-step">→ Set Type → "Expense"</div>
+<div class="i0 f-step">→ Tap "Amount" field → type amount (e.g. "86.50")</div>
+<div class="i0 f-step">→ Tap "Assignee" → select who should pay (the other parent)</div>
+<div class="i0 f-step">→ Add details / description of what the expense was for</div>
+<div class="i0 f-step">→ Scroll to "Receipt" section</div>
+<div class="i0 f-decision">[ Have a receipt to attach? ]</div>
+<div class="i1 f-yes">YES → Tap "Add receipt" / upload icon</div>
+<div class="i2 f-system">  ↳ Device camera / photo library opens</div>
+<div class="i2 f-decision">  [ Take photo or pick from library? ]</div>
+<div class="i3 f-yes">Take photo → frame receipt → tap shutter → confirm</div>
+<div class="i3 f-no">Library → browse → select image → confirm</div>
+<div class="i2 f-system">  ↳ Photo uploaded to Supabase Storage</div>
+<div class="i2 f-system">  ↳ Receipt thumbnail shown in card</div>
+<div class="i1 f-no">NO  → Skip (expense can still be submitted without receipt)</div>
+<div class="i0 f-step">→ Tap "Save"</div>
+<div class="i0 f-system">  ↳ Expense card saved, appears in Expenses module</div>
+<div class="i0 f-system">  ↳ Balance summary updates</div>
+<div class="i0 f-success">✓ GOAL REACHED — Expense logged, co-parent can see it</div>
+  </div>
+</div>
+
+<!-- F18 -->
+<div class="flow" id="f18">
+  <div class="flow-header">
+    <span class="flow-num">18</span>
+    <h3>Request Payment from Co-Parent</h3>
+    <span class="goal-pill">✓ Payment request sent</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Ask co-parent to pay their share via Stripe</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Open expense card (from board or Expenses module)</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Card dialog]</span> opens</div>
+<div class="i0 f-step">→ Scroll to "Payment" section</div>
+<div class="i0 f-step">→ Confirm amount in payment input</div>
+<div class="i0 f-step">→ Tap "Request payment" button</div>
+<div class="i0 f-system">  ↳ API call to /api/stripe-expense-payment</div>
+<div class="i0 f-system">  ↳ Stripe PaymentIntent created</div>
+<div class="i0 f-system">  ↳ Payment link generated</div>
+<div class="i0 f-system">  ↳ Card status changes to "Payment requested"</div>
+<div class="i0 f-system">  ↳ Co-parent notified (push / email with payment link)</div>
+<div class="i0 f-success">✓ GOAL REACHED — Payment request sent to co-parent</div>
+  </div>
+</div>
+
+<!-- F19 -->
+<div class="flow" id="f19">
+  <div class="flow-header">
+    <span class="flow-num">19</span>
+    <h3>Pay an Expense — Co-Parent (Payer)</h3>
+    <span class="goal-pill">✓ Payment completed</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Pay the requested share of an expense</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Receive push notification or email: "Payment requested for [expense]"</div>
+<div class="i0 f-step">→ Tap notification / tap link in email</div>
+<div class="i0 f-decision">[ Opens in app or hosted page? ]</div>
+<div class="i1 f-yes">In-app → Open card → see Payment section → tap "Pay now"</div>
+<div class="i1 f-no">Email link → opens hosted payment page at /pay/:intentId</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Payment page]</span> loads (do-do.app/pay/:id)</div>
+<div class="i0 f-step">→ See: expense name, amount, who is requesting</div>
+<div class="i0 f-step">→ See receipt photo (if attached)</div>
+<div class="i0 f-decision">[ Agree with amount? ]</div>
+<div class="i1 f-no">NO → Go back to app → dispute → see Flow 20</div>
+<div class="i1 f-yes">YES →</div>
+<div class="i1 f-decision">  [ Payment method? ]</div>
+<div class="i2 f-yes">Apple Pay → Tap "Pay with Apple Pay" → Face ID / Touch ID → done</div>
+<div class="i2 f-yes">Google Pay → Tap "Pay with Google Pay" → confirm → done</div>
+<div class="i2 f-no">Card → Enter card number / expiry / CVC → tap "Pay"</div>
+<div class="i0 f-system">  ↳ Stripe processes payment</div>
+<div class="i0 f-decision">[ Payment successful? ]</div>
+<div class="i1 f-yes">YES →</div>
+<div class="i2 f-system">  ↳ Success page shown</div>
+<div class="i2 f-system">  ↳ Card status changes to "Paid"</div>
+<div class="i2 f-system">  ↳ Submitting parent notified: "Payment received"</div>
+<div class="i2 f-system">  ↳ Balance summary updates in Expenses module</div>
+<div class="i1 f-no">NO  → Payment declined → error shown → try different card / method</div>
+<div class="i0 f-success">✓ GOAL REACHED — Expense settled, balance updated</div>
+  </div>
+</div>
+
+<!-- F20 -->
+<div class="flow" id="f20">
+  <div class="flow-header">
+    <span class="flow-num">20</span>
+    <h3>Dispute an Expense</h3>
+    <span class="goal-pill">✓ Dispute raised, discussion started</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Object to an expense amount or validity</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Open expense card</div>
+<div class="i0 f-step">→ Tap Status dropdown</div>
+<div class="i0 f-step">→ Select "Disputed"</div>
+<div class="i0 f-step">→ Scroll to Comments section</div>
+<div class="i0 f-step">→ Type reason for dispute (e.g. "Amount seems wrong, can you check the invoice?")</div>
+<div class="i0 f-step">→ Tap Send</div>
+<div class="i0 f-system">  ↳ Card status updated to "Disputed"</div>
+<div class="i0 f-system">  ↳ Submitting parent notified of dispute</div>
+<div class="i0 f-step">→ Submitting parent sees dispute comment</div>
+<div class="i0 f-decision">[ Resolution? ]</div>
+<div class="i1 f-yes">Agree to reduce → submitting parent edits amount → re-requests payment</div>
+<div class="i1 f-no">Stand by amount → responds in comments → payer decides</div>
+<div class="i1 f-no">Cancel expense → submitting parent sets status to Done/cancelled</div>
+<div class="i0 f-success">✓ GOAL REACHED — Dispute visible, both can negotiate in comments</div>
+  </div>
+</div>
+
+</div><!-- /expenses -->
+
+
+<!-- ═══════════════════════════════════════════════════ SHOPPING -->
+<div class="section-group">
+<div class="group-title">Shopping Lists</div>
+
+<!-- F21 -->
+<div class="flow" id="f21">
+  <div class="flow-header">
+    <span class="flow-num">21</span>
+    <h3>Add Items to Shopping List</h3>
+    <span class="goal-pill">✓ Item(s) on list</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Add one or more items to a shared list</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap "Shopping" in sidebar / bottom tab</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Shopping module]</span> opens</div>
+<div class="i0 f-step">→ Select list tab (Groceries / Other / Custom)</div>
+<div class="i0 f-decision">[ How to add? ]</div>
+<div class="i0 f-branch">│</div>
+<div class="i1 f-yes">PATH A — Typing</div>
+<div class="i1 f-step">→ Tap text input field at bottom</div>
+<div class="i1 f-step">→ Type item name (e.g. "Milk")</div>
+<div class="i1 f-step">→ Tap "+" button or press Return</div>
+<div class="i1 f-system">  ↳ Item appears at top of list</div>
+<div class="i1 f-system">  ↳ Co-parent sees item in real-time</div>
+<div class="i1 f-step">→ Repeat for each item</div>
+<div class="i0 f-branch">│</div>
+<div class="i1 f-yes">PATH B — Voice</div>
+<div class="i1 f-step">→ Tap mic button</div>
+<div class="i1 f-decision">  [ Mic permission? ]</div>
+<div class="i2 f-no">NO → Browser prompts for permission → grant → continue</div>
+<div class="i2 f-yes">YES → Mic active</div>
+<div class="i1 f-step">→ Speak item name (e.g. "Bread")</div>
+<div class="i1 f-step">→ Tap stop</div>
+<div class="i1 f-system">  ↳ Speech transcribed → item added to list</div>
+<div class="i0 f-branch">│</div>
+<div class="i1 f-yes">PATH C — Paste bulk</div>
+<div class="i1 f-step">→ Tap text input field</div>
+<div class="i1 f-step">→ Paste multi-line text (each line = one item)</div>
+<div class="i1 f-step">→ Tap "+"</div>
+<div class="i1 f-system">  ↳ Each line added as separate item</div>
+<div class="i0 f-success">✓ GOAL REACHED — Items on list, co-parent sees them live</div>
+  </div>
+</div>
+
+<!-- F22 -->
+<div class="flow" id="f22">
+  <div class="flow-header">
+    <span class="flow-num">22</span>
+    <h3>Tick Off Items While Shopping</h3>
+    <span class="goal-pill">✓ All items bought, list cleared</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Mark items as bought while in the store</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Open app in store</div>
+<div class="i0 f-step">→ Tap "Shopping" tab</div>
+<div class="i0 f-step">→ Select correct list (e.g. Groceries)</div>
+<div class="i0 f-step">→ Find an item on the list</div>
+<div class="i0 f-step">→ Tap the item row</div>
+<div class="i0 f-system">  ↳ Item marked as bought (strikethrough / moved to bought section)</div>
+<div class="i0 f-system">  ↳ Co-parent sees item ticked off in real-time</div>
+<div class="i0 f-step">→ Repeat for each item found</div>
+<div class="i0 f-decision">[ All items ticked? ]</div>
+<div class="i1 f-yes">YES →</div>
+<div class="i2 f-step">→ Tap "Clear bought items" button</div>
+<div class="i2 f-system">  ↳ All ticked items removed from list</div>
+<div class="i2 f-system">  ↳ List is clean for next shop</div>
+<div class="i1 f-no">NO  → Some items not found → leave them unticked for next time</div>
+<div class="i0 f-success">✓ GOAL REACHED — Shopping done, list cleared</div>
+  </div>
+</div>
+
+<!-- F23 -->
+<div class="flow" id="f23">
+  <div class="flow-header">
+    <span class="flow-num">23</span>
+    <h3>Create a Custom Shopping List</h3>
+    <span class="goal-pill">✓ New list created</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Add a new named list beyond Groceries and Other</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Open <span class="f-screen">[Shopping module]</span></div>
+<div class="i0 f-step">→ Tap "+" or "New list" button</div>
+<div class="i0 f-system">  ↳ Name input prompt appears</div>
+<div class="i0 f-step">→ Type list name (e.g. "Back to school")</div>
+<div class="i0 f-step">→ Tap "Create"</div>
+<div class="i0 f-system">  ↳ New list tab appears in Shopping module</div>
+<div class="i0 f-system">  ↳ List synced with co-parent</div>
+<div class="i0 f-success">✓ GOAL REACHED — Custom list available for both parents</div>
+  </div>
+</div>
+
+</div><!-- /shopping -->
+
+
+<!-- ═══════════════════════════════════════════════════ CALENDAR -->
+<div class="section-group">
+<div class="group-title">Calendar — Custody</div>
+
+<!-- F24 -->
+<div class="flow" id="f24">
+  <div class="flow-header">
+    <span class="flow-num">24</span>
+    <h3>Set Up Custody Schedule</h3>
+    <span class="goal-pill">✓ Calendar shows correct custody pattern</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Configure the custody rotation pattern and colours</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap "Calendar" in sidebar / bottom tab</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Calendar module]</span> shows monthly grid with default 7-7 pattern</div>
+<div class="i0 f-step">→ Find "Edit custody schedule" button / settings icon</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Custody schedule dialog]</span> opens</div>
+<div class="i0 f-step">→ See "Schedule type" dropdown</div>
+<div class="i0 f-step">→ Tap dropdown → select pattern:</div>
+<div class="i1 f-branch">7-7   → alternating 7-day weeks</div>
+<div class="i1 f-branch">2-2-3 → 2 days / 2 days / 3 days alternating</div>
+<div class="i1 f-branch">5-2   → 5 days one parent, 2 days other</div>
+<div class="i0 f-step">→ Tap "Reference date" field → pick calendar date</div>
+<div class="i0 f-note">  (this is the Monday when "your" first period starts)</div>
+<div class="i0 f-step">→ See colour pickers: "My colour" + "Co-parent colour"</div>
+<div class="i0 f-step">→ Tap "My colour" swatch → select colour from palette</div>
+<div class="i0 f-step">→ Tap "Co-parent colour" swatch → select different colour</div>
+<div class="i0 f-step">→ Tap "Save"</div>
+<div class="i0 f-system">  ↳ Dialog closes</div>
+<div class="i0 f-system">  ↳ Calendar grid redraws with selected colours + pattern</div>
+<div class="i0 f-success">✓ GOAL REACHED — Calendar shows correct custody pattern</div>
+  </div>
+</div>
+
+<!-- F25 -->
+<div class="flow" id="f25">
+  <div class="flow-header">
+    <span class="flow-num">25</span>
+    <h3>Override a Single Custody Day</h3>
+    <span class="goal-pill">✓ That day shows correct owner</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Change who has custody on one specific day</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ On <span class="f-screen">[Calendar]</span>, tap the day cell to override</div>
+<div class="i0 f-system">  ↳ Day action sheet / popover appears</div>
+<div class="i0 f-step">→ Select override type:</div>
+<div class="i1 f-branch">Mine   → full day assigned to me</div>
+<div class="i1 f-branch">Co     → full day assigned to co-parent</div>
+<div class="i1 f-branch">Split  → morning one parent, afternoon the other</div>
+<div class="i0 f-decision">[ Split day selected? ]</div>
+<div class="i1 f-yes">YES → Pick split time (e.g. 14:00) → pick who has morning → who has afternoon</div>
+<div class="i1 f-no">NO  → Just confirm the choice</div>
+<div class="i0 f-step">→ Tap "Save override"</div>
+<div class="i0 f-system">  ↳ Override saved to custody schedule</div>
+<div class="i0 f-system">  ↳ That day cell re-colours on calendar</div>
+<div class="i0 f-success">✓ GOAL REACHED — Day shows correct custody owner</div>
+  </div>
+</div>
+
+<!-- F26 -->
+<div class="flow" id="f26">
+  <div class="flow-header">
+    <span class="flow-num">26</span>
+    <h3>Add a Vacation / Holiday Period</h3>
+    <span class="goal-pill">✓ Vacation shown on calendar</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Mark a multi-day holiday that overrides the normal schedule</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ On <span class="f-screen">[Calendar]</span>, find "Add vacation" or "+" button</div>
+<div class="i0 f-system">  ↳ Vacation entry dialog opens</div>
+<div class="i0 f-step">→ Tap "Start date" → select start of vacation</div>
+<div class="i0 f-step">→ Tap "End date" → select end of vacation</div>
+<div class="i0 f-step">→ Select which parent has the child (Mine / Co)</div>
+<div class="i0 f-decision">[ Is it split across parents? ]</div>
+<div class="i1 f-yes">YES → Add separate vacation entry for each part</div>
+<div class="i1 f-no">NO  → One parent for the whole period</div>
+<div class="i0 f-step">→ Add optional label/note (e.g. "Summer camp - Spain")</div>
+<div class="i0 f-step">→ Tap "Save"</div>
+<div class="i0 f-system">  ↳ Vacation saved, overrides normal custody for those days</div>
+<div class="i0 f-system">  ↳ ✈ icon shown on vacation days in calendar</div>
+<div class="i0 f-success">✓ GOAL REACHED — Vacation visible on calendar, schedule adjusted</div>
+  </div>
+</div>
+
+<!-- F27 -->
+<div class="flow" id="f27">
+  <div class="flow-header">
+    <span class="flow-num">27</span>
+    <h3>Request a Custody Day Swap</h3>
+    <span class="goal-pill">✓ Swap request sent to co-parent</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Ask co-parent to swap a custody day</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ On <span class="f-screen">[Calendar]</span>, tap the day you want to swap</div>
+<div class="i0 f-system">  ↳ Day detail popover shown</div>
+<div class="i0 f-step">→ Tap "Request change" or "Swap day"</div>
+<div class="i0 f-system">  ↳ Change request dialog opens</div>
+<div class="i0 f-step">→ Select proposed new owner for that day</div>
+<div class="i0 f-step">→ (optional) Select swap day: "I'll give you [date] in return"</div>
+<div class="i0 f-step">→ Type note / reason (e.g. "Work trip, can't take kids that Friday")</div>
+<div class="i0 f-step">→ Tap "Send request"</div>
+<div class="i0 f-system">  ↳ Change request card created on board</div>
+<div class="i0 f-system">  ↳ Co-parent receives push / email notification</div>
+<div class="i0 f-success">✓ GOAL REACHED — Request sent, co-parent notified</div>
+  </div>
+</div>
+
+<!-- F28 -->
+<div class="flow" id="f28">
+  <div class="flow-header">
+    <span class="flow-num">28</span>
+    <h3>Approve or Decline a Custody Swap</h3>
+    <span class="goal-pill">✓ Calendar updated (or request declined)</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Respond to a custody change request</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Receive push / email: "Custody swap request for [date]"</div>
+<div class="i0 f-step">→ Tap notification → opens change request card on board</div>
+<div class="i0 f-step">→ Read the request details + proposed date</div>
+<div class="i0 f-decision">[ Accept the swap? ]</div>
+<div class="i1 f-yes">YES →</div>
+<div class="i2 f-step">→ Tap "Approve"</div>
+<div class="i2 f-system">  ↳ Day override saved for both affected dates</div>
+<div class="i2 f-system">  ↳ Calendar updates for both parents</div>
+<div class="i2 f-system">  ↳ Requesting parent notified: "Swap approved"</div>
+<div class="i2 f-system">  ↳ Card moved to Done</div>
+<div class="i1 f-no">NO  →</div>
+<div class="i2 f-step">→ Tap "Decline"</div>
+<div class="i2 f-step">→ (optional) Type reason in comment</div>
+<div class="i2 f-system">  ↳ Requesting parent notified: "Swap declined"</div>
+<div class="i2 f-system">  ↳ Calendar unchanged</div>
+<div class="i2 f-system">  ↳ Card moved to Done / archived</div>
+<div class="i0 f-success">✓ GOAL REACHED — Both parents aligned on calendar</div>
+  </div>
+</div>
+
+</div><!-- /calendar -->
+
+
+<!-- ═══════════════════════════════════════════════════ INTEGRATIONS -->
+<div class="section-group">
+<div class="group-title">Integrations</div>
+
+<!-- F29 -->
+<div class="flow" id="f29">
+  <div class="flow-header">
+    <span class="flow-num">29</span>
+    <h3>Connect Google Calendar</h3>
+    <span class="goal-pill">✓ Do-Do cards appear in Google Calendar</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Sync Do-Do cards to Google Calendar (2-way)</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-gate">[ REQUIRES: Family plan ]</div>
+<div class="i0 f-step">→ Tap "Settings"</div>
+<div class="i0 f-step">→ Scroll to "Calendar" / "Automations" section</div>
+<div class="i0 f-step">→ See "Family Calendar" row</div>
+<div class="i0 f-step">→ Toggle "Family Calendar" on</div>
+<div class="i0 f-decision">[ On paid plan? ]</div>
+<div class="i1 f-no">NO → Upgrade prompt: "Calendar sync is available on the Family plan" → see Flow 33</div>
+<div class="i1 f-yes">YES →</div>
+<div class="i1 f-step">→ Provider dropdown appears → select "Google"</div>
+<div class="i1 f-step">→ Tap "Connect" button</div>
+<div class="i1 f-system">  ↳ Google OAuth popup opens</div>
+<div class="i1 f-step">→ Select Google account</div>
+<div class="i1 f-step">→ See permissions: "Read and write your calendar events"</div>
+<div class="i1 f-step">→ Tap "Allow"</div>
+<div class="i1 f-system">  ↳ Access token saved to server</div>
+<div class="i1 f-system">  ↳ Status badge turns green: "Connected"</div>
+<div class="i1 f-system">  ↳ Initial sync runs in background</div>
+<div class="i1 f-system">  ↳ Do-Do cards with due dates push to Google Calendar</div>
+<div class="i1 f-decision">  [ Want work calendar too? ]</div>
+<div class="i2 f-yes">YES → Toggle "Work calendar" → select provider → connect (same OAuth flow)</div>
+<div class="i2 f-note">Note: work calendar events appear as "Busy" only - details hidden</div>
+<div class="i2 f-no">NO  → Skip</div>
+<div class="i0 f-step">→ Open Google Calendar app on phone</div>
+<div class="i0 f-system">  ↳ Do-Do events visible in calendar</div>
+<div class="i0 f-success">✓ GOAL REACHED — Cards synced to Google Calendar</div>
+  </div>
+</div>
+
+<!-- F30 -->
+<div class="flow" id="f30">
+  <div class="flow-header">
+    <span class="flow-num">30</span>
+    <h3>Connect Apple Calendar (CalDAV)</h3>
+    <span class="goal-pill">✓ Do-Do cards appear in Apple Calendar</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Sync Do-Do cards to Apple Calendar via CalDAV</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-gate">[ REQUIRES: Family plan ]</div>
+<div class="i0 f-step">→ Tap "Settings"</div>
+<div class="i0 f-step">→ Find "Family Calendar" toggle</div>
+<div class="i0 f-step">→ Toggle on → select "Apple" from provider dropdown</div>
+<div class="i0 f-decision">[ On paid plan? ]</div>
+<div class="i1 f-no">NO → Upgrade prompt → Flow 33</div>
+<div class="i1 f-yes">YES →</div>
+<div class="i1 f-step">→ Apple CalDAV credential form appears</div>
+<div class="i1 f-step">→ Enter Apple ID (email)</div>
+<div class="i1 f-step">→ Enter app-specific password (generated at appleid.apple.com)</div>
+<div class="i1 f-step">→ Tap "Connect"</div>
+<div class="i1 f-system">  ↳ /api/apple-calendar validates credentials</div>
+<div class="i1 f-decision">  [ Credentials valid? ]</div>
+<div class="i2 f-yes">YES →</div>
+<div class="i3 f-system">  ↳ Credentials saved</div>
+<div class="i3 f-system">  ↳ Status badge turns green</div>
+<div class="i3 f-system">  ↳ Do-Do cards sync to iCloud Calendar</div>
+<div class="i2 f-no">NO  → Error: "Invalid credentials" → check app-specific password and retry</div>
+<div class="i0 f-step">→ Open Apple Calendar app</div>
+<div class="i0 f-system">  ↳ Do-Do events visible</div>
+<div class="i0 f-success">✓ GOAL REACHED — Cards synced to Apple Calendar</div>
+  </div>
+</div>
+
+</div><!-- /integrations -->
+
+
+<!-- ═══════════════════════════════════════════════════ NOTIFICATIONS -->
+<div class="section-group">
+<div class="group-title">Notifications</div>
+
+<!-- F31 -->
+<div class="flow" id="f31">
+  <div class="flow-header">
+    <span class="flow-num">31</span>
+    <h3>Enable Push Notifications</h3>
+    <span class="goal-pill">✓ Push notifications active</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Receive push notifications for cards and reminders</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-note">Push permission prompt is deferred — shown at first card save, not at sign-up</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-decision">[ Trigger A — Saving a card with a reminder ]</div>
+<div class="i1 f-step">→ Save card with reminder set</div>
+<div class="i1 f-system">  ↳ Browser native permission prompt: "Do-Do wants to send notifications"</div>
+<div class="i1 f-decision">  [ User allows? ]</div>
+<div class="i2 f-yes">YES → VAPID subscription saved → push notifications active</div>
+<div class="i2 f-no">NO  → Email-only reminders (if email connected)</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-decision">[ Trigger B — Settings > Notifications panel ]</div>
+<div class="i1 f-step">→ Tap Settings</div>
+<div class="i1 f-step">→ Scroll to "Notifications" section</div>
+<div class="i1 f-step">→ See push permission status</div>
+<div class="i1 f-decision">  [ Permission already granted? ]</div>
+<div class="i2 f-yes">YES → Notifications active, can set quiet hours</div>
+<div class="i2 f-no">NO  → Tap "Enable push notifications" button</div>
+<div class="i3 f-system">  ↳ Browser permission prompt shown</div>
+<div class="i3 f-decision">  [ User allows? ]</div>
+<div class="i4 f-yes">YES → Active</div>
+<div class="i4 f-no">NO  → Blocked (user must enable in browser settings manually)</div>
+<div class="i1 f-step">→ Tap "Send test notification"</div>
+<div class="i1 f-system">  ↳ Test push arrives on device → confirmed working</div>
+<div class="i0 f-success">✓ GOAL REACHED — Push notifications active</div>
+  </div>
+</div>
+
+<!-- F32 -->
+<div class="flow" id="f32">
+  <div class="flow-header">
+    <span class="flow-num">32</span>
+    <h3>Set Quiet Hours</h3>
+    <span class="goal-pill">✓ No notifications during set hours</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Stop notifications during sleep or work hours</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap Settings</div>
+<div class="i0 f-step">→ Scroll to "Notifications" section</div>
+<div class="i0 f-step">→ Find "Quiet hours" toggle</div>
+<div class="i0 f-step">→ Toggle on</div>
+<div class="i0 f-step">→ Tap "From" time → select start time (e.g. 22:00)</div>
+<div class="i0 f-step">→ Tap "To" time → select end time (e.g. 07:00)</div>
+<div class="i0 f-step">→ Tap "Save"</div>
+<div class="i0 f-system">  ↳ Quiet hours saved to automation settings</div>
+<div class="i0 f-system">  ↳ Reminders outside quiet hours fire normally</div>
+<div class="i0 f-system">  ↳ Reminders within quiet hours are queued for after quiet hours end</div>
+<div class="i0 f-success">✓ GOAL REACHED — Notifications silenced during set hours</div>
+  </div>
+</div>
+
+</div><!-- /notifications -->
+
+
+<!-- ═══════════════════════════════════════════════════ SUBSCRIPTION -->
+<div class="section-group">
+<div class="group-title">Subscription</div>
+
+<!-- F33 -->
+<div class="flow" id="f33">
+  <div class="flow-header">
+    <span class="flow-num">33</span>
+    <h3>Upgrade to Family Plan (from paywall)</h3>
+    <span class="goal-pill">✓ Subscribed, features unlocked</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Unlock premium features by subscribing</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-decision">[ Entry point? ]</div>
+<div class="i1 f-branch">A → Hit feature gate (AI, calendar sync, unlimited cards)</div>
+<div class="i1 f-branch">B → Tap Settings → Subscription → "Upgrade" button</div>
+<div class="i0 f-system">  ↳ <span class="f-screen">[Upgrade prompt modal]</span> shown with feature list + pricing</div>
+<div class="i0 f-step">→ Read what's included in Family plan</div>
+<div class="i0 f-step">→ See pricing: [PLN 19/mo or PLN 169/yr] based on detected locale</div>
+<div class="i0 f-decision">[ Change currency? ]</div>
+<div class="i1 f-yes">YES → Tap Settings → Currency → change to EUR/CHF → pricing updates</div>
+<div class="i1 f-no">NO  → Continue</div>
+<div class="i0 f-step">→ Select billing period: Monthly or Annual</div>
+<div class="i0 f-step">→ Tap "Upgrade to Family" or "Start 14-day trial"</div>
+<div class="i0 f-system">  ↳ API call to /api/stripe-create-checkout</div>
+<div class="i0 f-system">  ↳ Redirect to Stripe Checkout page</div>
+<div class="i0 f-step">→ On Stripe Checkout: see plan summary + price</div>
+<div class="i0 f-decision">[ Payment method? ]</div>
+<div class="i1 f-yes">Apple Pay → Tap "Apple Pay" → Face ID/Touch ID → confirmed</div>
+<div class="i1 f-yes">Google Pay → Tap "Google Pay" → confirm → done</div>
+<div class="i1 f-no">Card → Enter card number + expiry + CVC + postcode</div>
+<div class="i2 f-step">→ Tap "Subscribe"</div>
+<div class="i0 f-system">  ↳ Stripe processes payment</div>
+<div class="i0 f-decision">[ Payment successful? ]</div>
+<div class="i1 f-yes">YES →</div>
+<div class="i2 f-system">  ↳ Stripe webhook fires → subscription status updated in DB</div>
+<div class="i2 f-system">  ↳ Stripe success page shown</div>
+<div class="i2 f-step">→ Return to app (back button or redirect)</div>
+<div class="i2 f-system">  ↳ App detects active subscription</div>
+<div class="i2 f-system">  ↳ All gated features unlocked</div>
+<div class="i1 f-no">NO  → Card declined → error on Stripe page → try another card</div>
+<div class="i0 f-success">✓ GOAL REACHED — Subscribed, all Family features available</div>
+  </div>
+</div>
+
+<!-- F34 -->
+<div class="flow" id="f34">
+  <div class="flow-header">
+    <span class="flow-num">34</span>
+    <h3>Manage or Cancel Subscription</h3>
+    <span class="goal-pill">✓ Subscription updated</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Change billing period, update card, or cancel</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap Settings</div>
+<div class="i0 f-step">→ Scroll to "Subscription" panel</div>
+<div class="i0 f-step">→ See current status: Active / Trial / Past Due</div>
+<div class="i0 f-step">→ Tap "Manage subscription" button</div>
+<div class="i0 f-system">  ↳ API call to /api/stripe-portal</div>
+<div class="i0 f-system">  ↳ Redirect to Stripe Customer Portal</div>
+<div class="i0 f-step">→ In Stripe portal: choose action</div>
+<div class="i0 f-decision">[ Action? ]</div>
+<div class="i1 f-branch">Update card → tap "Update payment method" → enter new card → save</div>
+<div class="i1 f-branch">Switch to annual → tap "Change plan" → select annual → confirm</div>
+<div class="i1 f-branch">Cancel → tap "Cancel plan" → confirm cancellation</div>
+<div class="i2 f-system">  ↳ Plan cancels at end of current billing period</div>
+<div class="i2 f-system">  ↳ Access continues until period ends</div>
+<div class="i0 f-step">→ Tap "Return to Do-Do"</div>
+<div class="i0 f-system">  ↳ Back in app, subscription status updated</div>
+<div class="i0 f-success">✓ GOAL REACHED — Subscription updated as desired</div>
+  </div>
+</div>
+
+</div><!-- /subscription -->
+
+
+<!-- ═══════════════════════════════════════════════════ SETTINGS -->
+<div class="section-group">
+<div class="group-title">Settings</div>
+
+<!-- F35 -->
+<div class="flow" id="f35">
+  <div class="flow-header">
+    <span class="flow-num">35</span>
+    <h3>Add or Edit a Child</h3>
+    <span class="goal-pill">✓ Child in family workspace</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Add a new child or rename an existing one</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap Settings</div>
+<div class="i0 f-step">→ Find "Children" section</div>
+<div class="i0 f-decision">[ Add new or edit existing? ]</div>
+<div class="i1 f-yes">ADD → Tap "+ Add child"</div>
+<div class="i2 f-step">→ Type child's name</div>
+<div class="i2 f-step">→ Tap "Add"</div>
+<div class="i2 f-system">  ↳ Child saved to Supabase family record</div>
+<div class="i2 f-system">  ↳ Child appears in card dropdowns for both parents</div>
+<div class="i1 f-no">EDIT → Tap existing child name</div>
+<div class="i2 f-step">→ Edit name in input field</div>
+<div class="i2 f-step">→ Tap "Save"</div>
+<div class="i2 f-system">  ↳ Name updated in all cards that reference that child</div>
+<div class="i0 f-success">✓ GOAL REACHED — Child available in all card forms</div>
+  </div>
+</div>
+
+<!-- F36 -->
+<div class="flow" id="f36">
+  <div class="flow-header">
+    <span class="flow-num">36</span>
+    <h3>Change App Theme</h3>
+    <span class="goal-pill">✓ Theme applied</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Switch between light, dark, or system theme</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap Settings</div>
+<div class="i0 f-step">→ Find "Theme" preference row</div>
+<div class="i0 f-step">→ Tap current theme value</div>
+<div class="i0 f-step">→ Select: Light / Dark / System</div>
+<div class="i0 f-system">  ↳ Theme applied immediately, no page reload needed</div>
+<div class="i0 f-system">  ↳ Preference saved to localStorage</div>
+<div class="i0 f-success">✓ GOAL REACHED — App displays in selected theme</div>
+  </div>
+</div>
+
+<!-- F37 -->
+<div class="flow" id="f37">
+  <div class="flow-header">
+    <span class="flow-num">37</span>
+    <h3>Change Currency</h3>
+    <span class="goal-pill">✓ Pricing shown in selected currency</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Change the currency used for subscription pricing</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap Settings</div>
+<div class="i0 f-step">→ Find "Currency" row</div>
+<div class="i0 f-step">→ Tap dropdown → select: PLN / EUR / CHF</div>
+<div class="i0 f-system">  ↳ Preference saved to localStorage as "do-do-currency"</div>
+<div class="i0 f-system">  ↳ Subscription pricing throughout app updates to selected currency</div>
+<div class="i0 f-success">✓ GOAL REACHED — Pricing shown in preferred currency</div>
+  </div>
+</div>
+
+</div><!-- /settings -->
+
+
+<!-- ═══════════════════════════════════════════════════ ACCOUNT -->
+<div class="section-group">
+<div class="group-title">Account (GDPR)</div>
+
+<!-- F38 -->
+<div class="flow" id="f38">
+  <div class="flow-header">
+    <span class="flow-num">38</span>
+    <h3>Export My Data (GDPR)</h3>
+    <span class="goal-pill">✓ JSON file downloaded</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Download a copy of all personal data</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap Settings</div>
+<div class="i0 f-step">→ Scroll to "Account" / "Privacy" section</div>
+<div class="i0 f-step">→ Tap "Export my data"</div>
+<div class="i0 f-system">  ↳ API call to /api/export-data with JWT auth header</div>
+<div class="i0 f-system">  ↳ Server collects: profile, cards, shopping items, expenses, comments, activity log</div>
+<div class="i0 f-system">  ↳ JSON file generated server-side</div>
+<div class="i0 f-system">  ↳ Browser download prompt: "do-do-export.json"</div>
+<div class="i0 f-step">→ Tap "Download" / "Save"</div>
+<div class="i0 f-system">  ↳ File saved to device</div>
+<div class="i0 f-success">✓ GOAL REACHED — Full data export downloaded</div>
+  </div>
+</div>
+
+<!-- F39 -->
+<div class="flow" id="f39">
+  <div class="flow-header">
+    <span class="flow-num">39</span>
+    <h3>Delete Account (GDPR)</h3>
+    <span class="goal-pill">✓ Account deleted, data anonymised</span>
+  </div>
+  <div class="flow-body">
+<div class="i0 f-goal">GOAL: Permanently delete account and personal data</div>
+<div class="i0 f-branch">│</div>
+<div class="i0 f-step">→ Tap Settings</div>
+<div class="i0 f-step">→ Scroll to "Account" / "Danger zone"</div>
+<div class="i0 f-step">→ Tap "Delete account"</div>
+<div class="i0 f-system">  ↳ Confirmation dialog opens</div>
+<div class="i0 f-step">→ Read warning: "Family cards you created will be anonymised. Co-parent's data is preserved."</div>
+<div class="i0 f-step">→ Type "DELETE" to confirm (or tap confirm button)</div>
+<div class="i0 f-decision">[ Has active subscription? ]</div>
+<div class="i1 f-yes">YES → Warning: "Your subscription will be cancelled. Export your data first?"</div>
+<div class="i2 f-decision">  [ Export first? ]</div>
+<div class="i3 f-yes">YES → Export data (Flow 38) → return → continue deletion</div>
+<div class="i3 f-no">NO  → Continue</div>
+<div class="i1 f-no">NO  → Continue</div>
+<div class="i0 f-step">→ Tap "Delete permanently"</div>
+<div class="i0 f-system">  ↳ API call to /api/delete-account with JWT</div>
+<div class="i0 f-system">  ↳ Cards authored by user are anonymised (author name replaced)</div>
+<div class="i0 f-system">  ↳ Profile + auth user deleted from Supabase</div>
+<div class="i0 f-system">  ↳ Stripe subscription cancelled if active</div>
+<div class="i0 f-system">  ↳ Session cleared, app returns to auth screen</div>
+<div class="i0 f-success">✓ GOAL REACHED — Account deleted, data anonymised</div>
+  </div>
+</div>
+
+</div><!-- /account -->
+
+</main>
+</div>
+
+<script>
+// Sidebar active state on scroll
+const allFlows = document.querySelectorAll('.flow[id]');
+const sideLinks = document.querySelectorAll('.sidebar-link');
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      sideLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.sidebar-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+allFlows.forEach(f => obs.observe(f));
+</script>
+</body>
+</html>

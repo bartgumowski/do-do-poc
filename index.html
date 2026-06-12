@@ -427,11 +427,17 @@
 
           <section class="board-cal-section" id="boardCalSection" aria-label="Week calendar">
             <div class="board-cal-nav">
-              <button class="round-nav" type="button" id="boardCalPrev" aria-label="Previous week">&#8249;</button>
-              <span class="board-cal-nav-title" id="boardCalTitle"></span>
-              <button class="round-nav" type="button" id="boardCalNext" aria-label="Next week">&#8250;</button>
+              <button class="round-nav bcal-edge-btn" type="button" id="boardCalPrev" aria-label="Previous">&#8249;</button>
+              <div class="board-cal-nav-center">
+                <span class="board-cal-nav-title" id="boardCalTitle"></span>
+                <div class="bcal-toggle">
+                  <button class="bcal-toggle-btn active" type="button" id="boardCalToggleWeek">Week</button>
+                  <button class="bcal-toggle-btn" type="button" id="boardCalToggle3Day">3 Days</button>
+                </div>
+              </div>
+              <button class="round-nav bcal-edge-btn" type="button" id="boardCalNext" aria-label="Next">&#8250;</button>
             </div>
-            <div class="board-cal-grid" id="boardCalGrid"></div>
+            <div class="board-cal-grid-wrap" id="boardCalGrid"></div>
           </section>
         </div>
 

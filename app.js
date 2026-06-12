@@ -1,4 +1,4 @@
-const APP_VERSION = "0.13.1";
+const APP_VERSION = "0.14.0";
 const APP_VERSION_DATE = "2026-06-12";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -293,7 +293,8 @@ window.addEventListener("subscriptionLoaded", (e) => {
 });
 
 // Board week-calendar state (must be declared before render() is called)
-const _boardCal = { weekStart: _boardCalGetWeekStart(new Date()) };
+// mode: "week" = 7 cols, "3day" = 3 cols
+const _boardCal = { weekStart: _boardCalGetWeekStart(new Date()), mode: "week" };
 
 // Subscription helpers
 function isPaidUser() {
@@ -4940,6 +4941,7 @@ function initVersionBadge() {
 
 // Expose for settings panel and external use
 window.getAppVersion = getAppVersion;
+window.renderBoardCalendar = renderBoardCalendar;
 
 function initNotifications() {
   // If permission was already granted (returning user), re-subscribe silently
@@ -4997,26 +4999,35 @@ function _boardCalCardDay(card) {
 }
 
 function renderBoardCalendar(cards) {
-  const section = document.getElementById("boardCalSection");
-  const grid = document.getElementById("boardCalGrid");
-  const titleEl = document.getElementById("boardCalTitle");
-  if (!section || !grid || !titleEl) return;
+  // Cache cards so the calendar page can access them when rendered later
+  if (cards && cards.length) window._lastCards = cards;
 
+  // Find all calendar containers - board page uses boardCalGrid, calendar page uses calPageBcalGrid
+  const containers = [
+    document.getElementById("boardCalGrid"),
+    document.getElementById("calPageBcalGrid"),
+  ].filter(Boolean);
+  if (!containers.length) return;
+
+  const colCount = _boardCal.mode === "3day" ? 3 : 7;
+  const shift = colCount; // days to shift on prev/next
   const ws = _boardCal.weekStart;
-  const days = Array.from({ length: 7 }, (_, i) => {
+
+  const days = Array.from({ length: colCount }, (_, i) => {
     const d = new Date(ws);
     d.setDate(ws.getDate() + i);
     return d;
   });
 
-  // Title: "June 2026"
+  // Title: "June 2026" or "Mon 9 - Wed 11 June"
   const firstDay = days[0];
-  const lastDay = days[6];
+  const lastDay = days[days.length - 1];
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  let titleText;
   if (firstDay.getMonth() === lastDay.getMonth()) {
-    titleEl.textContent = `${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()}`;
+    titleText = `${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()}`;
   } else {
-    titleEl.textContent = `${monthNames[firstDay.getMonth()]} - ${monthNames[lastDay.getMonth()]} ${lastDay.getFullYear()}`;
+    titleText = `${monthNames[firstDay.getMonth()]} - ${monthNames[lastDay.getMonth()]} ${lastDay.getFullYear()}`;
   }
 
   const todayKey = _boardCalDayKey(new Date());
@@ -5030,20 +5041,19 @@ function renderBoardCalendar(cards) {
     if (k && cardsByDay[k] !== undefined) cardsByDay[k].push(card);
   });
 
-  const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
-  grid.innerHTML = `
-    <div class="bcal-grid">
-      ${days.map((d, i) => {
+  const gridHTML = `
+    <div class="bcal-grid bcal-cols-${colCount}">
+      ${days.map((d) => {
         const k = _boardCalDayKey(d);
         const isToday = k === todayKey;
         const daycards = cardsByDay[k] || [];
-        // Custody class for header tint (mine / co / split)
         const custodyClass = window.getCustodyClass ? window.getCustodyClass(d) : "";
         return `
           <div class="bcal-col" data-bcal-day="${k}">
             <div class="bcal-col-head${isToday ? " bcal-today" : ""}${custodyClass ? " " + custodyClass : ""}">
-              <span class="bcal-dow">${DOW[i]}</span>
+              <span class="bcal-dow">${DOW[d.getDay()]}</span>
               <strong class="bcal-num">${d.getDate()}</strong>
             </div>
             <div class="bcal-col-body" data-bcal-drop="${k}">
@@ -5062,7 +5072,7 @@ function renderBoardCalendar(cards) {
                       ${initial ? `<span class="bcal-card-avatar">${initial}</span>` : ""}
                     </div>`;
                   }).join("")
-                : `<span class="bcal-empty">Clear</span>`}
+                : `<span class="bcal-empty">-</span>`}
             </div>
           </div>
         `;
@@ -5070,22 +5080,71 @@ function renderBoardCalendar(cards) {
     </div>
   `;
 
-  _bindBoardCalDragDrop(grid);
+  // Apply to all containers
+  containers.forEach((grid) => {
+    grid.innerHTML = gridHTML;
+    _bindBoardCalDragDrop(grid);
+  });
 
-  // Nav buttons - bind once, rebind each render
-  const prev = document.getElementById("boardCalPrev");
-  const next = document.getElementById("boardCalNext");
+  // Update titles in all nav bars
+  ["boardCalTitle", "calPageBcalTitle"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = titleText;
+  });
+
+  // Update toggle button active state in all nav bars
+  ["boardCalToggleWeek","calPageBcalToggleWeek"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("active", _boardCal.mode === "week");
+  });
+  ["boardCalToggle3Day","calPageBcalToggle3Day"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("active", _boardCal.mode === "3day");
+  });
+
+  // Bind nav + toggle buttons (rebind each render)
+  _bindBoardCalNav("boardCalPrev", "boardCalNext", "boardCalToggleWeek", "boardCalToggle3Day", shift);
+  _bindBoardCalNav("calPageBcalPrev", "calPageBcalNext", "calPageBcalToggleWeek", "calPageBcalToggle3Day", shift);
+}
+
+function _bindBoardCalNav(prevId, nextId, toggleWeekId, toggle3DayId, shift) {
+  const prev = document.getElementById(prevId);
+  const next = document.getElementById(nextId);
+  const tWeek = document.getElementById(toggleWeekId);
+  const t3Day = document.getElementById(toggle3DayId);
+
   if (prev) {
     prev.onclick = () => {
+      const s = _boardCal.mode === "3day" ? 3 : 7;
       _boardCal.weekStart = new Date(_boardCal.weekStart);
-      _boardCal.weekStart.setDate(_boardCal.weekStart.getDate() - 7);
+      _boardCal.weekStart.setDate(_boardCal.weekStart.getDate() - s);
       renderBoardCalendar(state.cards);
     };
   }
   if (next) {
     next.onclick = () => {
+      const s = _boardCal.mode === "3day" ? 3 : 7;
       _boardCal.weekStart = new Date(_boardCal.weekStart);
-      _boardCal.weekStart.setDate(_boardCal.weekStart.getDate() + 7);
+      _boardCal.weekStart.setDate(_boardCal.weekStart.getDate() + s);
+      renderBoardCalendar(state.cards);
+    };
+  }
+  if (tWeek) {
+    tWeek.onclick = () => {
+      _boardCal.mode = "week";
+      _boardCal.weekStart = _boardCalGetWeekStart(_boardCal.weekStart);
+      renderBoardCalendar(state.cards);
+    };
+  }
+  if (t3Day) {
+    t3Day.onclick = () => {
+      if (_boardCal.mode !== "3day") {
+        _boardCal.mode = "3day";
+        // Start 3-day view on today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        _boardCal.weekStart = today;
+      }
       renderBoardCalendar(state.cards);
     };
   }
