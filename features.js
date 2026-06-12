@@ -1704,22 +1704,23 @@ function renderExpensesFeature() {
 
   // Settlement section: only show when balance != 0
   const settlementSection = balanceAbs > 0.01 ? (() => {
-    const theyOwe = balance > 0.01; // coparent owes me
+    const theyOwe = balance > 0.01;
     const amtStr = `${_sym} ${formatExpenseCurrency(balanceAbs)}`;
-    const whoOwes = theyOwe
-      ? `<span class="settlement-who-owes balance-positive">${escapeHtml(coparentName)} winien</span>`
-      : `<span class="settlement-who-owes balance-negative">Ty winien/winna</span>`;
+    const whoOwesLabel = theyOwe
+      ? (_t("settle.they_owe_label") || "{{name}} owes").replace("{{name}}", escapeHtml(coparentName))
+      : (_t("settle.you_owe_label") || "You owe");
+    const whoOwesClass = theyOwe ? "balance-positive" : "balance-negative";
     const btnLabel = theyOwe
-      ? `Wyslij prosbe o przelew ${amtStr} do ${escapeHtml(coparentName)}`
-      : `Przelej ${amtStr} do ${escapeHtml(coparentName)}`;
+      ? (_t("settle.send_btn") || "Send transfer request {{amt}}").replace("{{amt}}", amtStr)
+      : (_t("settle.transfer_btn") || "Transfer {{amt}} to {{name}}").replace("{{amt}}", amtStr).replace("{{name}}", escapeHtml(coparentName));
     return `
       <div class="settlement-banner">
         <div class="settlement-banner-top">
           <div>
-            <span class="settlement-label">Do rozliczenia</span>
+            <span class="settlement-label">${_t("settle.to_settle") || "To settle"}</span>
             <strong class="settlement-amount">${amtStr}</strong>
           </div>
-          <div>${whoOwes}</div>
+          <div><span class="settlement-who-owes ${whoOwesClass}">${whoOwesLabel}</span></div>
         </div>
         <button class="settlement-request-btn" type="button" id="sendSettlementBtn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -2091,92 +2092,160 @@ function handleExpenseAction(cardId, action) {
 // ─── Settlement modal ─────────────────────────────────────────────────────────
 
 async function openSettlementModal({ expenseCards, balance, balanceAbs, coparentName, myName, _sym, selectedMonth }) {
-  // Remove any leftover modal
-  document.getElementById("settlementModalBackdrop")?.remove();
+  document.getElementById("settlementDialog")?.remove();
 
+  const _t = window.t || ((k) => k);
   const theyOwe = balance > 0.01;
   const amtStr = `${_sym} ${formatExpenseCurrency(balanceAbs)}`;
 
-  // Build itemized list of unsettled expenses that contribute to the balance
+  // Unsettled cards that make up the balance
   const unsettled = expenseCards.filter((c) => c.status !== "Done" && c.payment_status !== "paid" && expenseAmount(c.amount) > 0);
-  const rows = unsettled.map((c) => {
+  const totalUnsettled = unsettled.reduce((s, c) => s + expenseAmount(c.amount), 0);
+
+  // Per-expense breakdown rows
+  const breakdownRows = unsettled.map((c) => {
     const amt = expenseAmount(c.amount);
     const share = c.payment_amount != null ? parseFloat(c.payment_amount) : amt / 2;
-    const dateStr = c.due ? new Date(c.due).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" }) : "";
+    const paidBy = c.author || c.assignee || "";
+    const dateStr = c.due ? new Date(c.due).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" }) : "";
+    const paidByLabel = paidBy
+      ? (_t("settle.paid_by") || "paid by: {{name}}").replace("{{name}}", escapeHtml(paidBy))
+      : (_t("settle.shared") || "shared");
+    const halfLabel = (_t("settle.half") || "half: {{sym}} {{amt}}").replace("{{sym}}", _sym).replace("{{amt}}", formatExpenseCurrency(share));
     return `
-      <div class="settlement-item">
-        <div class="settlement-item-left">
-          <span class="settlement-item-title">${escapeHtml(c.title || "Wydatek")}</span>
-          ${dateStr ? `<span class="settlement-item-date">${dateStr}</span>` : ""}
+      <div class="sdlg-row">
+        <div class="sdlg-row-left">
+          <span class="sdlg-row-title">${escapeHtml(c.title || "Expense")}</span>
+          <span class="sdlg-row-meta">${dateStr ? dateStr + " · " : ""}${paidByLabel}</span>
         </div>
-        <div class="settlement-item-right">
-          <span class="settlement-item-total">${_sym} ${formatExpenseCurrency(amt)}</span>
-          <span class="settlement-item-share">Twoja polowa: ${_sym} ${formatExpenseCurrency(share)}</span>
+        <div class="sdlg-row-right">
+          <span class="sdlg-row-total">${_sym} ${formatExpenseCurrency(amt)}</span>
+          <span class="sdlg-row-share">${halfLabel}</span>
         </div>
       </div>`;
   }).join("");
 
-  const bodyText = theyOwe
-    ? `Hej! Prosze o przelew ${amtStr} za wspolne wydatki w ${selectedMonth}. Szczegoly w aplikacji Do-Do.`
-    : `Hej, wiem ze powinienem/powinnnam przelac ${amtStr} za ${selectedMonth}. Wyslane!`;
+  const storedPhone = localStorage.getItem("dodo-blik-phone") || "";
 
-  const backdrop = document.createElement("div");
-  backdrop.id = "settlementModalBackdrop";
-  backdrop.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;display:flex;align-items:flex-end;justify-content:center;";
+  function buildMessage(phone) {
+    const blikLine = phone
+      ? (_t("settle.blik_line") || "\nBLIK (transfer to number): {{phone}}").replace("{{phone}}", phone)
+      : "";
+    const lines = unsettled.map((c) => {
+      const share = c.payment_amount != null ? parseFloat(c.payment_amount) : expenseAmount(c.amount) / 2;
+      return `  - ${c.title || "Expense"}: ${_sym} ${formatExpenseCurrency(share)}`;
+    }).join("\n");
+    const tpl = theyOwe
+      ? (_t("settle.msg_intro_req") || "Hi {{name}},\n\nPlease transfer {{amt}} for shared expenses ({{month}}).\n\nBreakdown:\n{{lines}}\n\nTotal to transfer: {{amt}}{{blik}}\n\nThanks!")
+      : (_t("settle.msg_intro_pay") || "Hi {{name}},\n\nSending {{amt}} for shared expenses ({{month}}).\n\nBreakdown:\n{{lines}}\n\nTotal: {{amt}}{{blik}}");
+    return tpl
+      .replace(/\{\{name\}\}/g, coparentName)
+      .replace(/\{\{amt\}\}/g, amtStr)
+      .replace("{{month}}", selectedMonth)
+      .replace("{{lines}}", lines)
+      .replace("{{blik}}", blikLine);
+  }
 
-  backdrop.innerHTML = `
-    <div id="settlementModalSheet" style="background:var(--surface,#fff);border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:24px 20px 32px;box-shadow:0 -4px 32px rgba(0,0,0,.12);max-height:85vh;overflow-y:auto;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h3 style="font-size:17px;font-weight:700;margin:0;">Rozliczenie - ${escapeHtml(selectedMonth)}</h3>
-        <button id="settlementCloseBtn" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:2px 6px;" aria-label="Zamknij">&times;</button>
+  const balanceLabelPos = (_t("settle.balance_label_pos") || "{{name}} owes").replace("{{name}}", escapeHtml(coparentName));
+  const balanceLabelNeg = _t("settle.balance_label_neg") || "You owe";
+  const balanceLabel = theyOwe ? balanceLabelPos : balanceLabelNeg;
+  const unsettledTotalLabel = (_t("settle.unsettled_total") || "Total unsettled: {{sym}} {{amt}}").replace("{{sym}}", _sym).replace("{{amt}}", formatExpenseCurrency(totalUnsettled));
+  const directionKey = theyOwe ? (_t("settle.total_receive") || "receive") : (_t("settle.total_transfer") || "transfer");
+  const totalRowLabel = (_t("settle.total_row") || "Total to {{direction}}").replace("{{direction}}", directionKey);
+  const sendActionLabel = (_t("settle.send_action") || "Send request for {{amt}}").replace("{{amt}}", amtStr);
+  const cancelLabel = _t("cancel") || "Cancel";
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "settlementDialog";
+  dialog.className = "card-dialog settlement-dialog";
+  dialog.innerHTML = `
+    <div class="dialog-content sdlg-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">${(_t("settle.dialog_eyebrow") || "Finances - {{month}}").replace("{{month}}", escapeHtml(selectedMonth))}</p>
+          <h2>${_t("settle.dialog_title") || "Expense settlement"}</h2>
+        </div>
+        <div class="dialog-header-actions">
+          <button class="icon-button" id="sdlgClose" aria-label="Close" title="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
       </div>
 
-      <div style="background:var(--surface-raised,#f8f8f8);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:13px;color:var(--muted);">${theyOwe ? escapeHtml(coparentName) + " winien" : "Ty winien/winna"}</span>
-        <strong style="font-size:20px;color:${theyOwe ? "#15803d" : "#dc2626"};">${amtStr}</strong>
+      <div class="sdlg-balance-strip sdlg-balance-${theyOwe ? "positive" : "negative"}">
+        <div>
+          <span class="sdlg-balance-label">${balanceLabel}</span>
+          <strong class="sdlg-balance-amount">${amtStr}</strong>
+        </div>
+        <div class="sdlg-balance-breakdown">
+          <span>${unsettledTotalLabel}</span>
+          <span>${unsettled.length}</span>
+        </div>
       </div>
 
-      <p style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px;">Nierozliczone wydatki</p>
-      <div style="margin-bottom:16px;">
-        ${rows || `<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Brak nierozliczonych wydatkow</p>`}
+      <div>
+        <p class="sdlg-section-label">${_t("settle.breakdown_title") || "Detailed breakdown"}</p>
+        <div class="sdlg-rows">
+          ${breakdownRows || `<p class="sdlg-empty">${_t("settle.no_items") || "No unsettled expenses"}</p>`}
+        </div>
+        <div class="sdlg-total-row">
+          <span>${totalRowLabel}</span>
+          <strong>${amtStr}</strong>
+        </div>
       </div>
 
-      <p style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Wiadomosc</p>
-      <textarea id="settlementMessageText" style="width:100%;min-height:72px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--ink);background:var(--surface-input);resize:vertical;box-sizing:border-box;" rows="3">${escapeHtml(bodyText)}</textarea>
+      <div>
+        <label class="sdlg-section-label" for="sdlgBlikPhone">${_t("settle.blik_label") || "BLIK phone number (optional)"}</label>
+        <div class="sdlg-blik-row">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          <input id="sdlgBlikPhone" type="tel" class="sdlg-phone-input" placeholder="${_t("settle.blik_placeholder") || "+48 600 000 000"}" value="${escapeHtml(storedPhone)}" />
+        </div>
+        <p class="sdlg-field-hint">${_t("settle.blik_hint") || "Added to the message. Saved on this device."}</p>
+      </div>
 
-      <button id="settlementSendBtn" class="primary-button" type="button" style="width:100%;margin-top:14px;font-size:15px;padding:13px;">
-        <span id="settlementSendBtnLabel">
-          <svg style="vertical-align:middle;margin-right:6px;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          Wyslij prosbe o przelew ${amtStr}
-        </span>
-      </button>
-      <p style="font-size:11px;color:var(--muted);text-align:center;margin:8px 0 0;">Prosby sa rejestrowane w niezmiennym logu rozliczen</p>
+      <div>
+        <p class="sdlg-section-label">${(_t("settle.message_label") || "Message to {{name}}").replace("{{name}}", escapeHtml(coparentName))}</p>
+        <textarea id="sdlgMessage" class="sdlg-message" rows="6">${escapeHtml(buildMessage(storedPhone))}</textarea>
+        <p class="sdlg-field-hint">${_t("settle.message_hint") || "Sent to the Expenses thread in Conversations."}</p>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="ghost-button" id="sdlgCancel">${cancelLabel}</button>
+        <button class="primary-button sdlg-send-btn" type="button" id="sdlgSend">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <span id="sdlgSendLabel">${sendActionLabel}</span>
+        </button>
+      </div>
+      <p class="sdlg-legal-note">${_t("settle.legal_note") || "Requests are timestamped in the immutable settlement log."}</p>
     </div>`;
 
-  document.body.appendChild(backdrop);
+  document.body.appendChild(dialog);
+  dialog.showModal();
 
-  // Close handlers
-  const close = () => backdrop.remove();
-  document.getElementById("settlementCloseBtn").addEventListener("click", close);
-  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+  const close = () => { dialog.close(); dialog.remove(); };
+  dialog.querySelector("#sdlgClose").addEventListener("click", close);
+  dialog.querySelector("#sdlgCancel").addEventListener("click", close);
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) close(); });
 
-  // Send handler
-  document.getElementById("settlementSendBtn").addEventListener("click", async () => {
-    const btn = document.getElementById("settlementSendBtn");
-    const labelEl = document.getElementById("settlementSendBtnLabel");
-    const msg = document.getElementById("settlementMessageText").value.trim();
+  dialog.querySelector("#sdlgBlikPhone").addEventListener("input", (e) => {
+    const phone = e.target.value.trim();
+    localStorage.setItem("dodo-blik-phone", phone);
+    dialog.querySelector("#sdlgMessage").value = buildMessage(phone);
+  });
+
+  dialog.querySelector("#sdlgSend").addEventListener("click", async () => {
+    const btn = dialog.querySelector("#sdlgSend");
+    const labelEl = dialog.querySelector("#sdlgSendLabel");
+    const msg = dialog.querySelector("#sdlgMessage").value.trim();
     if (!msg) return;
 
     btn.disabled = true;
-    labelEl.textContent = "Wysylanie...";
+    labelEl.textContent = _t("settle.sending") || "Sending...";
 
     try {
-      // 1. Send message to Expenses chat thread
       if (typeof window.sendMessage === "function") {
         await window.sendMessage("Expenses", msg);
       }
-
-      // 2. Log settlement_requested to ledger for each unsettled card (immutable)
       if (typeof window.appendExpenseLedger === "function") {
         for (const c of unsettled) {
           await window.appendExpenseLedger({
@@ -2184,19 +2253,17 @@ async function openSettlementModal({ expenseCards, balance, balanceAbs, coparent
             card_id: c.id,
             amount: expenseAmount(c.amount),
             currency: _sym,
-            note: `Prosby o przelew ${amtStr} - ${selectedMonth}`,
+            note: `Settlement request ${amtStr} - ${selectedMonth}`,
           }).catch(() => {});
         }
       }
-
-      // 3. Confirmation
-      labelEl.innerHTML = `<svg style="vertical-align:middle;margin-right:6px;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Wyslano!`;
-      btn.style.background = "#15803d";
-      setTimeout(() => close(), 1500);
+      labelEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> ${_t("settle.sent") || "Sent!"}`;
+      btn.style.background = "var(--accent-green, #15803d)";
+      setTimeout(() => close(), 1600);
     } catch (err) {
       console.error("Settlement send error:", err);
       btn.disabled = false;
-      labelEl.textContent = "Blad - sprobuj ponownie";
+      labelEl.textContent = _t("settle.error") || "Error - try again";
       btn.style.background = "#dc2626";
     }
   });

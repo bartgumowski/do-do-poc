@@ -7816,6 +7816,220 @@ html[data-theme="dark"] .settlement-request-btn {
   border: 1px solid var(--line, #3a3a3a);
 }
 
+/* ─── Settlement dialog internals ───────────────────────────────────────────── */
+
+.settlement-dialog {
+  width: min(540px, calc(100vw - 28px));
+}
+
+.sdlg-content {
+  gap: 20px;
+}
+
+/* Balance strip */
+.sdlg-balance-strip {
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sdlg-balance-positive {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.sdlg-balance-negative {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+}
+
+.sdlg-balance-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.sdlg-balance-amount {
+  display: block;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.sdlg-balance-positive .sdlg-balance-amount { color: #15803d; }
+.sdlg-balance-negative .sdlg-balance-amount { color: #dc2626; }
+
+.sdlg-balance-breakdown {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Section label */
+.sdlg-section-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+/* Breakdown rows */
+.sdlg-rows {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sdlg-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  gap: 12px;
+}
+
+.sdlg-row:last-child { border-bottom: none; }
+
+.sdlg-row-left { flex: 1; }
+
+.sdlg-row-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.sdlg-row-meta {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.sdlg-row-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.sdlg-row-total {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.sdlg-row-share {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sdlg-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px 2px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.sdlg-total-row strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.sdlg-empty {
+  padding: 14px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* BLIK row */
+.sdlg-blik-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-input, #fafafa);
+  color: var(--muted);
+}
+
+.sdlg-phone-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+}
+
+/* Message */
+.sdlg-message {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--surface-input, #fafafa);
+  resize: vertical;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.sdlg-field-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+.sdlg-send-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sdlg-legal-note {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  margin: -8px 0 0;
+  padding: 0 8px;
+}
+
+/* Dark mode */
+html[data-theme="dark"] .sdlg-balance-positive {
+  background: rgba(21,128,61,.12);
+  border-color: rgba(21,128,61,.3);
+}
+
+html[data-theme="dark"] .sdlg-balance-negative {
+  background: rgba(220,38,38,.12);
+  border-color: rgba(220,38,38,.3);
+}
+
+html[data-theme="dark"] .sdlg-blik-row,
+html[data-theme="dark"] .sdlg-message {
+  background: var(--surface-input, #1e1e1e);
+}
+
 /* ─── SEG-06: Receipt panel ──────────────────────────────────────────────────── */
 
 .receipt-upload-btn {
