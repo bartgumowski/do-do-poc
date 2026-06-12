@@ -75,7 +75,6 @@ function getKanbanColumns() {
     { id: "mine",      label: _t("board.col.mine",    "Mine")      },
     { id: "to-decide", label: _t("board.col.decide",  "To decide") },
     { id: "not-mine",  label: _t("board.col.notmine", "Not mine")  },
-    { id: "archive",   label: _t("board.col.archive", "Archive")   },
   ];
 }
 // Assign a card to exactly one column using priority order:
@@ -1594,12 +1593,17 @@ function renderBoard(cards) {
     return;
   }
 
-  // Assign each card to exactly one column using priority logic
+  // Assign each card to exactly one column (or archive) using priority logic
   const columnMap = {};
   getKanbanColumns().forEach(({ id }) => { columnMap[id] = []; });
+  const archiveCards = [];
   cards.forEach((card) => {
     const colId = assignCardToColumn(card);
-    if (columnMap[colId]) columnMap[colId].push(card);
+    if (colId === "archive") {
+      archiveCards.push(card);
+    } else if (columnMap[colId]) {
+      columnMap[colId].push(card);
+    }
   });
 
   const columnsHtml = getKanbanColumns().map(({ id, label }) => {
@@ -1616,7 +1620,29 @@ function renderBoard(cards) {
     `;
   }).join("");
 
-  elements.boardView.innerHTML = columnsHtml;
+  const archivedHtml = archiveCards.length ? `
+    <div class="archive-section" style="grid-column:1/-1;" id="archiveSection">
+      <button class="archive-toggle" type="button" id="archiveToggle" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v4H3zM5 8v12h14V8"/><path d="M10 12h4"/></svg>
+        ${(window.t || ((k) => k))("board.col.archive") || "Archive"}
+        <span>${archiveCards.length}</span>
+        <svg class="archive-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="archive-grid hidden" id="archiveGrid">
+        ${archiveCards.map(renderCard).join("")}
+      </div>
+    </div>
+  ` : "";
+
+  elements.boardView.innerHTML = columnsHtml + archivedHtml;
+
+  elements.boardView.querySelector("#archiveToggle")?.addEventListener("click", () => {
+    const grid = elements.boardView.querySelector("#archiveGrid");
+    const btn = elements.boardView.querySelector("#archiveToggle");
+    const isOpen = grid.classList.toggle("hidden") === false;
+    btn.setAttribute("aria-expanded", String(!grid.classList.contains("hidden")));
+    elements.boardView.querySelector(".archive-chevron")?.style.setProperty("transform", isOpen ? "rotate(180deg)" : "");
+  });
 
   bindCardInteractions(elements.boardView);
 }
