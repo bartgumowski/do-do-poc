@@ -1,4 +1,4 @@
-const APP_VERSION = "0.11.2";
+const APP_VERSION = "0.11.3";
 const APP_VERSION_DATE = "2026-06-12";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1945,6 +1945,7 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     renderDerivedTags();
     updatePaymentPanel(card);
     updateReceiptPanel(card);
+    updateLedgerPanel(card);
   } else {
     elements.topicInput.value = prefill.topic || (state.topic === "All" ? "Schedule" : state.topic);
     elements.typeInput.value = prefill.type || "Task";
@@ -1962,6 +1963,7 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     renderDerivedTags();
     updatePaymentPanel(null);
     updateReceiptPanel(null);
+    updateLedgerPanel(null);
   }
 
   updateReminderCustomVisibility();
@@ -2085,6 +2087,15 @@ async function requestExpensePayment(cardId, amount, currency, description) {
       updatePaymentPanel(card);
     }
 
+    // SEG-16: log payment_requested event
+    window.appendExpenseLedger?.({
+      event_type: "payment_requested",
+      card_id: cardId,
+      amount,
+      currency,
+      stripe_intent_id: data.intentId || null,
+    }).catch(() => {});
+
     showToast(data.emailSent ? (window.t?.("toast.pay_sent") ?? "Payment request sent by email.") : (window.t?.("toast.pay_created") ?? "Payment link created."));
   } catch (err) {
     showToast("Could not send payment request: " + err.message);
@@ -2145,6 +2156,13 @@ async function uploadReceipt(file, cardId) {
     persist();
     if (window.saveCardToSupabase) window.saveCardToSupabase(card).catch(() => {});
 
+    // SEG-16: log receipt_uploaded event
+    window.appendExpenseLedger?.({
+      event_type: "receipt_uploaded",
+      card_id: cardId,
+      note: url,
+    }).catch(() => {});
+
     const preview = document.querySelector("#receiptPreview");
     _renderReceiptPreview(url, preview);
     showToast(window.t?.("toast.receipt_up") ?? "Receipt uploaded.");
@@ -2153,6 +2171,71 @@ async function uploadReceipt(file, cardId) {
   } finally {
     if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Attach receipt`; }
   }
+}
+
+// ─── SEG-16: Payment history panel ───────────────────────────────────────────
+
+const LEDGER_EVENT_ICONS = {
+  created:            "📝",
+  amount_set:         "✏️",
+  payment_requested:  "📨",
+  payment_sent:       "💳",
+  payment_confirmed:  "✅",
+  marked_paid_manual: "✅",
+  receipt_uploaded:   "🧾",
+};
+
+function updateLedgerPanel(card) {
+  const panel = document.querySelector("#cardLedgerPanel");
+  const content = document.querySelector("#ledgerContent");
+  const toggleBtn = document.querySelector("#ledgerToggleBtn");
+  if (!panel) return;
+
+  const isExpense = card && (card.type === "Expense" || card.topic === "Expenses");
+  panel.hidden = !isExpense;
+  if (!isExpense) return;
+
+  // Toggle open/close
+  toggleBtn?.addEventListener("click", async () => {
+    const isOpen = content.hidden;
+    content.hidden = !isOpen;
+    toggleBtn.setAttribute("aria-expanded", String(isOpen));
+    toggleBtn.querySelector(".ledger-chevron")?.style.setProperty("transform", isOpen ? "rotate(180deg)" : "");
+
+    if (isOpen && window.loadExpenseLedger) {
+      content.innerHTML = `<p style="font-size:12px;color:var(--muted);padding:8px 0;">Loading...</p>`;
+      const events = await window.loadExpenseLedger(card.id);
+      content.innerHTML = renderLedgerEvents(events);
+    }
+  }, { once: true });
+
+  // Reset content on each new card open
+  content.hidden = true;
+  toggleBtn?.setAttribute("aria-expanded", "false");
+  toggleBtn?.querySelector(".ledger-chevron")?.style.setProperty("transform", "");
+  content.innerHTML = "";
+}
+
+function renderLedgerEvents(events) {
+  if (!events || !events.length) {
+    return `<p style="font-size:12px;color:var(--muted);padding:8px 0;">No history yet.</p>`;
+  }
+  return events.map((ev) => {
+    const icon = LEDGER_EVENT_ICONS[ev.event_type] || "•";
+    const label = (window.t?.(`expense.ledger_${ev.event_type}`) || ev.event_type.replace(/_/g, " "));
+    const amtStr = ev.amount != null ? ` ${ev.currency || ""} ${parseFloat(ev.amount).toFixed(2)}` : "";
+    const actor = ev.actor_name ? ` - ${ev.actor_name}` : "";
+    const date = new Date(ev.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    return `
+      <div class="ledger-event">
+        <span class="ledger-event-icon">${icon}</span>
+        <span class="ledger-event-body">
+          <strong>${label}${amtStr}</strong>${actor}
+          <time class="ledger-event-time">${date}</time>
+        </span>
+      </div>
+    `;
+  }).join("");
 }
 
 function renderDialogMeta(card) {
@@ -3371,6 +3454,17 @@ async function saveCard(event) {
       } catch {
         // Offline or Supabase unavailable - queue for background sync
         _queueOfflineCard(savedCard);
+      }
+    }
+
+    // SEG-16: log ledger event for expense cards
+    const isExpenseCard = savedCard.type === "Expense" || savedCard.topic === "Expenses";
+    if (isExpenseCard && window.appendExpenseLedger) {
+      const amt = savedCard.amount ? Number(String(savedCard.amount).replace(/[^\d.,-]/g, "").replace(",", ".")) || null : null;
+      const cur = String(savedCard.amount || "").match(/[A-Za-z]{2,3}/)?.[0]?.toUpperCase() || null;
+      const eventType = !existing ? "created" : (savedCard.amount !== existing?.amount ? "amount_set" : null);
+      if (eventType) {
+        window.appendExpenseLedger({ event_type: eventType, card_id: savedCard.id, amount: amt, currency: cur }).catch(() => {});
       }
     }
   };

@@ -1618,7 +1618,8 @@ function renderExpensesFeature() {
       </div>
       <div class="expense-hero-actions">
         <button class="primary-button" type="button" id="addExpenseButton">${_t("expense.add")}</button>
-        <button class="secondary-button" type="button" id="exportExpensesButton">Export CSV</button>
+        <button class="secondary-button" type="button" id="exportExpensesPdfButton">${_t("expense.export_pdf") || "Export PDF"}</button>
+        <button class="ghost-button" type="button" id="exportExpensesButton">${_t("expense.export_csv") || "Export CSV"}</button>
       </div>
     </section>
 
@@ -1684,6 +1685,10 @@ function renderExpensesFeature() {
     exportExpensesCSV(expenseCards, selectedMonth, _sym);
   });
 
+  featureModule.querySelector("#exportExpensesPdfButton")?.addEventListener("click", () => {
+    exportExpensesPdf(selectedMonth, _sym);
+  });
+
   // Expense quick-action and request-payment buttons
   featureModule.querySelectorAll("[data-expense-action]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -1719,6 +1724,148 @@ function exportExpensesCSV(cards, monthLabel, sym) {
   a.remove();
   URL.revokeObjectURL(url);
   showFeatureToast(`Exported ${cards.length} expenses`);
+}
+
+// SEG-16: Client-side PDF export using jsPDF
+async function exportExpensesPdf(monthLabel, sym) {
+  const btn = featureModule.querySelector("#exportExpensesPdfButton");
+  if (btn) { btn.disabled = true; btn.textContent = "Generating..."; }
+
+  try {
+    // Fetch expense data with ledger from API
+    const authHeader = await (typeof getAuthHeader === "function" ? getAuthHeader() : {});
+    const params = new URLSearchParams({ action: "expenses" });
+    const res = await fetch(`/api/export-data?${params}`, {
+      headers: { ...authHeader },
+    });
+    if (!res.ok) throw new Error("Export failed: " + res.status);
+    const data = await res.json();
+
+    // Load jsPDF on demand
+    if (!window.jspdf) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+    const pageW = 210;
+    const margin = 16;
+    const contentW = pageW - margin * 2;
+    let y = margin;
+
+    const fmt = (v) => new Intl.NumberFormat("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
+    const parseAmt = (v) => Number(String(v || "").replace(/[^\d.,-]/g, "").replace(",", ".")) || 0;
+
+    // ── Header ──
+    doc.setFontSize(18).setFont(undefined, "bold");
+    doc.text("Do-Do - Expense Record", margin, y); y += 8;
+    doc.setFontSize(10).setFont(undefined, "normal").setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`, margin, y);
+    doc.text("do-do.app", pageW - margin, y, { align: "right" }); y += 5;
+    doc.setTextColor(0);
+    doc.setDrawColor(200).line(margin, y, pageW - margin, y); y += 6;
+
+    // ── Summary table ──
+    doc.setFontSize(12).setFont(undefined, "bold");
+    doc.text("Summary", margin, y); y += 6;
+    doc.setFontSize(10).setFont(undefined, "normal");
+
+    const summaryRows = [
+      ["Total expenses", String(data.summary.total_expenses)],
+      [`Total amount (${sym})`, fmt(data.summary.total_amount)],
+      [`Paid (${sym})`, fmt(data.summary.paid_total)],
+      [`Outstanding (${sym})`, fmt(data.summary.open_total)],
+    ];
+    summaryRows.forEach(([label, value]) => {
+      doc.text(label, margin, y);
+      doc.text(value, pageW - margin, y, { align: "right" });
+      y += 5.5;
+    });
+    y += 3;
+    doc.setDrawColor(220).line(margin, y, pageW - margin, y); y += 6;
+
+    // ── Per-expense detail ──
+    const EVENT_LABELS = {
+      created: "Expense created",
+      amount_set: "Amount updated",
+      payment_requested: "Payment requested",
+      payment_sent: "Payment sent",
+      payment_confirmed: "Payment confirmed (Stripe)",
+      marked_paid_manual: "Marked as paid manually",
+      receipt_uploaded: "Receipt uploaded",
+    };
+
+    (data.expenses || []).forEach((card) => {
+      if (y > 265) { doc.addPage(); y = margin; }
+
+      doc.setFontSize(11).setFont(undefined, "bold");
+      doc.text(card.title || "Expense", margin, y); y += 5;
+
+      doc.setFontSize(9).setFont(undefined, "normal").setTextColor(80);
+      const amtStr = card.amount ? `${sym} ${fmt(parseAmt(card.amount))}` : "-";
+      const status = card.payment_status === "paid" ? "Paid" : card.payment_status === "pending" ? "Pending" : "Open";
+      doc.text(`Amount: ${amtStr}   Status: ${status}   Created: ${new Date(card.created_at).toLocaleDateString("en-GB")}`, margin, y);
+      setTextColor(doc, 0); y += 5;
+
+      // Ledger trail
+      if (card.ledger && card.ledger.length) {
+        doc.setFontSize(8).setTextColor(60);
+        card.ledger.forEach((ev) => {
+          if (y > 275) { doc.addPage(); y = margin; }
+          const label = EVENT_LABELS[ev.event_type] || ev.event_type;
+          const evAmt = ev.amount != null ? ` ${ev.currency || sym} ${fmt(ev.amount)}` : "";
+          const actor = ev.actor_name ? ` - ${ev.actor_name}` : "";
+          const date = new Date(ev.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+          doc.text(`  • ${label}${evAmt}${actor} · ${date}`, margin + 2, y); y += 4.5;
+        });
+      } else {
+        doc.setFontSize(8).setTextColor(150);
+        doc.text("  No ledger events recorded", margin + 2, y); y += 4.5;
+      }
+
+      doc.setTextColor(0);
+      y += 3;
+      doc.setDrawColor(230).line(margin, y, pageW - margin, y); y += 4;
+    });
+
+    // ── SHA-256 integrity note + footer ──
+    if (y > 260) { doc.addPage(); y = margin; }
+    y += 4;
+    doc.setFontSize(8).setTextColor(120).setFont(undefined, "italic");
+    const hash = await computeSha256(JSON.stringify(data.expenses));
+    doc.text(`Integrity: SHA-256 ${hash}`, margin, y); y += 5;
+    doc.text("This record was generated from a tamper-evident ledger. Events cannot be deleted or edited.", margin, y, { maxWidth: contentW }); y += 5;
+    doc.text("Do-Do cannot independently verify the accuracy of information entered by users.", margin, y, { maxWidth: contentW });
+
+    doc.setTextColor(0).setFont(undefined, "normal");
+
+    const filename = `do-do-expenses-${monthLabel || new Date().toISOString().slice(0, 7)}.pdf`;
+    doc.save(filename);
+    showFeatureToast(`Expense PDF exported (${data.expenses.length} records)`);
+  } catch (err) {
+    showFeatureToast("PDF export failed: " + err.message);
+    console.error("exportExpensesPdf:", err);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = window.t?.("expense.export_pdf") || "Export PDF"; }
+  }
+}
+
+function setTextColor(doc, v) { doc.setTextColor(v); }
+
+async function computeSha256(str) {
+  try {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16) + "...";
+  } catch {
+    return "(hash unavailable)";
+  }
 }
 
 // Returns running balance: positive = co-parent owes me, negative = I owe them.
@@ -1801,6 +1948,8 @@ function handleExpenseAction(cardId, action) {
   }
   if (action === "paid" && typeof window.quickCompleteCard === "function") {
     window.quickCompleteCard(cardId);
+    // SEG-16: log manual mark-paid event
+    window.appendExpenseLedger?.({ event_type: "marked_paid_manual", card_id: cardId }).catch(() => {});
     return;
   }
   if (action === "dispute" && typeof window.quickRespondCard === "function") {

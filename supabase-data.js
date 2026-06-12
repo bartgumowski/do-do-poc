@@ -1447,6 +1447,53 @@ async function _getFamilyId() {
   return data?.family_id || null;
 }
 
+// ─── SEG-16: Expense ledger (append-only court record) ───────────────────────
+
+/**
+ * Append one event to the expense_ledger table.
+ * @param {Object} event
+ *   event_type  {string}  - one of the allowed CHECK values
+ *   card_id     {string}
+ *   amount      {number|null}
+ *   currency    {string|null}
+ *   stripe_intent_id {string|null}
+ *   note        {string|null}
+ */
+async function appendExpenseLedger(event) {
+  if (!currentPairId || !currentUserId || !window.supabaseClient) return;
+  const setup = (() => { try { return JSON.parse(localStorage.getItem("ido-you-do-onboarding-v1") || "null"); } catch { return null; } })();
+  const actorName = setup?.parents?.primary || "Parent";
+
+  const row = {
+    pair_id:          currentPairId,
+    card_id:          event.card_id,
+    event_type:       event.event_type,
+    actor_id:         currentUserId,
+    actor_name:       actorName,
+    amount:           event.amount ?? null,
+    currency:         event.currency ?? null,
+    stripe_intent_id: event.stripe_intent_id ?? null,
+    note:             event.note ?? null,
+  };
+
+  const { error } = await window.supabaseClient.from("expense_ledger").insert(row);
+  if (error) console.warn("appendExpenseLedger failed:", error.message);
+}
+
+/**
+ * Fetch ledger events for one card, newest first.
+ */
+async function loadExpenseLedger(cardId) {
+  if (!cardId || !currentPairId || !window.supabaseClient) return [];
+  const { data, error } = await window.supabaseClient
+    .from("expense_ledger")
+    .select("*")
+    .eq("card_id", cardId)
+    .order("created_at", { ascending: false });
+  if (error) { console.warn("loadExpenseLedger failed:", error.message); return []; }
+  return data || [];
+}
+
 // ─── Expose globals ───────────────────────────────────────────────────────────
 
 window.initSupabaseData = initSupabaseData;
@@ -1468,6 +1515,8 @@ window.deleteCardFromAppleCalendar = deleteCardFromAppleCalendar;
 window.saveAppleCalCredentials = saveAppleCalCredentials;
 window.clearAppleCalCredentials = clearAppleCalCredentials;
 window.getAppleCalConnectionStatus = getAppleCalConnectionStatus;
+window.appendExpenseLedger = appendExpenseLedger;
+window.loadExpenseLedger = loadExpenseLedger;
 window.getCurrentPairId = () => currentPairId;
 window.getCurrentUserId = () => currentUserId;
 window.loadMessages = loadMessages;

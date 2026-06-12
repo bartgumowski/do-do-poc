@@ -8580,3 +8580,67 @@ html[data-theme="dark"] .change-request-card {
   color: inherit;
   font-weight: 700;
 }
+
+/* ─── SEG-16: Payment history ledger panel ─────────────────────────────────── */
+
+.ledger-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  gap: 6px;
+}
+
+.ledger-toggle:hover { color: var(--ink); }
+
+.ledger-chevron {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ledger-event {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line, #f0f0f0);
+  font-size: 12px;
+}
+
+.ledger-event:last-child { border-bottom: none; }
+
+.ledger-event-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.ledger-event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--ink);
+}
+
+.ledger-event-body strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ledger-event-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+#ledgerContent {
+  margin-top: 8px;
+}

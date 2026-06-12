@@ -670,6 +670,17 @@
                 </button>
                 <div id="receiptPreview"></div>
               </section>
+
+              <!-- SEG-16: Payment history panel - shown for Expense cards -->
+              <section class="card-info-section" id="cardLedgerPanel" hidden>
+                <button class="ledger-toggle" type="button" id="ledgerToggleBtn" aria-expanded="false">
+                  <span data-i18n="expense.payment_history">Payment history</span>
+                  <svg class="ledger-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true" width="14" height="14">
+                    <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+                <div id="ledgerContent" hidden></div>
+              </section>
             </div><!-- /dialog-side-col -->
           </div><!-- /dialog-two-col -->
           </div>

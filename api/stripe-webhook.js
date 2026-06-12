@@ -163,6 +163,22 @@ module.exports = async function handler(req, res) {
           console.error("payment_intent.succeeded card update failed:", cardErr.message);
         } else {
           console.log(`Card ${cardId} -> paid (payment_intent.succeeded)`);
+
+          // SEG-16: append payment_confirmed ledger event (server-side, service role)
+          const { pairId, amount, currency } = intent.metadata || {};
+          if (pairId) {
+            const ledgerRow = {
+              pair_id: pairId,
+              card_id: cardId,
+              event_type: "payment_confirmed",
+              actor_name: "Stripe",
+              amount: amount ? parseFloat(amount) : null,
+              currency: currency ? currency.toUpperCase() : null,
+              stripe_intent_id: intent.id,
+            };
+            const { error: ledgerErr } = await supabase.from("expense_ledger").insert(ledgerRow);
+            if (ledgerErr) console.warn("expense_ledger insert failed:", ledgerErr.message);
+          }
         }
         break;
       }
