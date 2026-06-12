@@ -1263,7 +1263,10 @@ function _renderShoppingBoard(lists) {
     input.addEventListener("change", async () => {
       // Immediate visual feedback - don't wait for async re-render
       const wrap = input.closest(".shopping-row-wrap");
-      if (wrap) wrap.classList.toggle("bought", input.checked);
+      if (wrap) {
+        wrap.classList.toggle("bought", input.checked);
+        if (!input.checked) wrap.querySelector(".shopping-buyer-avatar")?.remove();
+      }
 
       const listKey = input.dataset.shoppingList;
       const myName = typeof getMyName === "function" ? getMyName() : "";
@@ -1361,6 +1364,71 @@ function _renderShoppingBoard(lists) {
       const final = await window.loadShoppingItems?.();
       _renderShoppingBoard(final || nextLists);
       showFeatureToast(`Cleared ${boughtItems.length} bought item${boughtItems.length !== 1 ? "s" : ""}`);
+    });
+  });
+
+  // Mark all items as bought in a group
+  board.querySelectorAll("[data-shopping-mark-all]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const listKey = btn.dataset.shoppingMarkAll;
+      if (listKey.startsWith("custom-")) {
+        const cls = loadCustomShoppingLists();
+        const cl = cls.find((l) => l.key === listKey);
+        if (cl) { cl.items = (cl.items || []).map((i) => ({ ...i, bought: true })); saveCustomShoppingLists(cls); }
+        const refreshed = await window.loadShoppingItems?.();
+        _renderShoppingBoard(refreshed || loadShoppingLists());
+      } else {
+        const refreshed = await window.loadShoppingItems?.();
+        const current = refreshed || loadShoppingLists();
+        const unboughtItems = (current[listKey] || []).filter((item) => !item.bought);
+        await Promise.all(unboughtItems.map((item) => {
+          if (String(item.id).includes("-") && !String(item.id).match(/^[0-9a-f]{8}-/)) {
+            // localStorage item
+            return Promise.resolve();
+          }
+          return window.toggleShoppingItem?.(item.id, true) || Promise.resolve();
+        }));
+        // Also update localStorage
+        const nextLists = loadShoppingLists();
+        (nextLists[listKey] || []).forEach((item) => { item.bought = true; });
+        saveShoppingLists(nextLists);
+        const final = await window.loadShoppingItems?.();
+        _renderShoppingBoard(final || nextLists);
+      }
+      showFeatureToast(window.t?.("shopping.marked_all") ?? "All marked");
+    });
+  });
+
+  // Unmark all checked items in a group
+  board.querySelectorAll("[data-shopping-unmark]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const listKey = btn.dataset.shoppingUnmark;
+      if (listKey.startsWith("custom-")) {
+        const cls = loadCustomShoppingLists();
+        const cl = cls.find((l) => l.key === listKey);
+        if (cl) { cl.items = (cl.items || []).map((i) => ({ ...i, bought: false })); saveCustomShoppingLists(cls); }
+        const refreshed = await window.loadShoppingItems?.();
+        _renderShoppingBoard(refreshed || loadShoppingLists());
+      } else {
+        const refreshed = await window.loadShoppingItems?.();
+        const current = refreshed || loadShoppingLists();
+        const boughtItems = (current[listKey] || []).filter((item) => item.bought);
+        await Promise.all(boughtItems.map((item) => {
+          if (String(item.id).includes("-") && !String(item.id).match(/^[0-9a-f]{8}-/)) {
+            return Promise.resolve();
+          }
+          return window.toggleShoppingItem?.(item.id, false) || Promise.resolve();
+        }));
+        // Also update localStorage
+        const nextLists = loadShoppingLists();
+        (nextLists[listKey] || []).forEach((item) => { item.bought = false; });
+        saveShoppingLists(nextLists);
+        const final = await window.loadShoppingItems?.();
+        _renderShoppingBoard(final || nextLists);
+      }
+      showFeatureToast(window.t?.("shopping.unmarked_all") ?? "All unmarked");
     });
   });
 
@@ -1477,7 +1545,10 @@ function _renderShoppingBoard(lists) {
       input.addEventListener("change", async () => {
         // Immediate visual feedback
         const wrap = input.closest(".shopping-row-wrap");
-        if (wrap) wrap.classList.toggle("bought", input.checked);
+        if (wrap) {
+          wrap.classList.toggle("bought", input.checked);
+          if (!input.checked) wrap.querySelector(".shopping-buyer-avatar")?.remove();
+        }
 
         const listKey = id.split("-").slice(0, 2).join("-");
         const myName = typeof getMyName === "function" ? getMyName() : "";
@@ -1510,6 +1581,9 @@ function renderShoppingGroup(key, title, items) {
   const addPlaceholder = window.t ? window.t("shopping.add_ph") : "Add or dictate an item";
   const clearLabel = window.t ? window.t("shopping.clear_bought", { n: boughtCount }) : `Clear bought (${boughtCount})`;
   const leftLabel = window.t ? window.t("shopping.items_left", { n: remaining }) : `${remaining} left`;
+  const markAllLabel = window.t ? window.t("shopping.mark_all") : "Mark all";
+  const unmarkLabel = window.t ? window.t("shopping.unmark_marked") : "Unmark marked";
+  const totalCount = items.length;
   const isCustom = key.startsWith("custom-");
   return `
     <section class="feature-panel shopping-group">
@@ -1517,6 +1591,8 @@ function renderShoppingGroup(key, title, items) {
         <h3>${title}</h3>
         <div class="shopping-group-header-actions">
           ${boughtCount > 0 ? `<button class="shopping-clear-btn" type="button" data-shopping-clear="${key}" title="${clearLabel}">${clearLabel}</button>` : ""}
+          ${totalCount > 0 && remaining > 0 ? `<button class="shopping-bulk-btn" type="button" data-shopping-mark-all="${key}">${markAllLabel}</button>` : ""}
+          ${boughtCount > 0 ? `<button class="shopping-bulk-btn" type="button" data-shopping-unmark="${key}">${unmarkLabel}</button>` : ""}
           <span>${leftLabel}</span>
           ${isCustom ? `<button class="shopping-remove-list-btn ghost-button" type="button" data-shopping-remove-list="${key}" title="Remove list" style="font-size:11px;padding:2px 8px;color:var(--muted);">Remove list</button>` : ""}
         </div>
