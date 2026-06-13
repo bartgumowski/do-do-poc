@@ -5440,9 +5440,7 @@ function _bindSingleShoppingGroup(container, key, loadFn, saveFn) {
     // Multi-line paste
     input?.addEventListener("paste", (e) => {
       const text = (e.clipboardData || window.clipboardData).getData("text");
-      const lines = text.split(/
-?
-/).map((l) => l.trim()).filter(Boolean);
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
       if (lines.length <= 1) return;
       e.preventDefault();
       const items = loadFn();
