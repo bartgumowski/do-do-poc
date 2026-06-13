@@ -4444,6 +4444,39 @@ function renderSettingsFeature() {
 
       ${renderSpecialPanel("settings", "custody")}
 
+      <section class="feature-panel" id="calendarSettingsPanel">
+        <h3>Calendar hours</h3>
+        <p class="feature-note" style="font-size:13px;color:var(--muted);margin:0 0 12px;">
+          Choose which hours are shown in the calendar view.
+        </p>
+        <div class="feature-items">
+          <article class="feature-item" style="flex-direction:column;gap:10px;align-items:stretch;">
+            <label style="display:flex;align-items:center;gap:10px;font-size:13px;">
+              <span style="min-width:80px;color:var(--muted);">Start hour</span>
+              <select id="calStartHourSelect" style="flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-page);color:var(--ink);font-size:13px;">
+                ${Array.from({length: 13}, (_, i) => {
+                  const h = i + 4; // 4 AM to 16
+                  const label = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
+                  return `<option value="${h}">${label}</option>`;
+                }).join("")}
+              </select>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;font-size:13px;">
+              <span style="min-width:80px;color:var(--muted);">End hour</span>
+              <select id="calEndHourSelect" style="flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-page);color:var(--ink);font-size:13px;">
+                ${Array.from({length: 10}, (_, i) => {
+                  const h = i + 16; // 16 (4 PM) to 25 -> cap at 24
+                  const hc = Math.min(h, 24);
+                  const label = hc === 24 ? "Midnight" : hc < 12 ? `${hc} AM` : hc === 12 ? "12 PM" : `${hc - 12} PM`;
+                  return `<option value="${hc}">${label}</option>`;
+                }).join("")}
+              </select>
+            </label>
+            <button class="secondary-button" id="calSettingsSaveBtn" style="align-self:flex-end;">Save</button>
+          </article>
+        </div>
+      </section>
+
       <section class="feature-panel" id="subscriptionPanel">
         <h3>${_st("settings.subscription")}</h3>
         <div class="feature-items" id="subscriptionPanelContent">
@@ -4504,6 +4537,30 @@ function renderSettingsFeature() {
   bindAutomationSettings();
   // Bind custody schedule settings
   bindCustodySettings();
+
+  // Calendar hours - populate selects with current values
+  (function() {
+    const startSel = featureModule.querySelector("#calStartHourSelect");
+    const endSel   = featureModule.querySelector("#calEndHourSelect");
+    if (startSel && typeof window.getCalStartHour === "function") {
+      startSel.value = String(window.getCalStartHour());
+    }
+    if (endSel && typeof window.getCalEndHour === "function") {
+      endSel.value = String(window.getCalEndHour());
+    }
+    featureModule.querySelector("#calSettingsSaveBtn")?.addEventListener("click", () => {
+      const s = parseInt(startSel?.value ?? "6");
+      const e = parseInt(endSel?.value ?? "22");
+      if (e <= s) {
+        alert("End hour must be after start hour.");
+        return;
+      }
+      window.saveCalSettings?.(s, e);
+      window.renderBoardCalendar?.();
+      const btn = featureModule.querySelector("#calSettingsSaveBtn");
+      if (btn) { btn.textContent = "Saved!"; setTimeout(() => { btn.textContent = "Save"; }, 1500); }
+    });
+  })();
 
   // Edit my name
   featureModule.querySelector("#editMyNameBtn")?.addEventListener("click", () => promptEditMyName());

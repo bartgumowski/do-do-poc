@@ -1,5 +1,5 @@
-const APP_VERSION = "0.14.6";
-const APP_VERSION_DATE = "2026-06-12";
+const APP_VERSION = "0.15.0";
+const APP_VERSION_DATE = "2026-06-13";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
 // To add a new market: add an entry to LOCALE_CONFIGS and add the corresponding
@@ -293,8 +293,21 @@ window.addEventListener("subscriptionLoaded", (e) => {
 });
 
 // Board week-calendar state (must be declared before render() is called)
-// mode: "week" = 7 cols, "3day" = 3 cols
+// mode: "week" = 7 cols, "3day" = 3 cols, "2day" = 2 cols (mobile default)
 const _boardCal = { weekStart: _boardCalGetWeekStart(new Date()), mode: "week" };
+
+// ─── Calendar time-grid settings ─────────────────────────────────────────────
+const _calSettingsKey = "do-do-cal-settings-v1";
+const BCAL_SLOT_H = 64; // px per hour (fixed)
+
+function _calSettings() {
+  try { return JSON.parse(storage.getItem(_calSettingsKey) || "{}"); } catch { return {}; }
+}
+function getCalStartHour() { return Number(_calSettings().startHour ?? 6); }
+function getCalEndHour()   { return Number(_calSettings().endHour   ?? 22); }
+function saveCalSettings(startHour, endHour) {
+  storage.setItem(_calSettingsKey, JSON.stringify({ startHour: Number(startHour), endHour: Number(endHour) }));
+}
 
 // Subscription helpers
 function isPaidUser() {
@@ -538,6 +551,13 @@ window.applyCardTagFilter = (tag) => {
   window.switchModule?.("board");
   applyTagFilter(tag, topics.includes(tag) ? tag : "All");
 };
+// Mobile: default to 2-day view (today + tomorrow)
+if (window.innerWidth < 640) {
+  _boardCal.mode = "2day";
+  const _mobileToday = new Date();
+  _mobileToday.setHours(0, 0, 0, 0);
+  _boardCal.weekStart = _mobileToday;
+}
 render();
 
 function bindEvents() {
@@ -1444,7 +1464,9 @@ function render() {
   renderAttention();
   renderBoard(cards);
   renderList(cards);
-  renderBoardCalendar(cards);
+  renderBoardCalendar();
+  // Allow kanban cards to be dragged into the calendar time grid
+  requestAnimationFrame(() => _bindKanbanToBoardCal());
 
   elements.boardView.classList.toggle("hidden", state.view !== "board");
   elements.listView.classList.toggle("hidden", state.view !== "list");
@@ -2855,6 +2877,9 @@ function renderMiniCal() {
     if (dayNum > daysInMonth) break;
   }
 
+  // Current time portion for the time input
+  const currentTime = dueVal ? dueVal.slice(11, 16) : "12:00";
+
   el.innerHTML = `
     <div class="mc-header">
       <button class="mc-nav" type="button" id="miniCalPrev">&#8249;</button>
@@ -2865,6 +2890,10 @@ function renderMiniCal() {
       <thead><tr>${dayNames.map((d) => `<th>${d}</th>`).join("")}</tr></thead>
       <tbody>${cells}</tbody>
     </table>
+    <div class="mc-time-row">
+      <span class="mc-time-label">Time</span>
+      <input class="mc-time-input" type="time" id="miniCalTime" value="${currentTime}" step="900">
+    </div>
     ${dueVal ? `<button class="mc-clear" type="button" id="miniCalClear">&#215; Clear date</button>` : ""}
     ${(() => {
       const cs = window.getCustodySchedule?.();
@@ -2915,6 +2944,22 @@ function renderMiniCal() {
       renderDerivedTags();
       maybeAutoAssignParent(dateStr);
     });
+  });
+
+  // Time input - update dueInput whenever time changes
+  el.querySelector("#miniCalTime")?.addEventListener("change", (e) => {
+    const timeVal = e.target.value; // "HH:MM"
+    if (!timeVal) return;
+    if (elements.dueInput?.value) {
+      const datePart = elements.dueInput.value.slice(0, 10);
+      elements.dueInput.value = `${datePart}T${timeVal}`;
+    } else {
+      // No date selected yet - default to today
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+      if (elements.dueInput) elements.dueInput.value = `${todayStr}T${timeVal}`;
+    }
+    renderDerivedTags();
   });
 
   el.querySelector("#miniCalClear")?.addEventListener("click", () => {
@@ -4998,19 +5043,63 @@ function _boardCalCardDay(card) {
   return card.due.slice(0, 10);
 }
 
-function renderBoardCalendar(cards) {
-  // Cache cards so the calendar page can access them when rendered later
-  if (cards && cards.length) window._lastCards = cards;
+// ─── Time-grid helpers ────────────────────────────────────────────────────────
 
-  // Find all calendar containers - board page uses boardCalGrid, calendar page uses calPageBcalGrid
+// Returns absolute top-px position of a card in the time grid column
+function _bcalCardTopPx(card) {
+  const startH = getCalStartHour();
+  const endH   = getCalEndHour();
+  if (!card.due) return (8 - startH) * BCAL_SLOT_H; // default 8 AM
+  const d = new Date(card.due);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const clampH = Math.max(startH, Math.min(endH - 1, h));
+  return Math.round((clampH - startH + m / 60) * BCAL_SLOT_H);
+}
+
+// Convert a Y offset (relative to top of day column body) to {h, m} - snaps to 1-hour
+function _bcalYToTime(relY) {
+  const startH = getCalStartHour();
+  const endH   = getCalEndHour();
+  const totalPx = (endH - startH) * BCAL_SLOT_H;
+  const clampedY = Math.max(0, Math.min(totalPx - 1, relY));
+  const h = startH + Math.floor(clampedY / BCAL_SLOT_H);
+  return { h: Math.min(h, endH - 1), m: 0 };
+}
+
+// Update a card's due + recalculate reminders to match the new time
+function _adjustCardDueAndReminders(card, newDueStr) {
+  // newDueStr = "YYYY-MM-DDTHH:MM" or "YYYY-MM-DDTHH:MM:SS"
+  const newDueFull = newDueStr.length <= 16 ? newDueStr + ":00" : newDueStr;
+  let updated = { ...card, due: newDueFull };
+  if (card.reminder?.preset && card.reminder.preset !== "custom") {
+    // Recalculate from preset (most accurate)
+    updated.reminder = { ...card.reminder, time: reminderIsoFromDue(newDueFull, card.reminder.preset) };
+  } else if (card.reminder?.time && card.due) {
+    // Shift reminder by the same delta as the due-date change
+    const delta = new Date(newDueFull).getTime() - new Date(card.due).getTime();
+    if (delta !== 0) {
+      updated.reminder = {
+        ...card.reminder,
+        time: new Date(new Date(card.reminder.time).getTime() + delta).toISOString(),
+      };
+    }
+  }
+  return updated;
+}
+
+function renderBoardCalendar(cards) {
+  // Always use all cards (not board-filter subset) - fixes "I'll do it" disappearing-card bug
+  const allCards = state.cards.filter((c) => c.due);
+  window._lastCards = allCards;
+
   const containers = [
     document.getElementById("boardCalGrid"),
     document.getElementById("calPageBcalGrid"),
   ].filter(Boolean);
   if (!containers.length) return;
 
-  const colCount = _boardCal.mode === "3day" ? 3 : 7;
-  const shift = colCount; // days to shift on prev/next
+  const colCount = _boardCal.mode === "3day" ? 3 : _boardCal.mode === "2day" ? 2 : 7;
   const ws = _boardCal.weekStart;
 
   const days = Array.from({ length: colCount }, (_, i) => {
@@ -5019,76 +5108,117 @@ function renderBoardCalendar(cards) {
     return d;
   });
 
-  // Title: "June 2026" or "Mon 9 - Wed 11 June"
-  const firstDay = days[0];
-  const lastDay = days[days.length - 1];
+  // Title
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  let titleText;
-  if (firstDay.getMonth() === lastDay.getMonth()) {
-    titleText = `${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()}`;
-  } else {
-    titleText = `${monthNames[firstDay.getMonth()]} - ${monthNames[lastDay.getMonth()]} ${lastDay.getFullYear()}`;
-  }
+  const firstDay = days[0];
+  const lastDay  = days[days.length - 1];
+  const titleText = firstDay.getMonth() === lastDay.getMonth()
+    ? `${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()}`
+    : `${monthNames[firstDay.getMonth()]} - ${monthNames[lastDay.getMonth()]} ${lastDay.getFullYear()}`;
 
   const todayKey = _boardCalDayKey(new Date());
-  const activeCards = (cards || state.cards).filter((c) => !isCardArchived(c));
 
-  // Map day key -> cards due that day
+  // Map day key -> sorted cards
   const cardsByDay = {};
   days.forEach((d) => { cardsByDay[_boardCalDayKey(d)] = []; });
-  activeCards.forEach((card) => {
+  allCards.forEach((card) => {
     const k = _boardCalCardDay(card);
     if (k && cardsByDay[k] !== undefined) cardsByDay[k].push(card);
   });
+  // Sort by time within each day
+  Object.keys(cardsByDay).forEach((k) => {
+    cardsByDay[k].sort((a, b) => new Date(a.due).getTime() - new Date(b.due).getTime());
+  });
 
   const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const startH   = getCalStartHour();
+  const endH     = getCalEndHour();
+  const totalH   = (endH - startH) * BCAL_SLOT_H;
+
+  // Now-line position
+  const now = new Date();
+  const nowTopPx = (now.getHours() >= startH && now.getHours() < endH)
+    ? Math.round((now.getHours() - startH + now.getMinutes() / 60) * BCAL_SLOT_H)
+    : -1;
+
+  // Time gutter labels (one per hour)
+  const gutterHTML = Array.from({ length: endH - startH }, (_, i) => {
+    const h = startH + i;
+    const label = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
+    return `<div class="bcal-tg-label" style="top:${i * BCAL_SLOT_H}px">${label}</div>`;
+  }).join("");
+
+  // Day columns
+  const dayCols = days.map((d) => {
+    const k = _boardCalDayKey(d);
+    const isToday = k === todayKey;
+    const daycards = cardsByDay[k] || [];
+    const custodyClass = window.getCustodyClass ? window.getCustodyClass(d) : "";
+
+    // Hour lines (major every hour, minor at half-hour)
+    const hourLines = Array.from({ length: endH - startH }, (_, i) => `
+      <div class="bcal-hour-line" style="top:${i * BCAL_SLOT_H}px"></div>
+      <div class="bcal-half-line" style="top:${i * BCAL_SLOT_H + BCAL_SLOT_H / 2}px"></div>
+    `).join("");
+
+    // Cards positioned absolutely at their time
+    const cardEls = daycards.map((card) => {
+      const topPx = _bcalCardTopPx(card);
+      const inner = renderUnifiedCard(card, { showActions: true, className: "bcal-do-card" });
+      return `<div class="bcal-card-wrap" draggable="true" data-bcal-card="${card.id}" style="top:${topPx}px">
+        <div class="bcal-drag-handle" title="Drag to reschedule">⠿</div>
+        ${inner}
+      </div>`;
+    }).join("");
+
+    return `<div class="bcal-day-col${isToday ? " bcal-today-col" : ""}${custodyClass ? " "+custodyClass : ""}" data-bcal-day="${k}" data-bcal-drop="${k}">
+      ${hourLines}
+      ${cardEls}
+    </div>`;
+  }).join("");
 
   const gridHTML = `
-    <div class="bcal-grid bcal-cols-${colCount}">
-      ${days.map((d) => {
-        const k = _boardCalDayKey(d);
-        const isToday = k === todayKey;
-        const daycards = cardsByDay[k] || [];
-        const custodyClass = window.getCustodyClass ? window.getCustodyClass(d) : "";
-        return `
-          <div class="bcal-col" data-bcal-day="${k}">
-            <div class="bcal-col-head${isToday ? " bcal-today" : ""}${custodyClass ? " " + custodyClass : ""}">
-              <span class="bcal-dow">${DOW[d.getDay()]}</span>
-              <strong class="bcal-num">${d.getDate()}</strong>
-            </div>
-            <div class="bcal-col-body" data-bcal-drop="${k}">
-              ${daycards.length
-                ? daycards.map((card) => {
-                    const cardHTML = renderUnifiedCard(card, {
-                      showActions: true,
-                      className: "bcal-do-card",
-                      attributes: `data-card-id="${card.id}" data-bcal-card="${card.id}" draggable="true" role="button" tabindex="0"`,
-                    });
-                    return cardHTML;
-                  }).join("")
-                : `<span class="bcal-empty">-</span>`}
-            </div>
-          </div>
-        `;
-      }).join("")}
+    <div class="bcal-tg-outer">
+      <div class="bcal-header-row">
+        <div class="bcal-tg-head"></div>
+        ${days.map((d) => {
+          const k = _boardCalDayKey(d);
+          const isToday = k === todayKey;
+          const custodyClass = window.getCustodyClass ? window.getCustodyClass(d) : "";
+          return `<div class="bcal-col-head${isToday ? " bcal-today" : ""}${custodyClass ? " "+custodyClass : ""}">
+            <span class="bcal-dow">${DOW[d.getDay()]}</span>
+            <strong class="bcal-num">${d.getDate()}</strong>
+          </div>`;
+        }).join("")}
+      </div>
+      <div class="bcal-scroll">
+        <div class="bcal-tg-body" style="height:${totalH}px">${gutterHTML}</div>
+        <div class="bcal-days" style="height:${totalH}px">
+          ${dayCols}
+          ${nowTopPx >= 0 ? `<div class="bcal-now-line" style="top:${nowTopPx}px"></div>` : ""}
+        </div>
+      </div>
     </div>
   `;
 
-  // Apply to all containers
   containers.forEach((grid) => {
     grid.innerHTML = gridHTML;
     _bindBoardCalDragDrop(grid);
-    // Wire up Done / I'll do it / Reminder / Message buttons on the full cards
     window.bindUnifiedCardInteractions?.(grid);
+    // Scroll to show current time (or start of day if outside range)
+    requestAnimationFrame(() => {
+      const scrollEl = grid.querySelector(".bcal-scroll");
+      if (scrollEl) scrollEl.scrollTop = Math.max(0, (nowTopPx > 0 ? nowTopPx : 0) - 160);
+    });
   });
 
-  // Update titles in all nav bars
+  // Update titles
   ["boardCalTitle", "calPageBcalTitle"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.textContent = titleText;
   });
 
-  // Update toggle button active state in all nav bars
+  // Update toggle active states
   ["boardCalToggleWeek","calPageBcalToggleWeek"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle("active", _boardCal.mode === "week");
@@ -5098,61 +5228,63 @@ function renderBoardCalendar(cards) {
     if (el) el.classList.toggle("active", _boardCal.mode === "3day");
   });
 
-  // Bind nav + toggle buttons (rebind each render)
-  _bindBoardCalNav("boardCalPrev", "boardCalNext", "boardCalToggleWeek", "boardCalToggle3Day", shift);
-  _bindBoardCalNav("calPageBcalPrev", "calPageBcalNext", "calPageBcalToggleWeek", "calPageBcalToggle3Day", shift);
+  // Bind nav + toggle buttons
+  _bindBoardCalNav("boardCalPrev", "boardCalNext", "boardCalToggleWeek", "boardCalToggle3Day");
+  _bindBoardCalNav("calPageBcalPrev", "calPageBcalNext", "calPageBcalToggleWeek", "calPageBcalToggle3Day");
 }
 
-function _bindBoardCalNav(prevId, nextId, toggleWeekId, toggle3DayId, shift) {
-  const prev = document.getElementById(prevId);
-  const next = document.getElementById(nextId);
+function _bindBoardCalNav(prevId, nextId, toggleWeekId, toggle3DayId) {
+  const prev  = document.getElementById(prevId);
+  const next  = document.getElementById(nextId);
   const tWeek = document.getElementById(toggleWeekId);
   const t3Day = document.getElementById(toggle3DayId);
 
+  const _shift = () => _boardCal.mode === "3day" ? 3 : _boardCal.mode === "2day" ? 2 : 7;
+
   if (prev) {
     prev.onclick = () => {
-      const s = _boardCal.mode === "3day" ? 3 : 7;
       _boardCal.weekStart = new Date(_boardCal.weekStart);
-      _boardCal.weekStart.setDate(_boardCal.weekStart.getDate() - s);
-      renderBoardCalendar(state.cards);
+      _boardCal.weekStart.setDate(_boardCal.weekStart.getDate() - _shift());
+      renderBoardCalendar();
     };
   }
   if (next) {
     next.onclick = () => {
-      const s = _boardCal.mode === "3day" ? 3 : 7;
       _boardCal.weekStart = new Date(_boardCal.weekStart);
-      _boardCal.weekStart.setDate(_boardCal.weekStart.getDate() + s);
-      renderBoardCalendar(state.cards);
+      _boardCal.weekStart.setDate(_boardCal.weekStart.getDate() + _shift());
+      renderBoardCalendar();
     };
   }
   if (tWeek) {
     tWeek.onclick = () => {
       _boardCal.mode = "week";
       _boardCal.weekStart = _boardCalGetWeekStart(_boardCal.weekStart);
-      renderBoardCalendar(state.cards);
+      renderBoardCalendar();
     };
   }
   if (t3Day) {
     t3Day.onclick = () => {
       if (_boardCal.mode !== "3day") {
         _boardCal.mode = "3day";
-        // Start 3-day view on today
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         _boardCal.weekStart = today;
       }
-      renderBoardCalendar(state.cards);
+      renderBoardCalendar();
     };
   }
 }
 
 function _bindBoardCalDragDrop(container) {
-  let dragCardId = null;
+  let dragCardId   = null; // id of a calendar card being dragged
+  let dragKanbanId = null; // id of a kanban card being dragged in from the board
 
-  // Cards are draggable
+  // ---- calendar card drag ----
   container.querySelectorAll("[data-bcal-card]").forEach((el) => {
     el.addEventListener("dragstart", (e) => {
-      dragCardId = el.dataset.bcalCard;
+      dragCardId   = el.dataset.bcalCard;
+      dragKanbanId = null;
+      e.dataTransfer.setData("text/bcal-card", dragCardId);
       e.dataTransfer.effectAllowed = "move";
       el.classList.add("bcal-dragging");
     });
@@ -5161,16 +5293,17 @@ function _bindBoardCalDragDrop(container) {
       container.querySelectorAll(".bcal-dragging").forEach((x) => x.classList.remove("bcal-dragging"));
       container.querySelectorAll(".bcal-drop-over").forEach((x) => x.classList.remove("bcal-drop-over"));
     });
-    // Open card dialog only when clicking the card body, not its action buttons
-    el.addEventListener("click", (e) => {
-      if (e.target.closest("button")) return;
+    el.querySelector(".bcal-drag-handle")?.addEventListener("click", () => {
       window.openCardDialog?.(el.dataset.bcalCard);
     });
   });
 
-  // Drop targets - the day body columns
+  // ---- day-column drop targets ----
   container.querySelectorAll("[data-bcal-drop]").forEach((col) => {
     col.addEventListener("dragover", (e) => {
+      const hasBcal   = e.dataTransfer.types.includes("text/bcal-card");
+      const hasKanban = e.dataTransfer.types.includes("text/kanban-card");
+      if (!hasBcal && !hasKanban) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       container.querySelectorAll(".bcal-drop-over").forEach((x) => x.classList.remove("bcal-drop-over"));
@@ -5182,27 +5315,71 @@ function _bindBoardCalDragDrop(container) {
     col.addEventListener("drop", (e) => {
       e.preventDefault();
       col.classList.remove("bcal-drop-over");
-      if (!dragCardId) return;
-      const newDay = col.dataset.bcalDrop; // "YYYY-MM-DD"
-      const card = state.cards.find((c) => c.id === dragCardId);
+
+      const newDay      = col.dataset.bcalDrop; // "YYYY-MM-DD"
+      const bcalCardId  = e.dataTransfer.getData("text/bcal-card");
+      const kanbanCardId = e.dataTransfer.getData("text/kanban-card");
+      const cardId      = bcalCardId || kanbanCardId;
+      if (!cardId || !newDay) return;
+
+      const card = state.cards.find((c) => c.id === cardId);
       if (!card) return;
-      // Preserve existing time if present, else 00:00
-      const existingTime = card.due?.slice(11, 16) || "00:00";
-      const newDue = `${newDay}T${existingTime}`;
-      if (newDue === card.due?.slice(0, 16)) return;
-      // Also update assignee to the parent who has custody on the new day,
-      // unless this card was saved with lockAssignee = true
+
+      // Calculate new time from drop Y position (1-hour snap)
+      // For kanban drops: preserve existing time if any, else snap to drop position
+      let newHour, newMin;
+      const colRect = col.getBoundingClientRect();
+      const relY    = e.clientY - colRect.top + (col.closest(".bcal-scroll")?.scrollTop || 0);
+      const snapped = _bcalYToTime(relY);
+      newHour = snapped.h;
+      newMin  = 0;
+
+      // For kanban cards with no existing due: use drop position time
+      // For calendar card moves: always use drop position time
+      const newDue = `${newDay}T${String(newHour).padStart(2,"0")}:${String(newMin).padStart(2,"0")}:00`;
+
+      // No-op if same datetime
+      if (card.due && newDue === card.due.slice(0, 19)) return;
+
+      // Build updated card with adjusted reminders
+      const updated = _adjustCardDueAndReminders(card, newDue);
+
+      // Update assignee to custody parent unless locked
       if (!card.lockAssignee) {
         const schedParent = getCustodyParentForDate(newDay);
-        if (schedParent) {
-          const idx = state.cards.findIndex((c) => c.id === dragCardId);
-          if (idx >= 0) {
-            state.cards[idx] = { ...state.cards[idx], assignee: schedParent };
-            if (window.saveCardToSupabase) window.saveCardToSupabase(state.cards[idx]).catch(() => {});
-          }
-        }
+        if (schedParent) updated.assignee = schedParent;
       }
-      window.patchCardDue?.(dragCardId, newDue);
+
+      const idx = state.cards.findIndex((c) => c.id === cardId);
+      if (idx < 0) return;
+      state.cards[idx] = updated;
+
+      // Persist + sync external calendars
+      persist();
+      if (window.saveCardToSupabase) window.saveCardToSupabase(updated).catch(() => {});
+      window.syncCalendarEventsFromCards?.();
+
+      // Re-render calendar; kanban card stays on the board (no board re-render needed)
+      renderBoardCalendar();
+    });
+  });
+}
+
+// Make kanban board cards draggable into the calendar
+function _bindKanbanToBoardCal() {
+  document.querySelectorAll(".board-card, .do-card, [data-card-id]").forEach((el) => {
+    const cardId = el.dataset.cardId || el.dataset.id;
+    if (!cardId) return;
+    if (el.dataset.kanbanBound) return; // avoid double-binding
+    el.dataset.kanbanBound = "1";
+    el.setAttribute("draggable", "true");
+    el.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/kanban-card", cardId);
+      e.dataTransfer.effectAllowed = "copy";
+      el.classList.add("bcal-kanban-dragging");
+    });
+    el.addEventListener("dragend", () => {
+      el.classList.remove("bcal-kanban-dragging");
     });
   });
 }
