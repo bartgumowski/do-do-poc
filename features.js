@@ -5215,6 +5215,17 @@ async function renderNotifPrefsPanel() {
 // ─── Przekazanie (Child Handover) ─────────────────────────────────────────────
 
 const PRZEKAZANIE_KEY = "do-do-przekazanie-v1";
+const PRZEKAZ_PACK_KEY = "do-do-przekaz-pack-v1";
+
+function loadPrzekazPackList() {
+  try {
+    const raw = window.appStorage?.getItem(PRZEKAZ_PACK_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function savePrzekazPackList(items) {
+  try { window.appStorage?.setItem(PRZEKAZ_PACK_KEY, JSON.stringify(items)); } catch {}
+}
 
 function loadPrzekazanieData() {
   try {
@@ -5255,24 +5266,18 @@ function renderPrzekazanieFeature(container) {
   }
 
   const dateLabel = _przekazNextHandoverLabel();
-  const rzeczyLeft = data.checklist.filter((i) => !i.checked).length;
-  const remLeft = data.reminders.filter((i) => !i.checked).length;
+  const _t = window.t || ((k, p) => p ? Object.entries(p).reduce((s,[a,b]) => s.replace(`{{${a}}}`, b), k) : k);
+  const _pContainer = container || featureModule;
+  const packItems = loadPrzekazPackList();
+  const packTitle = _t("przekaz.pack_title");
+  const packGroup = renderShoppingGroup("przekaz-pack", packTitle, packItems);
 
-  featureModule.innerHTML = `
-    <div class="przekazanie-container" style="max-width:520px;margin:0 auto;padding:12px 16px 80px;">
-
-      <div class="feature-panel przekaz-header-panel" style="margin-bottom:12px;padding:14px 16px;">
-        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 2px;">
-          Przekazanie do ${escapeFeatureHtml(coparent)}
-        </p>
-        <p style="font-size:13px;color:var(--muted);margin:0;">
-          Jutro rano, ${escapeFeatureHtml(dateLabel)}
-        </p>
-      </div>
+  _pContainer.innerHTML = `
+    <div style="display:grid;gap:12px;">
 
       ${allChildren.length > 0 ? `
-      <div class="feature-panel" style="margin-bottom:12px;padding:14px 16px;">
-        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px;">Dotyczy dzieci</p>
+      <section class="card-info-section">
+        <div class="section-heading">${_t("przekaz.for_children")}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           ${allChildren.map((child) => {
             const active = data.selectedChildren.includes(child);
@@ -5284,61 +5289,44 @@ function renderPrzekazanieFeature(container) {
             </button>`;
           }).join("")}
         </div>
-      </div>
+      </section>
       ` : ""}
 
-      <section class="feature-panel shopping-group" style="margin-bottom:12px;" id="przekazRzeczySection">
-        <div class="shopping-group-header">
-          <h3 style="text-transform:uppercase;font-size:11px;letter-spacing:.06em;">Checklist - Rzeczy</h3>
-          <div class="shopping-group-header-actions">
-            <span id="przekazRzeczyCounter">${rzeczyLeft} do spakowania</span>
-          </div>
-        </div>
-        <form class="shopping-capture" id="przekazRzeczyForm">
-          <div class="shopping-input-wrap">
-            <input data-przekaz-input="rzeczy" placeholder="Dodaj rzecz do spakowania..." autocomplete="off" autocapitalize="sentences" enterkeyhint="done" />
-            <button class="shopping-add" type="submit" aria-label="Dodaj">+</button>
-          </div>
-        </form>
-        <div class="shopping-list" id="przekazRzeczyList">
-          ${data.checklist.map((item) => _renderPrzekazItem(item, "rzeczy")).join("")}
-        </div>
-      </section>
+      ${packGroup}
 
-      <div class="feature-panel" style="margin-bottom:12px;padding:14px 16px;">
-        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px;">Notatka zdrowotna</p>
+      <section class="card-info-section">
+        <div class="section-heading">${_t("przekaz.health_note")}</div>
         <textarea id="przekazHealthNote" rows="3"
-          placeholder="np. Kasia kaszle od srody, bierze syrop 2x dziennie. Tomek ma zadanie z matematyki na piatek..."
+          placeholder="${_t("przekaz.health_ph")}"
           style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:10px 12px;
-          font-size:14px;font-family:inherit;background:var(--input-bg,var(--card-bg));color:var(--text);
+          font-size:14px;font-family:inherit;background:transparent;color:var(--text);
           resize:vertical;min-height:76px;outline:none;">${escapeFeatureHtml(data.healthNote)}</textarea>
-      </div>
-
-      <section class="feature-panel shopping-group" style="margin-bottom:20px;" id="przekazReminderSection">
-        <div class="shopping-group-header">
-          <h3 style="text-transform:uppercase;font-size:11px;letter-spacing:.06em;">Wazne przypomnienia</h3>
-          <div class="shopping-group-header-actions">
-            <span id="przekazRemCounter">${remLeft} otwarte</span>
-          </div>
-        </div>
-        <form class="shopping-capture" id="przekazReminderForm">
-          <div class="shopping-input-wrap">
-            <input data-przekaz-input="reminders" placeholder="Dodaj przypomnienie..." autocomplete="off" autocapitalize="sentences" enterkeyhint="done" />
-            <button class="shopping-add" type="submit" aria-label="Dodaj">+</button>
-          </div>
-        </form>
-        <div class="shopping-list" id="przekazReminderList">
-          ${data.reminders.map((item) => _renderPrzekazItem(item, "reminders")).join("")}
-        </div>
       </section>
 
-      <button class="primary-button" id="przekazSendBtn" type="button"
-        style="width:100%;min-height:52px;font-size:15px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:8px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true">
-          <path d="M22 2 11 13M22 2 15 22 11 13 2 9l20-7Z"/>
-        </svg>
-        Wyslij przekazanie do ${escapeFeatureHtml(coparent)}
-      </button>
+      <section class="card-info-section" id="przekazReminderSection">
+        <div class="section-heading">${_t("przekaz.reminders")}</div>
+        <div id="przekazReminderList" style="display:flex;flex-wrap:wrap;gap:8px;${data.reminders.length ? "" : "display:none;"}">
+          ${data.reminders.map((item) => _renderPrzekazReminderChip(item)).join("")}
+        </div>
+        <form id="przekazReminderForm" style="display:flex;gap:8px;align-items:center;">
+          <label class="clean-field" style="flex:1;margin:0;">
+            <input data-przekaz-input="reminders" placeholder="${_t("przekaz.reminder_ph")}"
+              autocomplete="off" autocapitalize="sentences" enterkeyhint="done"
+              style="width:100%;" />
+          </label>
+          <button class="secondary-button" type="submit" style="min-width:44px;height:44px;font-size:20px;padding:0;">+</button>
+        </form>
+      </section>
+
+      <div class="dialog-actions" style="padding:0;">
+        <button class="primary-button" id="przekazSendBtn" type="button"
+          style="display:flex;align-items:center;justify-content:center;gap:8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true">
+            <path d="M22 2 11 13M22 2 15 22 11 13 2 9l20-7Z"/>
+          </svg>
+          ${_t("przekaz.send", { name: escapeFeatureHtml(coparent) })}
+        </button>
+      </div>
 
     </div>
   `;
@@ -5354,13 +5342,19 @@ window.openPrzekazanieDialog = function() {
     dlg.id = "przekazanieDialog";
     dlg.className = "card-dialog przekazanie-dialog";
     dlg.innerHTML = `
-      <div class="dialog-content przekazanie-dialog-inner">
-        <div class="dialog-header-row" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0;margin-bottom:4px;">
-          <h2 id="przekazanieDlgTitle" style="font-size:16px;font-weight:700;margin:0;"></h2>
-          <button type="button" id="przekazanieDlgClose" aria-label="Close"
-            style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1;">✕</button>
+      <div class="dialog-content">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow" id="przekazanieDlgEyebrow" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 2px;"></p>
+            <h2 id="przekazanieDlgTitle" style="margin:0;"></h2>
+          </div>
+          <div class="dialog-header-actions">
+            <button class="icon-button" type="button" id="przekazanieDlgClose" aria-label="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
         </div>
-        <div id="przekazanieDlgBody" style="overflow-y:auto;max-height:72vh;"></div>
+        <div id="przekazanieDlgBody" style="overflow-y:auto;max-height:68vh;padding:0 4px 8px;"></div>
       </div>
     `;
     document.body.appendChild(dlg);
@@ -5370,12 +5364,34 @@ window.openPrzekazanieDialog = function() {
 
   const setup = window.getOnboardingState?.() || {};
   const coparent = setup.parents?.coparent || "Co-rodzic";
-  const handoverLabel = window.t?.("cal.handover") || "Handover";
-  dlg.querySelector("#przekazanieDlgTitle").textContent = `${handoverLabel} - ${coparent}`;
+  const _t2 = window.t || ((k) => k);
+  const handoverLabel = _t2("cal.handover") || "Handover";
+  const dateLabel2 = _przekazNextHandoverLabel();
+  dlg.querySelector("#przekazanieDlgTitle").textContent = `${handoverLabel}`;
+  const eyebrow = dlg.querySelector("#przekazanieDlgEyebrow");
+  if (eyebrow) eyebrow.textContent = `${_t2("przekaz.title", { name: coparent }) || coparent} · ${dateLabel2}`;
 
   renderPrzekazanieFeature(dlg.querySelector("#przekazanieDlgBody"));
   dlg.showModal();
 };
+
+function _renderPrzekazReminderChip(item) {
+  return `<span class="card-reminder przekaz-reminder-chip" data-reminder-id="${escapeFeatureHtml(item.id)}"
+    style="cursor:default;gap:6px;padding:7px 10px 7px 10px;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" width="14" height="14">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+    ${escapeFeatureHtml(item.label)}
+    <button type="button" data-przekaz-delete="${escapeFeatureHtml(item.id)}" data-przekaz-list="reminders"
+      aria-label="Remove"
+      style="background:none;border:none;cursor:pointer;padding:0 0 0 2px;color:inherit;opacity:.55;font-size:13px;line-height:1;display:inline-flex;align-items:center;">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" width="12" height="12">
+        <path d="M12 4 4 12M4 4l8 8"/>
+      </svg>
+    </button>
+  </span>`;
+}
 
 function _renderPrzekazItem(item, listKey) {
   return `
@@ -5391,6 +5407,96 @@ function _renderPrzekazItem(item, listKey) {
       </button>
     </div>
   `;
+}
+
+function _bindSingleShoppingGroup(container, key, loadFn, saveFn) {
+  const _rerender = () => {
+    const items = loadFn();
+    const sec = container.querySelector(`[data-shopping-add-form="${key}"]`)?.closest("section.shopping-group");
+    if (!sec) return;
+    const title = sec.querySelector("h3")?.textContent || "";
+    sec.outerHTML = renderShoppingGroup(key, title, items);
+    _bindSingleShoppingGroup(container, key, loadFn, saveFn);
+  };
+
+  // Add form submit
+  const form = container.querySelector(`[data-shopping-add-form="${key}"]`);
+  if (form && !form.dataset.sgBound) {
+    form.dataset.sgBound = "1";
+    const input = form.querySelector("[data-shopping-input]");
+    const mic = form.querySelector("[data-shopping-mic]");
+    mic?.addEventListener("click", () => window.startDictationForField?.(input, { button: mic, success: "Item dictated" }));
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const label = input?.value.trim();
+      if (!label) return;
+      const items = loadFn();
+      items.push({ id: `${key}-${Date.now()}`, label, bought: false });
+      saveFn(items);
+      input.value = "";
+      _rerender();
+      container.querySelector(`[data-shopping-add-form="${key}"] [data-shopping-input]`)?.focus();
+    });
+    // Multi-line paste
+    input?.addEventListener("paste", (e) => {
+      const text = (e.clipboardData || window.clipboardData).getData("text");
+      const lines = text.split(/
+?
+/).map((l) => l.trim()).filter(Boolean);
+      if (lines.length <= 1) return;
+      e.preventDefault();
+      const items = loadFn();
+      lines.forEach((label) => items.push({ id: `${key}-${Date.now()}-${Math.random().toString(36).slice(2)}`, label, bought: false }));
+      saveFn(items);
+      _rerender();
+    });
+  }
+
+  // Checkboxes (mark bought)
+  container.querySelectorAll(`[data-shopping-list="${key}"][data-shopping-check]:not([data-sgb])`).forEach((cb) => {
+    cb.dataset.sgb = "1";
+    cb.addEventListener("change", () => {
+      const items = loadFn();
+      const item = items.find((i) => i.id === cb.dataset.shoppingCheck);
+      if (item) { item.bought = cb.checked; saveFn(items); }
+      cb.closest(".shopping-row-wrap")?.classList.toggle("bought", cb.checked);
+      _rerender();
+    });
+  });
+
+  // Delete buttons
+  container.querySelectorAll(`[data-shopping-delete]:not([data-sgd])`).forEach((btn) => {
+    const id = btn.dataset.shoppingDelete;
+    if (!id?.startsWith(key)) return;
+    btn.dataset.sgd = "1";
+    btn.addEventListener("click", () => {
+      const items = loadFn().filter((i) => i.id !== id);
+      saveFn(items);
+      _rerender();
+    });
+  });
+
+  // Mark all
+  container.querySelector(`[data-shopping-mark-all="${key}"]`)?.addEventListener("click", () => {
+    const items = loadFn();
+    items.forEach((i) => { i.bought = true; });
+    saveFn(items);
+    _rerender();
+  });
+
+  // Unmark
+  container.querySelector(`[data-shopping-unmark="${key}"]`)?.addEventListener("click", () => {
+    const items = loadFn();
+    items.forEach((i) => { i.bought = false; });
+    saveFn(items);
+    _rerender();
+  });
+
+  // Clear bought
+  container.querySelector(`[data-shopping-clear="${key}"]`)?.addEventListener("click", () => {
+    saveFn(loadFn().filter((i) => !i.bought));
+    _rerender();
+  });
 }
 
 function _bindPrzekazanieEvents(data, allChildren, coparent, mod) {
@@ -5411,22 +5517,10 @@ function _bindPrzekazanieEvents(data, allChildren, coparent, mod) {
     });
   });
 
-  // Add rzeczy item
-  mod.querySelector("#przekazRzeczyForm")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const input = mod.querySelector("[data-przekaz-input='rzeczy']");
-    const label = input?.value.trim();
-    if (!label) return;
-    const item = { id: "prz-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7), label, checked: false };
-    data.checklist.push(item);
-    savePrzekazanieData(data);
-    mod.querySelector("#przekazRzeczyList")?.insertAdjacentHTML("beforeend", _renderPrzekazItem(item, "rzeczy"));
-    _bindPrzekazItemListeners(mod, data);
-    _updatePrzekazCounters(mod, data);
-    if (input) { input.value = ""; input.focus(); }
-  });
+  // Pack list (rzeczy) uses full shopping-group behaviour
+  _bindSingleShoppingGroup(mod, "przekaz-pack", loadPrzekazPackList, savePrzekazPackList);
 
-  // Add reminder item
+  // Add reminder as chip
   mod.querySelector("#przekazReminderForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const input = mod.querySelector("[data-przekaz-input='reminders']");
@@ -5435,9 +5529,18 @@ function _bindPrzekazanieEvents(data, allChildren, coparent, mod) {
     const item = { id: "prz-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7), label, checked: false };
     data.reminders.push(item);
     savePrzekazanieData(data);
-    mod.querySelector("#przekazReminderList")?.insertAdjacentHTML("beforeend", _renderPrzekazItem(item, "reminders"));
-    _bindPrzekazItemListeners(mod, data);
-    _updatePrzekazCounters(mod, data);
+    const list = mod.querySelector("#przekazReminderList");
+    if (list) {
+      list.style.display = "flex";
+      list.insertAdjacentHTML("beforeend", _renderPrzekazReminderChip(item));
+      // bind delete on the new chip
+      list.querySelector(`[data-reminder-id="${item.id}"] [data-przekaz-delete]`)?.addEventListener("click", () => {
+        data.reminders = data.reminders.filter((i) => i.id !== item.id);
+        savePrzekazanieData(data);
+        list.querySelector(`[data-reminder-id="${item.id}"]`)?.remove();
+        if (!data.reminders.length) list.style.display = "none";
+      });
+    }
     if (input) { input.value = ""; input.focus(); }
   });
 
@@ -5477,11 +5580,17 @@ function _bindPrzekazItemListeners(mod, data) {
     btn.addEventListener("click", () => {
       const id = btn.dataset.przekazDelete;
       const listKey = btn.dataset.przekazList;
-      if (listKey === "rzeczy") data.checklist = data.checklist.filter((i) => i.id !== id);
-      else data.reminders = data.reminders.filter((i) => i.id !== id);
-      savePrzekazanieData(data);
-      btn.closest(".shopping-row-wrap")?.remove();
-      _updatePrzekazCounters(mod, data);
+      if (listKey === "reminders") {
+        data.reminders = data.reminders.filter((i) => i.id !== id);
+        savePrzekazanieData(data);
+        btn.closest(".przekaz-reminder-chip")?.remove();
+        const list = mod.querySelector("#przekazReminderList");
+        if (list && !data.reminders.length) list.style.display = "none";
+      } else {
+        data.checklist = data.checklist.filter((i) => i.id !== id);
+        savePrzekazanieData(data);
+        btn.closest(".shopping-row-wrap")?.remove();
+      }
     });
   });
 }
