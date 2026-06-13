@@ -9470,6 +9470,7 @@ html[data-theme="dark"] .change-request-card {
   position: relative;
   border-right: 1px solid var(--line);
   min-width: 0;
+  container-type: inline-size;
 }
 .bcal-day-col:last-child { border-right: none; }
 
@@ -9563,8 +9564,29 @@ html[data-theme="dark"] .change-request-card {
 .bcal-do-card .quick-actions button,
 .bcal-do-card .card-footer-btn { padding: 3px 6px; font-size: 0.95em; }
 
+/* Hide action buttons when day column is too narrow (e.g. 7-day view on small screens) */
+@container (max-width: 130px) {
+  .bcal-do-card .quick-actions,
+  .bcal-do-card .card-footer-actions {
+    display: none;
+  }
+}
+
 /* Kanban card dragging into calendar */
 .bcal-kanban-dragging { opacity: 0.5; }
+
+/* Recurring card instances in the time grid */
+.bcal-rec-instance { opacity: 0.88; }
+.bcal-rec-badge {
+  position: absolute;
+  top: 4px;
+  left: 22px;
+  font-size: 11px;
+  color: var(--accent);
+  z-index: 3;
+  line-height: 1;
+  pointer-events: none;
+}
 
 /* ---- Mini-cal time row ---- */
 .mc-time-row {

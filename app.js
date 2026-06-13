@@ -1,4 +1,4 @@
-const APP_VERSION = "0.15.4";
+const APP_VERSION = "0.15.6";
 const APP_VERSION_DATE = "2026-06-13";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -5095,6 +5095,66 @@ function _boardCalGetWeekStart(date) {
   return d;
 }
 
+// ─── Recurrence expansion ────────────────────────────────────────────────────
+// Returns virtual card instances for every visible day that matches the card's
+// recurrence rule. Each instance has the same data as the original but with
+// `due` set to that day (same time as original), plus _recInstance:true and
+// _recSourceId pointing back to the original card.
+function _expandRecurringCard(card, visibleDays) {
+  const rec = card.recurrence;
+  if (!rec || !rec.freq || rec.freq === "none") return [];
+
+  const origDue   = new Date(card.due);
+  const origH     = origDue.getHours();
+  const origM     = origDue.getMinutes();
+  const origS     = origDue.getSeconds();
+  const DOW_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  const instances = [];
+
+  for (const day of visibleDays) {
+    let matches = false;
+
+    if (rec.freq === "daily") {
+      matches = true;
+
+    } else if (rec.freq === "weekly") {
+      // Fall back to the original card's day-of-week if no days array was saved
+      const recDays = rec.days?.length ? rec.days : [DOW_NAMES[origDue.getDay()]];
+      matches = recDays.includes(DOW_NAMES[day.getDay()]);
+
+    } else if (rec.freq === "biweekly") {
+      const recDays = rec.days?.length ? rec.days : [DOW_NAMES[origDue.getDay()]];
+      if (recDays.includes(DOW_NAMES[day.getDay()])) {
+        // Count weeks from original due - only even multiples match
+        const msPerWeek = 7 * 24 * 3600 * 1000;
+        const weekDiff  = Math.round((day.getTime() - origDue.getTime()) / msPerWeek);
+        matches = weekDiff % 2 === 0;
+      }
+
+    } else if (rec.freq === "monthly") {
+      matches = day.getDate() === origDue.getDate();
+
+    } else if (rec.freq === "custom-dates") {
+      const dayKey = day.toISOString().slice(0, 10);
+      matches = (rec.customDates || []).some((d) => String(d).slice(0, 10) === dayKey);
+    }
+
+    if (matches) {
+      const newDue = new Date(day);
+      newDue.setHours(origH, origM, origS, 0);
+      instances.push({
+        ...card,
+        due: newDue.toISOString().slice(0, 19),
+        _recInstance: true,
+        _recSourceId: card.id,
+      });
+    }
+  }
+
+  return instances;
+}
+
 function _boardCalDayKey(date) {
   return date.toISOString().slice(0, 10);
 }
@@ -5179,12 +5239,20 @@ function renderBoardCalendar(cards) {
 
   const todayKey = _boardCalDayKey(new Date());
 
-  // Map day key -> sorted cards
+  // Map day key -> sorted cards (non-recurring placed directly; recurring expanded)
   const cardsByDay = {};
   days.forEach((d) => { cardsByDay[_boardCalDayKey(d)] = []; });
   allCards.forEach((card) => {
-    const k = _boardCalCardDay(card);
-    if (k && cardsByDay[k] !== undefined) cardsByDay[k].push(card);
+    if (card.recurrence && card.recurrence.freq && card.recurrence.freq !== "none") {
+      // Expand into one virtual instance per matching visible day
+      _expandRecurringCard(card, days).forEach((inst) => {
+        const k = _boardCalCardDay(inst);
+        if (k && cardsByDay[k] !== undefined) cardsByDay[k].push(inst);
+      });
+    } else {
+      const k = _boardCalCardDay(card);
+      if (k && cardsByDay[k] !== undefined) cardsByDay[k].push(card);
+    }
   });
   // Sort by time within each day
   Object.keys(cardsByDay).forEach((k) => {
@@ -5224,11 +5292,22 @@ function renderBoardCalendar(cards) {
 
     // Cards positioned absolutely at their time
     const cardEls = daycards.map((card) => {
-      const topPx = _bcalCardTopPx(card);
-      const inner = renderUnifiedCard(card, { showActions: true, className: "bcal-do-card" });
-      return `<div class="bcal-card-wrap" draggable="true" data-bcal-card="${card.id}" style="top:${topPx}px">
+      const topPx   = _bcalCardTopPx(card);
+      // For recurring instances, always point data-bcal-card to the source card so
+      // clicking and dragging edit the original (not a virtual copy).
+      const editId  = card._recSourceId || card.id;
+      // renderUnifiedCard uses card.id for data-card-id internally; pass the source card
+      // for instances so the rendered chip shows the right content and opens correctly.
+      const srcCard = card._recInstance
+        ? (state.cards.find((c) => c.id === card._recSourceId) || card)
+        : card;
+      const inner = renderUnifiedCard(srcCard, { showActions: true, className: "bcal-do-card" });
+      const recBadge = card._recInstance
+        ? `<span class="bcal-rec-badge" title="Recurring">↻</span>`
+        : "";
+      return `<div class="bcal-card-wrap${card._recInstance ? " bcal-rec-instance" : ""}" draggable="true" data-bcal-card="${editId}" style="top:${topPx}px">
         <div class="bcal-drag-handle" title="Drag to reschedule">⠿</div>
-        ${inner}
+        ${recBadge}${inner}
       </div>`;
     }).join("");
 
