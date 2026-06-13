@@ -8460,21 +8460,20 @@ html[data-theme="dark"] .reminder-dialog .primary-button:hover:not(:disabled) {
    ──────────────────────────────────────────────────────────────────────────── */
 
 /* Shared top-bar mixin applied to month cells, week-strip buttons, day heading, and week-overview buttons */
+
+/* calendar-day and week-day have no border-radius issue - use border-top + border-image as before */
 .calendar-day.custody-mine,
 .week-day.custody-mine,
-.day-heading.custody-mine,
 .custody-week-ov-day.custody-mine {
   border-top: 4px solid var(--custody-mine-color, #65d6c6);
 }
 .calendar-day.custody-co,
 .week-day.custody-co,
-.day-heading.custody-co,
 .custody-week-ov-day.custody-co {
   border-top: 4px solid var(--custody-co-color, #f59e0b);
 }
 .calendar-day.custody-split,
 .week-day.custody-split,
-.day-heading.custody-split,
 .custody-week-ov-day.custody-split {
   border-top: 4px solid transparent;
   border-image: linear-gradient(
@@ -8483,16 +8482,43 @@ html[data-theme="dark"] .reminder-dialog .primary-button:hover:not(:disabled) {
     var(--custody-co-color, #f59e0b) 50%
   ) 1;
 }
-/* Co-parent has child first - flip the gradient */
 .calendar-day.custody-split.custody-split-co-first,
 .week-day.custody-split.custody-split-co-first,
-.day-heading.custody-split.custody-split-co-first,
 .custody-week-ov-day.custody-split.custody-split-co-first {
   border-image: linear-gradient(
     to right,
     var(--custody-co-color, #f59e0b) 50%,
     var(--custody-mine-color, #65d6c6) 50%
   ) 1;
+}
+
+/* day-heading has border-radius:24px — border-image won't show, use box-shadow inset instead */
+.day-heading.custody-mine {
+  box-shadow: inset 0 4px 0 var(--custody-mine-color, #65d6c6);
+}
+.day-heading.custody-co {
+  box-shadow: inset 0 4px 0 var(--custody-co-color, #f59e0b);
+}
+/* Split: 50/50 gradient strip via background-image; mine-first by default */
+.day-heading.custody-split {
+  background:
+    linear-gradient(to right,
+      var(--custody-mine-color, #65d6c6) 50%,
+      var(--custody-co-color, #f59e0b) 50%
+    ) 0 0 / 100% 4px no-repeat,
+    var(--day-card-bg, #f5f6f2);
+}
+.day-heading.custody-split.custody-split-co-first {
+  background:
+    linear-gradient(to right,
+      var(--custody-co-color, #f59e0b) 50%,
+      var(--custody-mine-color, #65d6c6) 50%
+    ) 0 0 / 100% 4px no-repeat,
+    var(--day-card-bg, #f5f6f2);
+}
+html[data-theme="dark"] .day-heading.custody-split,
+html[data-theme="dark"] .day-heading.custody-split.custody-split-co-first {
+  --day-card-bg: #1e2023;
 }
 
 /* Keep subtle background tint on month cells and week-overview buttons for at-a-glance scanning */
@@ -9634,8 +9660,13 @@ html[data-theme="dark"] .change-request-card {
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
-  pointer-events: none;
+  cursor: pointer;
   transform: translateY(-50%);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.bcal-handover-marker:hover {
+  background: color-mix(in srgb, var(--custody-mine-color, #65d6c6) 35%, var(--surface));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--custody-mine-color, #65d6c6) 30%, transparent);
 }
 .bcal-handover-icon {
   font-size: 11px;

@@ -1,4 +1,4 @@
-const APP_VERSION = "0.15.9";
+const APP_VERSION = "0.16.0";
 const APP_VERSION_DATE = "2026-06-13";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -5300,7 +5300,7 @@ function renderBoardCalendar(cards) {
         const [_gradFirst, _gradSecond] = _ov.morning === "co" ? [_coColor, _mineColor] : [_mineColor, _coColor];
         splitBandEl = `<div class="bcal-split-band" style="top:${_splitTop}px;height:${BCAL_SLOT_H}px;background:linear-gradient(to bottom,color-mix(in srgb,${_gradFirst} 20%,transparent),color-mix(in srgb,${_gradSecond} 20%,transparent));border-top-color:color-mix(in srgb,${_gradFirst} 60%,transparent);border-bottom-color:color-mix(in srgb,${_gradSecond} 60%,transparent)"></div>`;
         const _handoverLabel = (window.t?.("cal.handover")) || "Handover";
-        handoverMarkerEl = `<div class="bcal-handover-marker" style="top:${_splitTop}px">
+        handoverMarkerEl = `<div class="bcal-handover-marker" data-open-przekazanie="1" role="button" tabindex="0" style="top:${_splitTop}px">
           <span class="bcal-handover-icon">↔</span>
           <span class="bcal-handover-label">${_handoverLabel} ${_splitTime}</span>
         </div>`;
@@ -5372,6 +5372,11 @@ function renderBoardCalendar(cards) {
     grid.innerHTML = gridHTML;
     _bindBoardCalDragDrop(grid);
     window.bindUnifiedCardInteractions?.(grid);
+    // Handover marker click -> open Przekazanie dialog
+    grid.querySelectorAll("[data-open-przekazanie]").forEach((el) => {
+      el.addEventListener("click", (e) => { e.stopPropagation(); window.openPrzekazanieDialog?.(); });
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); window.openPrzekazanieDialog?.(); } });
+    });
     // Scroll to show current time (or start of day if outside range)
     requestAnimationFrame(() => {
       const scrollEl = grid.querySelector(".bcal-scroll");

@@ -674,7 +674,8 @@ function renderFeature(moduleName, data) {
     return;
   }
 
-  featureModule.innerHTML = `
+  const _pContainer = container || featureModule;
+  _pContainer.innerHTML = `
     <div class="feature-actions module-actions">
       ${data.actions.map((action) => `<button class="secondary-button feature-action" data-action="${action}">${action}</button>`).join("")}
     </div>
@@ -5241,7 +5242,7 @@ function _przekazNextHandoverLabel() {
   return tomorrow.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" });
 }
 
-function renderPrzekazanieFeature() {
+function renderPrzekazanieFeature(container) {
   const setup = window.getOnboardingState?.() || {};
   const coparent = setup.parents?.coparent || "Co-rodzica";
   const allChildren = (setup.children || []).map((c) => c.name || c).filter(Boolean);
@@ -5342,8 +5343,39 @@ function renderPrzekazanieFeature() {
     </div>
   `;
 
-  _bindPrzekazanieEvents(data, allChildren, coparent);
+  _bindPrzekazanieEvents(data, allChildren, coparent, _pContainer);
 }
+
+// Open the Przekazanie / Handover card as a modal dialog from anywhere (e.g. calendar handover marker)
+window.openPrzekazanieDialog = function() {
+  let dlg = document.getElementById("przekazanieDialog");
+  if (!dlg) {
+    dlg = document.createElement("dialog");
+    dlg.id = "przekazanieDialog";
+    dlg.className = "card-dialog przekazanie-dialog";
+    dlg.innerHTML = `
+      <div class="dialog-content przekazanie-dialog-inner">
+        <div class="dialog-header-row" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0;margin-bottom:4px;">
+          <h2 id="przekazanieDlgTitle" style="font-size:16px;font-weight:700;margin:0;"></h2>
+          <button type="button" id="przekazanieDlgClose" aria-label="Close"
+            style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1;">✕</button>
+        </div>
+        <div id="przekazanieDlgBody" style="overflow-y:auto;max-height:72vh;"></div>
+      </div>
+    `;
+    document.body.appendChild(dlg);
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+    dlg.querySelector("#przekazanieDlgClose").addEventListener("click", () => dlg.close());
+  }
+
+  const setup = window.getOnboardingState?.() || {};
+  const coparent = setup.parents?.coparent || "Co-rodzic";
+  const handoverLabel = window.t?.("cal.handover") || "Handover";
+  dlg.querySelector("#przekazanieDlgTitle").textContent = `${handoverLabel} - ${coparent}`;
+
+  renderPrzekazanieFeature(dlg.querySelector("#przekazanieDlgBody"));
+  dlg.showModal();
+};
 
 function _renderPrzekazItem(item, listKey) {
   return `
@@ -5361,8 +5393,8 @@ function _renderPrzekazItem(item, listKey) {
   `;
 }
 
-function _bindPrzekazanieEvents(data, allChildren, coparent) {
-  const mod = featureModule;
+function _bindPrzekazanieEvents(data, allChildren, coparent, mod) {
+  mod = mod || featureModule;
 
   // Child selector chips
   mod.querySelectorAll(".przekaz-child-chip").forEach((btn) => {
