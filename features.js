@@ -2287,6 +2287,9 @@ let activeMessageTopic = "Schedule";
 const SYSTEM_MESSAGE_TEXTS = new Set([
   "Acknowledged", "Please do it", "Can't do this",
   "Marked done", "Marked paid", "Done", "Paid",
+  "I'll do it", "I’ll do it",
+  // i18n variants
+  "Ich mache das", "Zajmę się tym",
 ]);
 
 function isSystemComment(comment) {
