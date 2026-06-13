@@ -2585,7 +2585,7 @@ function renderCalendarFeature(data) {
           })()}
           <button class="toolbar-new-card feature-action" style="display:inline-flex;" data-action="Add Do">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
-            ${window.t?.("cal.add_do") ?? "Add Do"}
+            ${window.t?.("board.new_do") ?? "New Do"}
           </button>
         </div>
       </div>
