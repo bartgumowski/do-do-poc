@@ -1,4 +1,4 @@
-const APP_VERSION = "0.15.8";
+const APP_VERSION = "0.15.9";
 const APP_VERSION_DATE = "2026-06-13";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -5285,16 +5285,20 @@ function renderBoardCalendar(cards) {
     const daycards = cardsByDay[k] || [];
     const custodyClass = window.getCustodyClass ? window.getCustodyClass(d) : "";
 
-    // Detect split-day handover time for this column
+    // Detect split-day handover time and direction for this column
     const _ov = _custodyOverrides[k];
     const _splitTime = (_ov && _ov.type === "split" && _ov.time) ? _ov.time : null;
+    const _splitDir = _splitTime ? (_ov.morning === "co" ? "custody-split-co-first" : "custody-split-mine-first") : "";
     let splitBandEl = "";
     let handoverMarkerEl = "";
     if (_splitTime) {
       const [_sh, _sm] = _splitTime.split(":").map(Number);
       if (_sh >= startH && _sh < endH) {
         const _splitTop = Math.round((_sh - startH + (_sm || 0) / 60) * BCAL_SLOT_H);
-        splitBandEl = `<div class="bcal-split-band" style="top:${_splitTop}px;height:${BCAL_SLOT_H}px"></div>`;
+        const _mineColor = "var(--custody-mine-color,#65d6c6)";
+        const _coColor   = "var(--custody-co-color,#76808a)";
+        const [_gradFirst, _gradSecond] = _ov.morning === "co" ? [_coColor, _mineColor] : [_mineColor, _coColor];
+        splitBandEl = `<div class="bcal-split-band" style="top:${_splitTop}px;height:${BCAL_SLOT_H}px;background:linear-gradient(to bottom,color-mix(in srgb,${_gradFirst} 20%,transparent),color-mix(in srgb,${_gradSecond} 20%,transparent));border-top-color:color-mix(in srgb,${_gradFirst} 60%,transparent);border-bottom-color:color-mix(in srgb,${_gradSecond} 60%,transparent)"></div>`;
         const _handoverLabel = (window.t?.("cal.handover")) || "Handover";
         handoverMarkerEl = `<div class="bcal-handover-marker" style="top:${_splitTop}px">
           <span class="bcal-handover-icon">↔</span>
@@ -5330,7 +5334,7 @@ function renderBoardCalendar(cards) {
       </div>`;
     }).join("");
 
-    return `<div class="bcal-day-col${isToday ? " bcal-today-col" : ""}${custodyClass ? " "+custodyClass : ""}" data-bcal-day="${k}" data-bcal-drop="${k}">
+    return `<div class="bcal-day-col${isToday ? " bcal-today-col" : ""}${custodyClass ? " "+custodyClass : ""}${_splitDir ? " "+_splitDir : ""}" data-bcal-day="${k}" data-bcal-drop="${k}">
       ${hourLines}
       ${splitBandEl}
       ${handoverMarkerEl}
@@ -5346,7 +5350,9 @@ function renderBoardCalendar(cards) {
           const k = _boardCalDayKey(d);
           const isToday = k === todayKey;
           const custodyClass = window.getCustodyClass ? window.getCustodyClass(d) : "";
-          return `<div class="bcal-col-head${isToday ? " bcal-today" : ""}${custodyClass ? " "+custodyClass : ""}">
+          const headOv = _custodyOverrides[k];
+          const headSplitDir = (headOv && headOv.type === "split") ? (headOv.morning === "co" ? "custody-split-co-first" : "custody-split-mine-first") : "";
+          return `<div class="bcal-col-head${isToday ? " bcal-today" : ""}${custodyClass ? " "+custodyClass : ""}${headSplitDir ? " "+headSplitDir : ""}">
             <span class="bcal-dow">${DOW[d.getDay()]}</span>
             <strong class="bcal-num">${d.getDate()}</strong>
           </div>`;

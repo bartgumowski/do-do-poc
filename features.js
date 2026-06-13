@@ -120,6 +120,14 @@ function getCustodyClass(date) {
   return "";
 }
 
+// Returns extra direction class for split days: which parent has child first (left side of gradient)
+function getCustodySplitDir(dateOrKey) {
+  const key = typeof dateOrKey === "string" ? dateOrKey : toCalendarKey(dateOrKey);
+  const ov = (getCustodySchedule().overrides || {})[key];
+  if (!ov || ov.type !== "split") return "";
+  return ov.morning === "co" ? "custody-split-co-first" : "custody-split-mine-first";
+}
+
 // Set a day-level override and re-render calendar
 function setCustodyDayOverride(dateKey, value) {
   const schedule = getCustodySchedule();
@@ -2285,16 +2293,18 @@ let activeMessageTopic = "Schedule";
 
 // Known system/auto-generated comment texts to exclude from the messages page
 const SYSTEM_MESSAGE_TEXTS = new Set([
-  "Acknowledged", "Please do it", "Can't do this",
+  "Acknowledged", "Please do it", "Can’t do this", "I’ll do it",
   "Marked done", "Marked paid", "Done", "Paid",
-  "I'll do it", "I’ll do it",
   // i18n variants
   "Ich mache das", "Zajmę się tym",
 ]);
 
 function isSystemComment(comment) {
   if (comment.system === true) return true;
-  return SYSTEM_MESSAGE_TEXTS.has(comment.text?.trim());
+  if (SYSTEM_MESSAGE_TEXTS.has(comment.text?.trim())) return true;
+  if (/^Reminder set for /i.test(comment.text)) return true;
+  if (/^Recurring reminder/i.test(comment.text)) return true;
+  return false;
 }
 
 function renderMessagesFeature() {
@@ -2887,14 +2897,15 @@ function renderWeekView() {
     const key = toCalendarKey(date);
     const events = eventsForDate(key).filter((e) => e.kind !== "change-request");
     const custody = getCustodyClass(date);
+    const splitDir = getCustodySplitDir(key);
     const isToday = key === today;
     const vacDot = getActiveVacation(date) ? `<span class="wg-vac-dot" title="Vacation">✈</span>` : "";
-    return { date, key, events, custody, isToday, vacDot };
+    return { date, key, events, custody, splitDir, isToday, vacDot };
   });
 
   // Header row
-  const headerCells = days.map(({ date, key, custody, isToday, vacDot }) =>
-    `<div class="wg-col-head${isToday ? " wg-today" : ""}${custody ? " " + custody : ""}" data-calendar-day="${key}">
+  const headerCells = days.map(({ date, key, custody, splitDir, isToday, vacDot }) =>
+    `<div class="wg-col-head${isToday ? " wg-today" : ""}${custody ? " " + custody : ""}${splitDir ? " " + splitDir : ""}" data-calendar-day="${key}">
       <span class="wg-col-dow">${weekdayLabel(date)}</span>
       <strong class="wg-col-num">${date.getDate()}</strong>
       ${vacDot}
@@ -2932,10 +2943,10 @@ function renderWeekView() {
   // Mobile fallback: classic week strip (hidden on desktop via CSS)
   const mobileStrip = `
     <div class="week-strip week-strip-mobile-only">
-      ${days.map(({ date, key, events, custody, isToday }) => {
+      ${days.map(({ date, key, events, custody, splitDir, isToday }) => {
         const conflicts = getConflictsForDate(key, _getActiveConflicts());
         const conflictTag = conflicts.length ? ` <span class="week-conflict-dot">⚠</span>` : "";
-        return `<button class="week-day${key === calendarState.selected ? " selected" : ""}${conflicts.length ? " has-conflict" : ""}${custody ? " " + custody : ""}" type="button" data-calendar-day="${key}">
+        return `<button class="week-day${key === calendarState.selected ? " selected" : ""}${conflicts.length ? " has-conflict" : ""}${custody ? " " + custody : ""}${splitDir ? " " + splitDir : ""}" type="button" data-calendar-day="${key}">
           <span>${weekdayLabel(date)}</span>
           <strong>${date.getDate()}${conflictTag}</strong>
           <em>${events.length ? `${events.length} item${events.length === 1 ? "" : "s"}` : "Clear"}</em>
@@ -3043,8 +3054,9 @@ function _bindWeekGridDragDrop(container) {
 function renderDayView() {
   const d = parseCalendarKey(calendarState.selected);
   const custodyClass = getCustodyClass(d);
+  const splitDir = getCustodySplitDir(calendarState.selected);
   return `
-    <div class="day-heading${custodyClass ? " " + custodyClass : ""}">
+    <div class="day-heading${custodyClass ? " " + custodyClass : ""}${splitDir ? " " + splitDir : ""}">
       <span>${weekdayLabel(d)}</span>
       <strong>${formatAgendaDate(d)}</strong>
     </div>
