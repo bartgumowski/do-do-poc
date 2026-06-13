@@ -547,6 +547,13 @@
                 <button class="quick-response" type="button" id="dialogCannotButton" data-i18n="action.cant">Can’t</button>
               </div>
               <div class="derived-tags" id="derivedTags" aria-label="Derived card tags"></div>
+              <div class="card-due-row" id="cardDueRow">
+                <label class="card-due-label" for="cardDateInput">Date</label>
+                <input class="card-due-input" type="date" id="cardDateInput" />
+                <label class="card-due-label card-due-label-time" for="cardTimeInput">Time</label>
+                <input class="card-due-input card-time-input" type="time" id="cardTimeInput" step="900" />
+                <button class="card-due-clear" type="button" id="cardDueClear" title="Clear date &amp; time">&#215;</button>
+              </div>
               <div id="miniCalPicker" class="mini-cal-picker"></div>
               <div class="derived-field-bank" aria-hidden="true">
                 <input id="titleInput" maxlength="72" tabindex="-1" />

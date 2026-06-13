@@ -3292,10 +3292,10 @@ html[data-theme="dark"] .card-cal-import {
 
 /* Mini calendar picker in Add Do dialog */
 .mini-cal-picker {
-  margin-top: 10px;
+  margin-top: 8px;
   padding: 8px 6px 6px;
-  background: var(--card-bg, #faf9f6);
-  border: 1px solid var(--border-color, #e5e2db);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
   border-radius: 10px;
   user-select: none;
 }
@@ -3311,23 +3311,26 @@ html[data-theme="dark"] .card-cal-import {
 .mc-month-label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-primary, #333);
+  color: var(--ink);
 }
 
 .mc-nav {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-secondary, #888);
+  color: var(--muted);
   font-size: 1.4rem;
   line-height: 1;
   padding: 0 4px;
   display: flex;
   align-items: center;
+  border-radius: 6px;
+  transition: color 0.12s, background 0.12s;
 }
 
 .mc-nav:hover {
-  color: var(--accent, #1aab8b);
+  color: var(--accent);
+  background: var(--accent-weak);
 }
 
 .mc-grid {
@@ -3338,9 +3341,12 @@ html[data-theme="dark"] .card-cal-import {
 
 .mc-grid th {
   text-align: center;
-  color: var(--text-secondary, #888);
-  font-weight: 500;
-  padding: 2px 0 4px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 2px 0 5px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
 }
 
 .mc-grid td {
@@ -3356,26 +3362,30 @@ html[data-theme="dark"] .card-cal-import {
   border-radius: 50%;
   cursor: pointer;
   font-size: 0.72rem;
-  color: var(--text-primary, #333);
+  color: var(--ink);
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.1s, color 0.1s;
 }
 
 .mc-day:hover {
-  background: var(--bg-hover, rgba(0,0,0,0.07));
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
 }
 
 .mc-today {
-  font-weight: 700;
-  color: var(--accent, #1aab8b);
+  font-weight: 800;
+  color: var(--accent);
 }
 
 .mc-selected {
-  background: var(--accent, #1aab8b) !important;
+  background: var(--accent) !important;
   color: #fff !important;
-  font-weight: 600;
+  font-weight: 700;
+}
+.mc-today.mc-selected {
+  box-shadow: 0 0 0 2px var(--surface-raised), 0 0 0 3px var(--accent);
 }
 
 .mc-clear {
@@ -3384,13 +3394,15 @@ html[data-theme="dark"] .card-cal-import {
   background: none;
   border: none;
   font-size: 0.72rem;
-  color: var(--text-secondary, #888);
+  color: var(--muted);
   cursor: pointer;
   padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.1s;
 }
 
 .mc-clear:hover {
-  color: var(--text-primary, #333);
+  color: var(--ink);
 }
 
 .mc-lock-assignee-row {
@@ -3410,6 +3422,76 @@ html[data-theme="dark"] .card-cal-import {
   cursor: pointer;
 }
 .mc-lock-assignee-row:hover { color: var(--ink); }
+
+/* ---- Date + Time row in card popup ---- */
+.card-due-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.card-due-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.card-due-label-time {
+  margin-left: 6px;
+}
+
+.card-due-input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-card);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.card-due-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.card-time-input {
+  flex: 0 0 auto;
+  width: 108px;
+}
+
+.card-due-clear {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 5px;
+  transition: color 0.1s, background 0.1s;
+}
+
+.card-due-clear:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
 
 .derived-tag {
   display: inline-flex;

@@ -2,6 +2,96 @@
 
 ---
 
+## v0.15.4 - 2026-06-13 - Date+time row in card popup + mini-cal theme fix
+
+### Date and time form in the full Do card popup
+- A visible date + time row now appears in the card popup above the mini-calendar.
+- Date field: type or pick a date directly - updates the mini-calendar selection immediately.
+- Time field: pick any time in 15-minute steps - no need to open the full mini-cal.
+- The X button clears both date and time at once.
+- All three inputs stay in sync: clicking a date in the mini-calendar updates the row, and typing in the row updates the mini-calendar highlight.
+- Changing the date via the row respects custody auto-assign (same as clicking the mini-cal).
+
+### Mini-calendar now matches app color scheme
+- Replaced all old CSS variables (`--card-bg`, `--text-primary`, `--text-secondary`, `--border-color`, `--bg-hover`) with the app's design-system tokens: `--surface-raised`, `--ink`, `--muted`, `--line`, `--accent`, `--accent-weak`.
+- Mini-calendar now looks correct in both light and dark mode - no more light-gray box in dark theme.
+- Day-name column headers are now uppercase and slightly smaller (consistent with the bottom calendar).
+- Today + Selected combination now gets a double-ring focus style so it's clear which day is both today and the selected due date.
+- Prev/next month nav buttons get an accent background on hover.
+
+---
+
+## v0.15.3 - 2026-06-13 - System comments hidden from card thread
+
+### System messages never shown in card thread or messages feed
+- Reminder confirmations ("Reminder set for...", "Recurring reminder...") no longer appear in the card message thread.
+- Button actions (Acknowledged, Please do it, Can't do this, I'll do it, Done, Paid) no longer appear in the card message thread.
+- Same filter applies to the Messages page feed - only real, user-typed messages are shown.
+- Filter works on both the `system: true` flag (new comments) and text pattern matching (existing data).
+- `renderComments()` now uses a shared `isSystemComment()` helper to decide what to display.
+
+---
+
+## v0.15.2 - 2026-06-13 - Messages page + dark mode button fix
+
+### Messages page - card message feed
+- Replaced Slack-style topic channels with a feed of Do cards that have real messages in their thread.
+- Cards sorted latest-first (most recently messaged at top).
+- Each entry shows: card title, topic/type/child tags, last message preview with author, time, and total message count.
+- Clicking a card opens its dialog directly to the message thread.
+- System/button-generated messages are excluded: "Acknowledged", "Please do it", "Can't do this", "I'll do it", "Marked done", "Marked paid".
+- Auto-generated comments now carry a `system: true` flag - excluded regardless of text content.
+- No delete option on messages (non-destructive by design).
+
+### Dark mode - card button styling
+- Quick-response buttons (I'll do it, Please do it, Can't) are now transparent with border only in dark mode - no more filled grey chip background.
+- Reminder and Message footer buttons use transparent background + border in both dark and light mode.
+
+---
+
+## v0.15.0 - 2026-06-13 - Time-grid calendar redesign
+
+Full redesign of the bottom calendar component into an MS Teams-style time grid. This is the largest calendar change since the initial board view.
+
+### Time grid layout
+- Calendar now shows a full vertical hour grid from 6 AM to 10 PM (configurable in Settings).
+- Each Do card is positioned at its exact time using absolute layout - cards at 9 AM appear at the 9 AM row, not just stacked in a day column.
+- Hour lines (solid) and half-hour lines (faint) run across every day column.
+- A red now-line with dot indicator shows the current time across all columns.
+- Calendar auto-scrolls to the current time on load.
+- Day header row is sticky - stays visible while scrolling through the time grid.
+
+### Hour-snap drag and drop
+- Dragging a card between day columns snaps the time to the nearest full hour at drop position.
+- Reminders recalculate automatically on every drag: preset reminders (e.g. "1 hour before") recalculate from the new due time; custom reminder offsets shift by the same delta as the card.
+- External calendars (Google, Apple, Microsoft) sync on every successful drag - same as manually editing the due date.
+- Drag handle (dots icon) in the card corner initiates the drag; card action buttons still work normally.
+
+### Kanban to calendar drag
+- Board (kanban) cards can be dragged directly into the calendar time grid.
+- The card stays on the board - it does not disappear. The calendar entry is added alongside the existing board card.
+- Dropping on a day+time sets the card's due date to that slot.
+
+### Mini-cal time picker
+- The date popup (mini-calendar) now has a time field below the date grid.
+- Changing the time immediately updates the card's due time without re-opening the full card dialog.
+- Time defaults to the existing value when editing, or 12:00 for new cards.
+
+### Calendar hours - Settings
+- New "Calendar hours" section in Settings.
+- Choose start hour (4 AM - 4 PM range) and end hour (4 PM - midnight range).
+- Changes apply to the calendar immediately; hour grid adjusts to the selected window.
+
+### Bug fix - "I'll do it" cards disappearing from calendar
+- Cards marked "I'll do it" (accepted but not Done) were disappearing from the calendar view because the calendar was using the board's active filter. Fixed - the calendar now reads directly from all cards with a due date, ignoring board filters.
+
+### Mobile - 2-day view
+- On screens narrower than 640px the calendar defaults to a 2-day view (today + tomorrow).
+- The 2-day window always starts on today; prev/next navigation shifts by 2 days.
+- The time grid scrolls horizontally if needed to fit both columns.
+
+---
+
 ## v0.11.2 - 2026-06-12 - Smart notification routing + app-only reminders
 
 ### 19.1 Smart notification routing

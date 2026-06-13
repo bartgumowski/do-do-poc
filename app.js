@@ -1,4 +1,4 @@
-const APP_VERSION = "0.15.2";
+const APP_VERSION = "0.15.4";
 const APP_VERSION_DATE = "2026-06-13";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -486,6 +486,9 @@ const elements = {
   assigneeInput: document.querySelector("#assigneeInput"),
   childInput: document.querySelector("#childInput"),
   dueInput: document.querySelector("#dueInput"),
+  cardDateInput: document.querySelector("#cardDateInput"),
+  cardTimeInput: document.querySelector("#cardTimeInput"),
+  cardDueClear: document.querySelector("#cardDueClear"),
   amountInput: document.querySelector("#amountInput"),
   lockAssigneeInput: document.querySelector("#lockAssigneeInput"),
   detailsInput: document.querySelector("#detailsInput"),
@@ -678,6 +681,7 @@ function bindEvents() {
   });
   elements.exportButton?.addEventListener("click", exportCards);
   elements.cardForm.addEventListener("submit", saveCard);
+  _bindCardDueRow(); // visible date + time inputs in card popup
   elements.voiceButton?.addEventListener("click", startVoiceCapture);
   elements.llmVoiceButton?.addEventListener("click", startVoiceCapture);
   elements.llmInterpretButton?.addEventListener("click", () => syncLlmCardPrompt({ announce: true }));
@@ -1951,6 +1955,7 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     setSelectValue(elements.assigneeInput, card.assignee);
     setSelectValue(elements.childInput, card.child);
     elements.dueInput.value = card.due ? card.due.slice(0, 16) : "";
+    _syncCardDueRow();
     if (elements.lockAssigneeInput) elements.lockAssigneeInput.checked = card.lockAssignee || false;
     // Recurrence
     const recInput = document.querySelector("#recurrenceInput");
@@ -2010,6 +2015,7 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     elements.amountInput.value = "";
     // Pre-fill due date from calendar selection or passed-in prefill
     elements.dueInput.value = prefill.due ? prefill.due.slice(0, 16) : "";
+    _syncCardDueRow();
     if (elements.lockAssigneeInput) elements.lockAssigneeInput.checked = false;
     elements.detailsInput.value = prefill.details || "";
     elements.cardReminderPresetInput.value = state.automationSettings.defaultReminderPreset || "60";
@@ -2941,12 +2947,13 @@ function renderMiniCal() {
         if (parts[1]) timeStr = parts[1].slice(0, 5);
       }
       if (elements.dueInput) elements.dueInput.value = `${dateStr}T${timeStr}`;
+      _syncCardDueRow();
       renderDerivedTags();
       maybeAutoAssignParent(dateStr);
     });
   });
 
-  // Time input - update dueInput whenever time changes
+  // Time input inside mini-cal - sync to dueInput and to the visible row
   el.querySelector("#miniCalTime")?.addEventListener("change", (e) => {
     const timeVal = e.target.value; // "HH:MM"
     if (!timeVal) return;
@@ -2954,16 +2961,56 @@ function renderMiniCal() {
       const datePart = elements.dueInput.value.slice(0, 10);
       elements.dueInput.value = `${datePart}T${timeVal}`;
     } else {
-      // No date selected yet - default to today
       const today = new Date();
       const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
       if (elements.dueInput) elements.dueInput.value = `${todayStr}T${timeVal}`;
     }
+    _syncCardDueRow();
     renderDerivedTags();
   });
 
   el.querySelector("#miniCalClear")?.addEventListener("click", () => {
     if (elements.dueInput) elements.dueInput.value = "";
+    if (elements.cardDateInput) elements.cardDateInput.value = "";
+    if (elements.cardTimeInput) elements.cardTimeInput.value = "";
+    renderDerivedTags();
+  });
+}
+
+// Sync the visible date + time row in the card dialog to/from dueInput
+function _syncCardDueRow() {
+  const dueVal = elements.dueInput?.value; // "YYYY-MM-DDTHH:MM" or ""
+  if (elements.cardDateInput) elements.cardDateInput.value = dueVal ? dueVal.slice(0, 10) : "";
+  if (elements.cardTimeInput) elements.cardTimeInput.value = dueVal ? dueVal.slice(11, 16) : "";
+}
+
+// Bind the card due row inputs (called once after elements are ready)
+function _bindCardDueRow() {
+  if (!elements.cardDateInput) return;
+
+  elements.cardDateInput.addEventListener("change", () => {
+    const dateVal = elements.cardDateInput.value; // "YYYY-MM-DD"
+    const timeVal = elements.cardTimeInput?.value || "12:00";
+    if (elements.dueInput) elements.dueInput.value = dateVal ? `${dateVal}T${timeVal}` : "";
+    maybeAutoAssignParent(dateVal);
+    renderDerivedTags(); // also calls renderMiniCal
+  });
+
+  elements.cardTimeInput?.addEventListener("change", () => {
+    const timeVal = elements.cardTimeInput.value;
+    if (!timeVal) return;
+    const datePart = elements.dueInput?.value?.slice(0, 10) || (() => {
+      const t = new Date();
+      return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+    })();
+    if (elements.dueInput) elements.dueInput.value = `${datePart}T${timeVal}`;
+    renderDerivedTags();
+  });
+
+  elements.cardDueClear?.addEventListener("click", () => {
+    if (elements.dueInput) elements.dueInput.value = "";
+    if (elements.cardDateInput) elements.cardDateInput.value = "";
+    if (elements.cardTimeInput) elements.cardTimeInput.value = "";
     renderDerivedTags();
   });
 }
@@ -3318,11 +3365,25 @@ function setSelectValue(select, value) {
   select.value = stringValue;
 }
 
+const SYSTEM_COMMENT_TEXTS = new Set([
+  "Acknowledged", "Please do it", "Can't do this", "I'll do it",
+  "Marked done", "Marked paid", "Done", "Paid",
+]);
+
+function isSystemComment(comment) {
+  if (comment.system === true) return true;
+  if (SYSTEM_COMMENT_TEXTS.has(comment.text?.trim())) return true;
+  if (/^Reminder set for /i.test(comment.text)) return true;
+  if (/^Recurring reminder/i.test(comment.text)) return true;
+  return false;
+}
+
 function renderComments(card) {
   const family = getFamilyPeople();
   const myName = family.primary.name || "Parent A";
-  elements.commentList.innerHTML = card.comments.length
-    ? card.comments.map((comment) => {
+  const visibleComments = (card.comments || []).filter((c) => !isSystemComment(c));
+  elements.commentList.innerHTML = visibleComments.length
+    ? visibleComments.map((comment) => {
         const isMine = comment.author === myName || comment.author === "Parent A";
         const authorDisplay = displayPersonName(comment.author);
         return `
@@ -3432,7 +3493,7 @@ function saveCardDialogReminder() {
       ? {
           ...item,
           reminder,
-          comments: [...item.comments, { author: getMyName(), text: reminderText, time: "Just now" }],
+          comments: [...item.comments, { author: getMyName(), text: reminderText, time: "Just now", system: true }],
         }
       : item
   ));
@@ -4096,7 +4157,7 @@ function saveReminder(event) {
       ? {
           ...item,
           reminder,
-          comments: [...item.comments, { author: getMyName(), text: reminderText, time: "Just now" }],
+          comments: [...item.comments, { author: getMyName(), text: reminderText, time: "Just now", system: true }],
         }
       : item
   ));
