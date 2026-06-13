@@ -157,11 +157,16 @@ html[data-theme="dark"] .topic-pill {
 html[data-theme="dark"] .pill,
 html[data-theme="dark"] .meta-chip,
 html[data-theme="dark"] .card-state-row span,
-html[data-theme="dark"] .quick-response,
-html[data-theme="dark"] .quick-message,
 html[data-theme="dark"] .card-sync {
   background: var(--surface-raised);
   color: var(--ink);
+}
+
+html[data-theme="dark"] .quick-response,
+html[data-theme="dark"] .quick-message {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid rgba(197, 194, 182, 0.35);
 }
 
 html[data-theme="dark"] .pill.Important,
@@ -4657,8 +4662,8 @@ html[data-theme="dark"] .expense-status-badge.expense-status-disputed { backgrou
   justify-content: center;
   gap: 6px;
   min-height: 38px;
-  border: 0;
-  background: #ffffff;
+  border: 1px solid rgba(23, 25, 24, 0.14);
+  background: transparent;
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
@@ -5596,6 +5601,81 @@ textarea {
   grid-template-columns: minmax(160px, 0.34fr) minmax(0, 1fr);
   gap: 14px;
   min-height: min(660px, calc(100dvh - 170px));
+}
+
+/* Messages feed - cards with messages */
+.messages-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.messages-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.messages-feed-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border, rgba(23,25,24,0.1));
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.messages-feed-card:hover {
+  background: var(--surface-raised);
+}
+
+.messages-feed-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.messages-feed-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.messages-feed-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.messages-feed-last {
+  font-size: 13px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.messages-feed-author {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.messages-feed-body {
+  color: var(--muted);
+}
+
+.messages-feed-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .slack-sidebar,
@@ -6710,11 +6790,15 @@ html[data-theme="dark"] .card-meta {
 html[data-theme="dark"] .pill,
 html[data-theme="dark"] .meta-chip,
 html[data-theme="dark"] .card-state-row span,
-html[data-theme="dark"] .quick-response,
-html[data-theme="dark"] .quick-message,
 html[data-theme="dark"] .card-sync {
   background: #303a38;
   color: var(--ink);
+}
+
+html[data-theme="dark"] .card-footer-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid rgba(197, 194, 182, 0.25);
 }
 
 html[data-theme="dark"] .pill.Important,
@@ -9291,7 +9375,7 @@ html[data-theme="dark"] .change-request-card {
   line-height: 1;
 }
 
-/* Flex row of day columns */
+/* Flex row of day columns - must be position:relative so the now-line absolute child works */
 .bcal-days {
   flex: 1;
   display: flex;

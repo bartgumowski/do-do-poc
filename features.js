@@ -2283,101 +2283,78 @@ function formatCurrency(value) {
 
 let activeMessageTopic = "Schedule";
 
-async function renderMessagesFeature() {
-  // Build sidebar with real unread counts
-  const counts = await window.getUnreadCounts?.() || {};
-  const topics = ["Schedule", "School", "Medical", "Expenses", "General"];
+// Known system/auto-generated comment texts to exclude from the messages page
+const SYSTEM_MESSAGE_TEXTS = new Set([
+  "Acknowledged", "Please do it", "Can't do this",
+  "Marked done", "Marked paid", "Done", "Paid",
+]);
+
+function isSystemComment(comment) {
+  if (comment.system === true) return true;
+  return SYSTEM_MESSAGE_TEXTS.has(comment.text?.trim());
+}
+
+function renderMessagesFeature() {
+  const allCards = (typeof state !== "undefined" ? state.cards : []);
+
+  // Cards that have at least one real (non-system) message, sorted latest first
+  const cardsWithMessages = allCards
+    .map((card) => {
+      const realComments = (card.comments || []).filter((c) => !isSystemComment(c));
+      return { card, realComments };
+    })
+    .filter(({ realComments }) => realComments.length > 0)
+    .sort((a, b) => {
+      const latestA = a.realComments[a.realComments.length - 1];
+      const latestB = b.realComments[b.realComments.length - 1];
+      const timeA = latestA.createdAt || latestA.time || "";
+      const timeB = latestB.createdAt || latestB.time || "";
+      if (timeA === "Just now") return -1;
+      if (timeB === "Just now") return 1;
+      if (timeA && timeB) return new Date(timeB) - new Date(timeA);
+      return 0;
+    });
+
+  const setup = window.getOnboardingState?.() || {};
+  const myName = setup.parents?.primary || "Parent A";
 
   featureModule.innerHTML = `
-    <section class="slack-shell">
-      <aside class="slack-sidebar" aria-label="Message topics">
-        ${topics.map((t) => `
-          <button class="slack-channel${t === activeMessageTopic ? " active" : ""}" type="button" data-message-tag="${t}">
-            <span>${t}</span>
-            ${counts[t] ? `<strong>${counts[t]}</strong>` : ""}
-          </button>
-        `).join("")}
-      </aside>
-
-      <section class="chat-panel" aria-label="Selected message thread">
-        <header class="chat-header">
-          <div>
-            <span>${activeMessageTopic}</span>
-            <strong>${window.t?.("msg.family_messages") ?? "Family messages"}</strong>
-          </div>
-        </header>
-
-        <div class="message-list" id="messageList">
-          <p class="chat-loading" style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">${window.t?.("msg.loading") ?? "Loading messages..."}</p>
+    <div class="messages-feed">
+      ${cardsWithMessages.length === 0 ? `
+        <div class="messages-empty">
+          <p>No card messages yet. Open a card and type a message to start a thread.</p>
         </div>
-
-        <form class="message-composer" id="messageComposer">
-          <button class="composer-icon" type="button" aria-label="Attach card">+</button>
-          <input id="messageInput" placeholder="${window.t?.("msg.placeholder", { topic: activeMessageTopic.toLowerCase() }) ?? `Message #${activeMessageTopic.toLowerCase()}`}" autocomplete="off" />
-          <button class="composer-icon composer-mic" type="button" id="messageMicButton" aria-label="Dictate message">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
-            </svg>
-          </button>
-          <button class="composer-send" type="submit">${window.t?.("msg.send") ?? "Send"}</button>
-        </form>
-      </section>
-    </section>
+      ` : cardsWithMessages.map(({ card, realComments }) => {
+        const last = realComments[realComments.length - 1];
+        const count = realComments.length;
+        const authorDisplay = window.displayPersonName?.(last.author) || last.author;
+        const contextTags = [card.topic, card.type, card.child].filter(Boolean);
+        const esc = (s) => window.escapeHtml?.(s) || s || "";
+        return `
+          <article class="messages-feed-card" data-open-card="${card.id}" role="button" tabindex="0">
+            <div class="messages-feed-card-header">
+              <strong class="messages-feed-title">${esc(card.title)}</strong>
+              ${contextTags.length ? `<div class="messages-feed-tags">${contextTags.map((t) => `<span class="meta-chip card-tag">${esc(t)}</span>`).join("")}</div>` : ""}
+            </div>
+            <div class="messages-feed-last">
+              <span class="messages-feed-author">${esc(authorDisplay)}:</span>
+              <span class="messages-feed-body">${esc(last.text)}</span>
+            </div>
+            <div class="messages-feed-meta">
+              <span class="messages-feed-time">${esc(last.time)}</span>
+              <span class="messages-feed-count">${count} message${count === 1 ? "" : "s"}</span>
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
   `;
 
-  // Load and render real messages
-  await loadAndRenderMessages(activeMessageTopic);
-
-  // Topic switching
-  featureModule.querySelectorAll(".slack-channel").forEach((button) => {
-    button.addEventListener("click", async () => {
-      featureModule.querySelectorAll(".slack-channel").forEach((item) => item.classList.toggle("active", item === button));
-      activeMessageTopic = button.dataset.messageTag;
-      featureModule.querySelector(".chat-header div span").textContent = activeMessageTopic;
-      featureModule.querySelector("#messageInput").placeholder = window.t?.("msg.placeholder", { topic: activeMessageTopic.toLowerCase() }) ?? `Message #${activeMessageTopic.toLowerCase()}`;
-      await loadAndRenderMessages(activeMessageTopic);
-      window.applyCardTagFilter?.(activeMessageTopic);
-    });
+  featureModule.querySelectorAll("[data-open-card]").forEach((el) => {
+    const open = () => window.openCardDialog?.(el.dataset.openCard, "messages");
+    el.addEventListener("click", open);
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") open(); });
   });
-
-  // Send message
-  const composer = featureModule.querySelector("#messageComposer");
-  const input = featureModule.querySelector("#messageInput");
-  const mic = featureModule.querySelector("#messageMicButton");
-
-  mic?.addEventListener("click", () => window.startDictationForField?.(input, {
-    button: mic,
-    success: "Message dictated",
-    fallback: "Type your message instead.",
-  }));
-
-  composer.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const text = input.value.trim();
-    if (!text) return;
-
-    input.value = "";
-    const userId = window.getCurrentUserId?.();
-
-    // Optimistic render
-    appendMessageToList({ body: text, sender_id: userId, created_at: new Date().toISOString() });
-
-    // Save to Supabase
-    const saved = await window.sendMessage?.(activeMessageTopic, text);
-    if (!saved) showFeatureToast("Message could not be sent");
-  });
-
-  // Real-time subscription
-  window.unsubscribeMessages?.();
-  window.subscribeToMessages?.(activeMessageTopic, (msg) => {
-    // Only append if not our own (we already did optimistic)
-    if (msg.sender_id !== window.getCurrentUserId?.()) {
-      appendMessageToList(msg);
-    }
-  });
-
-  window.bindUnifiedCardInteractions?.(featureModule);
 }
 
 async function loadAndRenderMessages(topic) {

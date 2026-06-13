@@ -1,4 +1,4 @@
-const APP_VERSION = "0.15.0";
+const APP_VERSION = "0.15.1";
 const APP_VERSION_DATE = "2026-06-13";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -3849,7 +3849,7 @@ function acknowledgeCurrentCard() {
           ...card,
           acknowledged: true,
           status: card.status === "Important" || card.status === "Waiting" ? "Done" : card.status,
-          comments: [...card.comments, { author: getMyName(), text: "Acknowledged", time: "Just now" }],
+          comments: [...card.comments, { author: getMyName(), text: "Acknowledged", time: "Just now", system: true }],
         }
       : card
   ));
@@ -3872,7 +3872,7 @@ function quickCompleteCard(id) {
           ...item,
           status: "Done",
           acknowledged: true,
-          comments: [...item.comments, { author: getMyName(), text: label, time: "Just now" }],
+          comments: [...item.comments, { author: getMyName(), text: label, time: "Just now", system: true }],
         }
       : item
   ));
@@ -3900,7 +3900,7 @@ function quickRespondCard(id, response) {
   // "do" = I'll do it: silently set assignee + status, no chat message
   // "will" / "cannot" = send a message to the thread
   const newComments = text
-    ? [...card.comments, { author: myName, text, time: "Just now" }]
+    ? [...card.comments, { author: myName, text, time: "Just now", system: true }]
     : card.comments;
   state.cards = state.cards.map((item) => (
     item.id === id
@@ -5329,7 +5329,8 @@ function _bindBoardCalDragDrop(container) {
       // For kanban drops: preserve existing time if any, else snap to drop position
       let newHour, newMin;
       const colRect = col.getBoundingClientRect();
-      const relY    = e.clientY - colRect.top + (col.closest(".bcal-scroll")?.scrollTop || 0);
+      // getBoundingClientRect() is already viewport-relative; no scroll adjustment needed
+      const relY    = e.clientY - colRect.top;
       const snapped = _bcalYToTime(relY);
       newHour = snapped.h;
       newMin  = 0;
@@ -5367,7 +5368,8 @@ function _bindBoardCalDragDrop(container) {
 
 // Make kanban board cards draggable into the calendar
 function _bindKanbanToBoardCal() {
-  document.querySelectorAll(".board-card, .do-card, [data-card-id]").forEach((el) => {
+  // Exclude calendar cards (.bcal-do-card) - they already have their own bcal drag
+  document.querySelectorAll(".board-card:not(.bcal-do-card), [data-card-id]:not(.bcal-do-card)").forEach((el) => {
     const cardId = el.dataset.cardId || el.dataset.id;
     if (!cardId) return;
     if (el.dataset.kanbanBound) return; // avoid double-binding
