@@ -9565,7 +9565,7 @@ html[data-theme="dark"] .change-request-card {
 .bcal-do-card .card-footer-btn { padding: 3px 6px; font-size: 0.95em; }
 
 /* Hide action buttons when day column is too narrow (e.g. 7-day view on small screens) */
-@container (max-width: 130px) {
+@container (max-width: 240px) {
   .bcal-do-card .quick-actions,
   .bcal-do-card .card-footer-actions {
     display: none;
