@@ -1,4 +1,4 @@
-const APP_VERSION = "0.14.2";
+const APP_VERSION = "0.14.3";
 const APP_VERSION_DATE = "2026-06-12";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -5066,10 +5066,10 @@ function renderBoardCalendar(cards) {
                     const timeLabel = (time && time !== "00:00") ? `<span class="bcal-card-time">${time}</span>` : "";
                     const assignee = card.assignee || "";
                     const initial = assignee ? assignee.charAt(0).toUpperCase() : "";
+                    const hasFooter = timeLabel || initial;
                     return `<div class="bcal-card ${colorClass}" draggable="true" data-bcal-card="${card.id}" title="${escapeHtml(card.title)}">
                       <span class="bcal-card-title">${escapeHtml(card.title)}</span>
-                      ${timeLabel}
-                      ${initial ? `<span class="bcal-card-avatar">${initial}</span>` : ""}
+                      ${hasFooter ? `<div class="bcal-card-footer">${timeLabel}${initial ? `<span class="bcal-card-avatar">${initial}</span>` : ""}</div>` : ""}
                     </div>`;
                   }).join("")
                 : `<span class="bcal-empty">-</span>`}
