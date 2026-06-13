@@ -9276,68 +9276,21 @@ html[data-theme="dark"] .change-request-card {
   display: block;
 }
 
-/* Calendar cards - full card style */
-.bcal-card {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  font-size: 12px;
+/* Do cards inside the Teams calendar - reuse unified-card style, scaled down */
+.bcal-do-card {
   cursor: grab;
   user-select: none;
-  overflow: hidden;
-  transition: opacity 0.15s, box-shadow 0.12s, transform 0.1s;
-  flex-shrink: 0;
-  border-left: 3px solid rgba(255,255,255,0.4);
+  margin-bottom: 0;
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.12s;
+  font-size: 65%;
 }
-.bcal-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.22);
-  transform: translateY(-1px);
-}
-.bcal-card.bcal-dragging { opacity: 0.35; cursor: grabbing; transform: scale(0.97); }
-
-.bcal-card-normal  { background: var(--accent, #0d9488); color: #fff; }
-.bcal-card-urgent  { background: #ef4444; color: #fff; border-left-color: rgba(255,255,255,0.5); }
-.bcal-card-done    { background: var(--surface-raised); color: var(--muted); border-left-color: var(--muted); opacity: 0.75; }
-
-.bcal-card-title {
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.3;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  white-space: normal;
-}
-
-.bcal-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  margin-top: 2px;
-}
-
-.bcal-card-time {
-  font-size: 10px;
-  opacity: 0.8;
-  flex-shrink: 0;
-}
-
-.bcal-card-avatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.28);
-  font-size: 10px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
+.bcal-do-card * { font-size: inherit; }
+.bcal-do-card .card-title { font-size: 1.15em; }
+.bcal-do-card .quick-actions { flex-wrap: wrap; gap: 3px; }
+.bcal-do-card .quick-actions button,
+.bcal-do-card .card-footer-btn { padding: 3px 6px; font-size: 0.95em; }
+.bcal-do-card:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+.bcal-do-card.bcal-dragging { opacity: 0.35; cursor: grabbing; transform: scale(0.97); }
 
 /* Mobile: collapse to scrollable horizontal strip */
 @media (max-width: 640px) {

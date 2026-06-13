@@ -1,4 +1,4 @@
-const APP_VERSION = "0.14.5";
+const APP_VERSION = "0.14.6";
 const APP_VERSION_DATE = "2026-06-12";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -5059,18 +5059,12 @@ function renderBoardCalendar(cards) {
             <div class="bcal-col-body" data-bcal-drop="${k}">
               ${daycards.length
                 ? daycards.map((card) => {
-                    const isDone = card.status === "Done";
-                    const isUrgent = card.status === "Important";
-                    const colorClass = isDone ? "bcal-card-done" : isUrgent ? "bcal-card-urgent" : "bcal-card-normal";
-                    const time = card.due?.slice(11, 16);
-                    const timeLabel = (time && time !== "00:00") ? `<span class="bcal-card-time">${time}</span>` : "";
-                    const assignee = card.assignee || "";
-                    const initial = assignee ? assignee.charAt(0).toUpperCase() : "";
-                    const hasFooter = timeLabel || initial;
-                    return `<div class="bcal-card ${colorClass}" draggable="true" data-bcal-card="${card.id}" title="${escapeHtml(card.title)}">
-                      <span class="bcal-card-title">${escapeHtml(card.title)}</span>
-                      ${hasFooter ? `<div class="bcal-card-footer">${timeLabel}${initial ? `<span class="bcal-card-avatar">${initial}</span>` : ""}</div>` : ""}
-                    </div>`;
+                    const cardHTML = renderUnifiedCard(card, {
+                      showActions: true,
+                      className: "bcal-do-card",
+                      attributes: `data-card-id="${card.id}" data-bcal-card="${card.id}" draggable="true" role="button" tabindex="0"`,
+                    });
+                    return cardHTML;
                   }).join("")
                 : `<span class="bcal-empty">-</span>`}
             </div>
@@ -5084,6 +5078,8 @@ function renderBoardCalendar(cards) {
   containers.forEach((grid) => {
     grid.innerHTML = gridHTML;
     _bindBoardCalDragDrop(grid);
+    // Wire up Done / I'll do it / Reminder / Message buttons on the full cards
+    window.bindUnifiedCardInteractions?.(grid);
   });
 
   // Update titles in all nav bars
@@ -5165,7 +5161,11 @@ function _bindBoardCalDragDrop(container) {
       container.querySelectorAll(".bcal-dragging").forEach((x) => x.classList.remove("bcal-dragging"));
       container.querySelectorAll(".bcal-drop-over").forEach((x) => x.classList.remove("bcal-drop-over"));
     });
-    el.addEventListener("click", () => window.openCardDialog?.(el.dataset.bcalCard));
+    // Open card dialog only when clicking the card body, not its action buttons
+    el.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      window.openCardDialog?.(el.dataset.bcalCard);
+    });
   });
 
   // Drop targets - the day body columns
