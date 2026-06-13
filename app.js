@@ -1,4 +1,4 @@
-const APP_VERSION = "0.15.7";
+const APP_VERSION = "0.15.8";
 const APP_VERSION_DATE = "2026-06-13";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -5278,11 +5278,30 @@ function renderBoardCalendar(cards) {
   }).join("");
 
   // Day columns
+  const _custodyOverrides = window.getCustodySchedule?.()?.overrides || {};
   const dayCols = days.map((d) => {
     const k = _boardCalDayKey(d);
     const isToday = k === todayKey;
     const daycards = cardsByDay[k] || [];
     const custodyClass = window.getCustodyClass ? window.getCustodyClass(d) : "";
+
+    // Detect split-day handover time for this column
+    const _ov = _custodyOverrides[k];
+    const _splitTime = (_ov && _ov.type === "split" && _ov.time) ? _ov.time : null;
+    let splitBandEl = "";
+    let handoverMarkerEl = "";
+    if (_splitTime) {
+      const [_sh, _sm] = _splitTime.split(":").map(Number);
+      if (_sh >= startH && _sh < endH) {
+        const _splitTop = Math.round((_sh - startH + (_sm || 0) / 60) * BCAL_SLOT_H);
+        splitBandEl = `<div class="bcal-split-band" style="top:${_splitTop}px;height:${BCAL_SLOT_H}px"></div>`;
+        const _handoverLabel = (window.t?.("cal.handover")) || "Handover";
+        handoverMarkerEl = `<div class="bcal-handover-marker" style="top:${_splitTop}px">
+          <span class="bcal-handover-icon">↔</span>
+          <span class="bcal-handover-label">${_handoverLabel} ${_splitTime}</span>
+        </div>`;
+      }
+    }
 
     // Hour lines (major every hour, minor at half-hour)
     const hourLines = Array.from({ length: endH - startH }, (_, i) => `
@@ -5313,6 +5332,8 @@ function renderBoardCalendar(cards) {
 
     return `<div class="bcal-day-col${isToday ? " bcal-today-col" : ""}${custodyClass ? " "+custodyClass : ""}" data-bcal-day="${k}" data-bcal-drop="${k}">
       ${hourLines}
+      ${splitBandEl}
+      ${handoverMarkerEl}
       ${cardEls}
     </div>`;
   }).join("");

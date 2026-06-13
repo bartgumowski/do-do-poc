@@ -9572,6 +9572,53 @@ html[data-theme="dark"] .change-request-card {
   }
 }
 
+/* Split-day handover band - highlights the handover hour */
+.bcal-split-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--custody-mine-color, #65d6c6) 18%, transparent),
+    color-mix(in srgb, var(--custody-co-color, #76808a) 18%, transparent)
+  );
+  border-top: 2px solid color-mix(in srgb, var(--custody-mine-color, #65d6c6) 60%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--custody-co-color, #76808a) 60%, transparent);
+}
+
+/* Handover marker card pinned at split time */
+.bcal-handover-marker {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--custody-mine-color, #65d6c6) 22%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--custody-mine-color, #65d6c6) 50%, transparent);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+.bcal-handover-icon {
+  font-size: 11px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+.bcal-handover-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Kanban card dragging into calendar */
 .bcal-kanban-dragging { opacity: 0.5; }
 
