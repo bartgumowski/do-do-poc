@@ -2457,8 +2457,6 @@ function renderMessage(initial, name, text, time, own, tags = []) {
 
 function renderCalendarFeature(data) {
   window._lastFeatureData = data; // store for custody dialog refresh
-  // Week view is replaced by the Teams calendar below - redirect to month
-  if (calendarState.view === "week") calendarState.view = "month";
   syncCalendarEventsFromCards();
   const selectedDate = parseCalendarKey(calendarState.selected);
   const selectedEvents = eventsForDate(calendarState.selected);
@@ -2537,7 +2535,7 @@ function renderCalendarFeature(data) {
         <button class="round-nav" type="button" data-calendar-nav="1" aria-label="Next ${calendarState.view === "month" ? "month" : "week"}">›</button>
       </div>
       <div class="calendar-view-switcher" aria-label="Calendar views">
-        ${["month", "day"].map((view) => `
+        ${["month", "week", "day"].map((view) => `
           <button class="${calendarState.view === view ? "active" : ""}" type="button" data-calendar-view="${view}">${window.t?.(`cal.view.${view}`) ?? capitalize(view)}</button>
         `).join("")}
       </div>
@@ -2814,8 +2812,33 @@ function renderCalendarFeature(data) {
 
 function renderCalendarBody() {
   if (calendarState.view === "day") return renderDayView();
-  if (calendarState.view === "week") return renderWeekView();
+  // Week view: show 7-day header strip only - the Teams calendar below handles scheduling
+  if (calendarState.view === "week") return renderWeekStrip();
   return renderMonthView();
+}
+
+function renderWeekStrip() {
+  const selected = parseCalendarKey(calendarState.selected);
+  const start = startOfWeek(selected);
+  const today = toCalendarKey(new Date());
+  const custody = getCustodySchedule();
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  return `
+    <div class="week-strip-view">
+      ${days.map((date) => {
+        const key = toCalendarKey(date);
+        const isToday = key === today;
+        const isSelected = key === calendarState.selected;
+        const custClass = custody.enabled ? getCustodyClass(date) : "";
+        const events = eventsForDate(key);
+        return `<button class="week-strip-day${isToday ? " week-strip-today" : ""}${isSelected ? " week-strip-selected" : ""}${custClass ? " " + custClass : ""}" type="button" data-calendar-day="${key}">
+          <span class="week-strip-dow">${weekdayLabel(date)}</span>
+          <strong class="week-strip-num">${date.getDate()}</strong>
+          ${events.length ? `<span class="week-strip-count">${events.length}</span>` : ""}
+        </button>`;
+      }).join("")}
+    </div>
+  `;
 }
 
 function renderMonthView() {
