@@ -1,4 +1,4 @@
-const APP_VERSION = "0.17.4";
+const APP_VERSION = "0.18.0";
 const APP_VERSION_DATE = "2026-06-14";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1726,7 +1726,8 @@ function renderUnifiedCard(card, options = {}) {
   const showActions = options.showActions !== false;
   const attributes = options.attributes || `data-card-id="${card.id}" role="button" tabindex="0"`;
   const ownerClass = _cardOwnerClass(card);
-  const className = ["card", "unified-card", options.className || "", isDone ? "done-card" : "", ownerClass].filter(Boolean).join(" ");
+  const needsResponseClass = (!isDone && !card.acknowledged) ? "card-needs-response" : "";
+  const className = ["card", "unified-card", options.className || "", isDone ? "done-card" : "", ownerClass, needsResponseClass].filter(Boolean).join(" ");
 
   const dateStr = formatDate(card.due);
   const statusLabel = isDone ? _t("card.done", "Done")
@@ -3966,10 +3967,34 @@ function quickRespondCard(id, response) {
   if (!card || card.status === "Done") return;
   const setup = getOnboardingState() || {};
   const myName = setup.parents?.primary || "Parent A";
-  const text = response === "will" ? "Please do it" : response === "cannot" ? "Can't do this" : null;
-  const nextStatus = response === "cannot" ? "Disputed" : response === "do" ? "To Do" : "Waiting";
+
+  // "Can't" — warn if someone was already assigned, then clear assignee and flag for response
+  if (response === "cannot") {
+    if (card.assignee) {
+      const confirmed = window.confirm(
+        `${card.assignee} is currently assigned to this. Remove them and mark as needs response?`
+      );
+      if (!confirmed) return;
+    }
+    const text = "Can't do this";
+    const newComments = [...card.comments, { author: myName, text, time: "Just now", system: true }];
+    state.cards = state.cards.map((item) =>
+      item.id === id
+        ? { ...item, status: "Disputed", assignee: null, acknowledged: false, comments: newComments }
+        : item
+    );
+    persist();
+    showToast(window.t?.("card.action.cannot") ?? "Can't");
+    render();
+    const updated = state.cards.find((c) => c.id === id);
+    if (updated && window.saveCardToSupabase) window.saveCardToSupabase(updated).catch(() => {});
+    return;
+  }
+
+  const text = response === "will" ? "Please do it" : null;
+  const nextStatus = response === "do" ? "To Do" : "Waiting";
   // "do" = I'll do it: silently set assignee + status, no chat message
-  // "will" / "cannot" = send a message to the thread
+  // "will" = send a message to the thread
   const newComments = text
     ? [...card.comments, { author: myName, text, time: "Just now", system: true }]
     : card.comments;

@@ -730,103 +730,354 @@ function renderFeature(moduleName, data) {
   });
 }
 
-// ─── Custody schedule dialog (card-dialog style) ─────────────────────────────
+// ─── Divorced mode helpers ────────────────────────────────────────────────────
+
+function isDivorced() {
+  return localStorage.getItem("do-do-divorced-v1") === "true";
+}
+function setDivorced(val) {
+  localStorage.setItem("do-do-divorced-v1", String(Boolean(val)));
+}
+
+// ─── Parenting schedule dialog - full month editor ────────────────────────────
 
 function openCustodyScheduleDialog() {
-  const dialog = document.getElementById("custodyScheduleDialog");
-  if (!dialog) return;
+  document.getElementById("scheduleEditorDialog")?.remove();
+  const setup = window.getOnboardingState?.() || {};
+  const coparentName = setup.parents?.coparent || "Co-parent";
+  const myName = setup.parents?.primary || "Parent A";
+  const divorced = isDivorced();
   const cs = getCustodySchedule();
 
-  const swatchRow = (target, label) => `
-    <div class="custody-dialog-swatch-row">
-      <span class="custody-dialog-swatch-label">${label}</span>
-      <div class="custody-color-swatches" data-custody-target="${target}">
-        ${CUSTODY_COLORS.map(c => `<button type="button" class="custody-swatch${cs[target] === c.value ? " active" : ""}" data-custody-color="${c.value}" style="background:${c.value};" title="${c.label}" aria-label="${c.label}"></button>`).join("")}
-      </div>
-    </div>`;
+  const dlgState = {
+    viewYear: new Date().getFullYear(),
+    viewMonth: new Date().getMonth(),
+    selectedDay: null,
+    working: { ...cs, overrides: { ...(cs.overrides || {}) } },
+    changedDays: {}, // tracks per-day changes for divorced approval
+  };
 
-  document.getElementById("custodyDialogBody").innerHTML = `
-    <div class="custody-dialog-fields">
-      <label class="clean-field custody-dialog-field">
-        <span>Show custody calendar</span>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <input type="checkbox" id="cdEnabled" ${cs.enabled ? "checked" : ""} />
-          <em style="font-size:12px;color:var(--muted);">Colour-code days to show who has the kids</em>
+  const dialog = document.createElement("dialog");
+  dialog.id = "scheduleEditorDialog";
+  dialog.className = "card-dialog custody-schedule-dialog sched-editor-dialog";
+  document.body.appendChild(dialog);
+
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  function getWorkingOwner(dateStr) {
+    const ov = (dlgState.working.overrides || {})[dateStr];
+    if (ov === "mine") return "mine";
+    if (ov === "co") return "co";
+    if (ov && ov.type === "split") return "split";
+    const d = parseCalendarKey(dateStr);
+    if (!dlgState.working.referenceDate) return null;
+    const ref = new Date(dlgState.working.referenceDate + "T00:00:00");
+    const diff = Math.round((d - ref) / 86400000);
+    const t = dlgState.working.type || "7-7";
+    if (t === "7-7") return ((Math.floor(diff / 7) % 2) + 2) % 2 === 0 ? "mine" : "co";
+    if (t === "2-2-3") { const p = ((diff % 14) + 14) % 14; return p <= 1 ? "mine" : p <= 3 ? "co" : "mine"; }
+    if (t === "5-2") { const dow = d.getDay(); return (dow === 0 || dow === 6) ? "co" : "mine"; }
+    return null;
+  }
+
+  function buildMonthCalHTML() {
+    const { viewYear, viewMonth, selectedDay } = dlgState;
+    const ws = parseInt(localStorage.getItem("do-do-week-start") || "1");
+    const letters = ["S","M","T","W","T","F","S"];
+    const headers = Array.from({ length: 7 }, (_, i) => letters[(i + ws) % 7]);
+    const firstDay = new Date(viewYear, viewMonth, 1);
+    const startDow = (firstDay.getDay() - ws + 7) % 7;
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const todayStr = toCalendarKey(new Date());
+    let rows = "";
+    let dayNum = 1;
+    for (let r = 0; r < 6; r++) {
+      rows += "<tr>";
+      for (let c = 0; c < 7; c++) {
+        const ci = r * 7 + c;
+        if (ci < startDow || dayNum > daysInMonth) { rows += "<td></td>"; continue; }
+        const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2,"0")}-${String(dayNum).padStart(2,"0")}`;
+        const owner = getWorkingOwner(dateStr);
+        const ov = (dlgState.working.overrides || {})[dateStr];
+        const isSplit = ov && ov.type === "split";
+        const splitCoFirst = isSplit && ov.morning === "co";
+        let cls = "sched-day-btn";
+        if (owner === "mine") cls += " sched-mine";
+        else if (owner === "co") cls += " sched-co";
+        else if (owner === "split") cls += " sched-split" + (splitCoFirst ? " sched-split-co-first" : "");
+        if (dateStr === selectedDay) cls += " sched-selected";
+        if (dateStr === todayStr) cls += " sched-today";
+        if (ov) cls += " sched-override";
+        if (divorced && dateStr in dlgState.changedDays) cls += " sched-pending";
+        rows += `<td><button class="${cls}" type="button" data-sched-date="${dateStr}">${dayNum}${isSplit ? '<span class="sched-split-dot">&#8596;</span>' : ""}</button></td>`;
+        dayNum++;
+      }
+      rows += "</tr>";
+      if (dayNum > daysInMonth) break;
+    }
+    return `
+      <div class="sched-month-cal">
+        <div class="mc-header">
+          <button class="mc-nav" type="button" id="schedCalPrev">&#8249;</button>
+          <span class="mc-month-label">${MONTH_NAMES[viewMonth]} ${viewYear}</span>
+          <button class="mc-nav" type="button" id="schedCalNext">&#8250;</button>
         </div>
-      </label>
+        <table class="sched-cal-table">
+          <thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
 
-      <label class="clean-field custody-dialog-field">
-        <span>Schedule type</span>
-        <select id="cdType">
-          <option value="7-7" ${cs.type === "7-7" ? "selected" : ""}>Alternating weeks (7-7)</option>
-          <option value="2-2-3" ${cs.type === "2-2-3" ? "selected" : ""}>2-2-3 rotation</option>
-          <option value="5-2" ${cs.type === "5-2" ? "selected" : ""}>Weekdays mine / weekends co-parent</option>
-          <option value="manual" ${cs.type === "manual" ? "selected" : ""}>Manual (set each day individually)</option>
-        </select>
-      </label>
+  function buildDayPanel() {
+    const { selectedDay } = dlgState;
+    if (!selectedDay) return `<p class="sched-day-hint">Tap a day to set who has the children.</p>`;
+    const owner = getWorkingOwner(selectedDay);
+    const ov = (dlgState.working.overrides || {})[selectedDay];
+    const isSplit = ov && ov.type === "split";
+    const splitTime = isSplit ? (ov.time || "12:00") : "12:00";
+    const splitMorning = isSplit ? (ov.morning || "mine") : "mine";
+    const d = parseCalendarKey(selectedDay);
+    const dayLabel = d.toLocaleDateString(_getDateLocale(), { weekday: "long", day: "numeric", month: "short" });
+    return `
+      <div class="sched-day-panel">
+        <div class="sched-day-label">${dayLabel}</div>
+        <div class="sched-day-chips">
+          <button class="custody-chip${owner === "mine" ? " active" : ""}" type="button" data-set-owner="mine">${myName}</button>
+          <button class="custody-chip${owner === "co" ? " active" : ""}" type="button" data-set-owner="co">${coparentName}</button>
+          <button class="custody-chip${owner === "split" ? " active" : ""}" type="button" data-set-owner="split">Split day &#8596;</button>
+          <button class="custody-chip custody-chip-secondary" type="button" data-set-owner="auto">Auto</button>
+        </div>
+        ${isSplit ? `
+          <div class="sched-handover-panel">
+            <label class="sched-handover-field"><span>Handover time</span><input type="time" id="splitTimeInput" value="${splitTime}" /></label>
+            <label class="sched-handover-field"><span>Morning with</span>
+              <select id="splitMorningSelect">
+                <option value="mine"${splitMorning === "mine" ? " selected" : ""}>${myName}</option>
+                <option value="co"${splitMorning === "co" ? " selected" : ""}>${coparentName}</option>
+              </select>
+            </label>
+          </div>` : ""}
+      </div>`;
+  }
 
-      <label class="clean-field custody-dialog-field" id="cdRefRow" ${(cs.type === "5-2" || cs.type === "manual") ? 'style="display:none"' : ""}>
-        <span>My schedule starts</span>
-        <input type="date" id="cdReferenceDate" value="${cs.referenceDate || new Date().toISOString().slice(0,10)}" />
-      </label>
+  function buildSwatchRow(target, label) {
+    return `
+      <div class="custody-dialog-swatch-row">
+        <span class="custody-dialog-swatch-label">${label}</span>
+        <div class="custody-color-swatches" data-custody-target="${target}">
+          ${CUSTODY_COLORS.map(c => `<button type="button" class="custody-swatch${dlgState.working[target] === c.value ? " active" : ""}" data-custody-color="${c.value}" style="background:${c.value};" title="${c.label}" aria-label="${c.label}"></button>`).join("")}
+        </div>
+      </div>`;
+  }
 
-      <div class="custody-dialog-field">
-        ${swatchRow("myColor", "My days colour")}
-        ${swatchRow("coColor", "Co-parent days colour")}
-      </div>
+  function buildPendingSection() {
+    const entries = Object.entries(dlgState.changedDays);
+    if (!entries.length) return "";
+    const items = entries.map(([dateStr, ch]) => {
+      const label = ch.owner === "mine" ? myName : ch.owner === "co" ? coparentName : ch.owner === "split" ? "Split day" : "Auto";
+      return `<li>${dateStr}: <strong>${label}</strong></li>`;
+    }).join("");
+    return `
+      <div class="sched-pending-section">
+        <strong>Proposed changes (${entries.length})</strong>
+        <ul class="sched-pending-list">${items}</ul>
+        <button class="custody-chip custody-chip-reset" type="button" id="clearPendingBtn" style="margin-top:6px;font-size:11px;">Clear all</button>
+      </div>`;
+  }
 
-      <div class="custody-dialog-preview">
-        <span class="custody-legend-item"><span class="custody-legend-dot" id="cdPreviewMine" style="background:${cs.myColor};border-radius:4px;width:32px;height:16px;display:inline-block;"></span> My days</span>
-        <span class="custody-legend-item"><span class="custody-legend-dot" id="cdPreviewCo" style="background:${cs.coColor};border-radius:4px;width:32px;height:16px;display:inline-block;"></span> Co-parent's days</span>
-      </div>
-    </div>
-  `;
+  function setDayOwner(dateStr, owner) {
+    const origOv = getCustodySchedule().overrides?.[dateStr];
+    if (owner === "auto") delete dlgState.working.overrides[dateStr];
+    else dlgState.working.overrides[dateStr] = owner;
+    dlgState.changedDays[dateStr] = { owner, prevOverride: origOv || null };
+  }
 
-  // Swatch interactions
-  dialog.querySelectorAll(".custody-color-swatches").forEach((group) => {
-    group.querySelectorAll(".custody-swatch").forEach((btn) => {
+  function flushSplitInputs() {
+    const timeEl = dialog.querySelector("#splitTimeInput");
+    const morningEl = dialog.querySelector("#splitMorningSelect");
+    if (dlgState.selectedDay && timeEl) {
+      const ov = dlgState.working.overrides[dlgState.selectedDay];
+      if (ov && ov.type === "split") {
+        dlgState.working.overrides[dlgState.selectedDay] = { ...ov, time: timeEl.value, morning: morningEl?.value || ov.morning };
+        dlgState.changedDays[dlgState.selectedDay] = { owner: "split", prevOverride: getCustodySchedule().overrides?.[dlgState.selectedDay] || null };
+      }
+    }
+  }
+
+  function render() {
+    const hasPending = divorced && Object.keys(dlgState.changedDays).length > 0;
+    dialog.innerHTML = `
+      <div class="dialog-content sched-editor-content">
+        <div class="dialog-header">
+          <div><p class="eyebrow">Calendar</p><h2>Parenting schedule</h2></div>
+          <button class="icon-button" type="button" id="closeSchedBtn" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="custody-dialog-body sched-dialog-body">
+          ${buildMonthCalHTML()}
+          <div id="schedDayPanel">${buildDayPanel()}</div>
+          ${divorced ? `<div class="sched-divorced-notice">Separated/divorced mode - schedule changes are sent to ${coparentName} for approval and stored for court records.</div>` : ""}
+          ${divorced ? buildPendingSection() : ""}
+          <div class="sched-propagate-section">
+            <span class="sched-propagate-label">Apply this month to:</span>
+            <div class="sched-propagate-chips">
+              <button class="custody-chip" type="button" data-propagate="this-week-all">This week - all weeks</button>
+              <button class="custody-chip" type="button" data-propagate="3">Next 3 months</button>
+              <button class="custody-chip" type="button" data-propagate="6">Next 6 months</button>
+              <button class="custody-chip" type="button" data-propagate="12">Full year</button>
+            </div>
+          </div>
+          <div class="custody-dialog-fields" style="margin-top:14px;">
+            <label class="clean-field custody-dialog-field">
+              <span>Show custody calendar</span>
+              <input type="checkbox" id="schedEnabled" ${dlgState.working.enabled ? "checked" : ""} />
+            </label>
+            <label class="clean-field custody-dialog-field">
+              <span>Schedule pattern</span>
+              <select id="schedType">
+                <option value="7-7"${dlgState.working.type === "7-7" ? " selected" : ""}>Alternating weeks (7-7)</option>
+                <option value="2-2-3"${dlgState.working.type === "2-2-3" ? " selected" : ""}>2-2-3 rotation</option>
+                <option value="5-2"${dlgState.working.type === "5-2" ? " selected" : ""}>Weekdays / weekends split</option>
+                <option value="manual"${dlgState.working.type === "manual" ? " selected" : ""}>Manual (set each day)</option>
+              </select>
+            </label>
+            <label class="clean-field custody-dialog-field" id="schedRefRow"${(dlgState.working.type === "5-2" || dlgState.working.type === "manual") ? ' style="display:none"' : ""}>
+              <span>My schedule starts</span>
+              <input type="date" id="schedRefDate" value="${dlgState.working.referenceDate || toCalendarKey(new Date())}" />
+            </label>
+            ${buildSwatchRow("myColor", "My days colour")}
+            ${buildSwatchRow("coColor", "Co-parent days colour")}
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button class="ghost-button" type="button" id="cancelSchedBtn">Cancel</button>
+          <button class="primary-button" type="button" id="saveSchedBtn">${hasPending ? "Request changes" : "Save schedule"}</button>
+        </div>
+      </div>`;
+    bindEvents();
+  }
+
+  function bindEvents() {
+    const close = () => { dialog.close(); dialog.remove(); };
+    dialog.querySelector("#closeSchedBtn").addEventListener("click", close);
+    dialog.querySelector("#cancelSchedBtn").addEventListener("click", close);
+    dialog.addEventListener("click", (e) => { if (e.target === dialog) close(); });
+
+    dialog.querySelector("#schedCalPrev").addEventListener("click", () => {
+      flushSplitInputs();
+      dlgState.viewMonth--;
+      if (dlgState.viewMonth < 0) { dlgState.viewMonth = 11; dlgState.viewYear--; }
+      render();
+    });
+    dialog.querySelector("#schedCalNext").addEventListener("click", () => {
+      flushSplitInputs();
+      dlgState.viewMonth++;
+      if (dlgState.viewMonth > 11) { dlgState.viewMonth = 0; dlgState.viewYear++; }
+      render();
+    });
+
+    dialog.querySelectorAll("[data-sched-date]").forEach(btn => {
+      btn.addEventListener("click", () => { flushSplitInputs(); dlgState.selectedDay = btn.dataset.schedDate; render(); });
+    });
+
+    dialog.querySelectorAll("[data-set-owner]").forEach(btn => {
       btn.addEventListener("click", () => {
-        group.querySelectorAll(".custody-swatch").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        const target = group.dataset.custodyTarget;
-        const previewId = target === "myColor" ? "cdPreviewMine" : "cdPreviewCo";
-        const preview = dialog.querySelector(`#${previewId}`);
-        if (preview) preview.style.background = btn.dataset.custodyColor;
+        if (!dlgState.selectedDay) return;
+        const owner = btn.dataset.setOwner;
+        if (owner === "split") {
+          const prev = dlgState.working.overrides[dlgState.selectedDay];
+          dlgState.working.overrides[dlgState.selectedDay] = { type: "split", time: (prev && prev.time) || "12:00", morning: (prev && prev.morning) || "mine" };
+          dlgState.changedDays[dlgState.selectedDay] = { owner: "split", prevOverride: getCustodySchedule().overrides?.[dlgState.selectedDay] || null };
+        } else {
+          setDayOwner(dlgState.selectedDay, owner);
+        }
+        render();
       });
     });
-  });
 
-  // Type change hides/shows reference date
-  dialog.querySelector("#cdType")?.addEventListener("change", (e) => {
-    const row = dialog.querySelector("#cdRefRow");
-    if (row) row.style.display = (e.target.value === "5-2" || e.target.value === "manual") ? "none" : "";
-  });
+    dialog.querySelector("#splitMorningSelect")?.addEventListener("change", (e) => {
+      if (!dlgState.selectedDay) return;
+      const ov = dlgState.working.overrides[dlgState.selectedDay] || { type: "split", time: "12:00" };
+      dlgState.working.overrides[dlgState.selectedDay] = { ...ov, morning: e.target.value };
+    });
 
-  // Save
-  dialog.querySelector("#custodyDialogSaveBtn")?.addEventListener("click", () => {
-    const activeSwatch = (target) => dialog.querySelector(`.custody-color-swatches[data-custody-target="${target}"] .custody-swatch.active`)?.dataset.custodyColor;
-    const schedule = {
-      ...getCustodySchedule(),
-      enabled: dialog.querySelector("#cdEnabled")?.checked || false,
-      type: dialog.querySelector("#cdType")?.value || "7-7",
-      referenceDate: dialog.querySelector("#cdReferenceDate")?.value || new Date().toISOString().slice(0,10),
-      myColor: activeSwatch("myColor") || cs.myColor,
-      coColor: activeSwatch("coColor") || cs.coColor,
-    };
-    saveCustodySchedule(schedule);
-    dialog.close();
-    showFeatureToast("Parenting schedule saved");
-    // Refresh calendar if visible
-    if (featureModule && !featureModule.classList.contains("hidden")) {
-      const data = window._lastFeatureData;
-      if (data) renderCalendarFeature(data);
-    }
-  });
+    dialog.querySelector("#schedType")?.addEventListener("change", (e) => {
+      dlgState.working.type = e.target.value;
+      const refRow = dialog.querySelector("#schedRefRow");
+      if (refRow) refRow.style.display = (e.target.value === "5-2" || e.target.value === "manual") ? "none" : "";
+      render();
+    });
 
-  dialog.querySelector("#custodyDialogCancelBtn")?.addEventListener("click", () => dialog.close());
-  dialog.querySelector("#closeCustodyDialogBtn")?.addEventListener("click", () => dialog.close());
+    dialog.querySelector("#schedRefDate")?.addEventListener("change", (e) => { dlgState.working.referenceDate = e.target.value; });
+    dialog.querySelector("#schedEnabled")?.addEventListener("change", (e) => { dlgState.working.enabled = e.target.checked; });
+
+    dialog.querySelectorAll(".custody-color-swatches").forEach(group => {
+      group.querySelectorAll(".custody-swatch").forEach(btn => {
+        btn.addEventListener("click", () => {
+          group.querySelectorAll(".custody-swatch").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          dlgState.working[group.dataset.custodyTarget] = btn.dataset.custodyColor;
+        });
+      });
+    });
+
+    dialog.querySelectorAll("[data-propagate]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        flushSplitInputs();
+        const action = btn.dataset.propagate;
+        if (action === "this-week-all") {
+          const ws = parseInt(localStorage.getItem("do-do-week-start") || "1");
+          const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(new Date(), ws), i));
+          propagateWeekSchedule(weekDays, dlgState.working);
+          dlgState.working = { ...dlgState.working, overrides: { ...(getCustodySchedule().overrides || {}) } };
+          showFeatureToast("Week schedule applied to all weeks");
+        } else {
+          propagateMonthSchedule(dlgState.viewYear, dlgState.viewMonth, parseInt(action), dlgState.working);
+          showFeatureToast(`Schedule applied to next ${action} months`);
+        }
+        render();
+      });
+    });
+
+    dialog.querySelector("#clearPendingBtn")?.addEventListener("click", () => {
+      dlgState.changedDays = {};
+      dlgState.working.overrides = { ...(getCustodySchedule().overrides || {}) };
+      render();
+    });
+
+    dialog.querySelector("#saveSchedBtn").addEventListener("click", () => {
+      flushSplitInputs();
+      const enabled = dialog.querySelector("#schedEnabled")?.checked ?? dlgState.working.enabled;
+      const type = dialog.querySelector("#schedType")?.value || dlgState.working.type;
+      const referenceDate = dialog.querySelector("#schedRefDate")?.value || dlgState.working.referenceDate;
+      const activeColor = (t) => dialog.querySelector(`.custody-color-swatches[data-custody-target="${t}"] .custody-swatch.active`)?.dataset.custodyColor;
+
+      if (divorced && Object.keys(dlgState.changedDays).length > 0) {
+        createScheduleChangeRequests(dlgState.changedDays, dlgState.working.overrides);
+        dialog.close(); dialog.remove();
+        showFeatureToast("Schedule change request sent - awaiting approval");
+        if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
+        return;
+      }
+
+      const schedule = { ...dlgState.working, enabled, type, referenceDate,
+        myColor: activeColor("myColor") || dlgState.working.myColor,
+        coColor: activeColor("coColor") || dlgState.working.coColor,
+      };
+      saveCustodySchedule(schedule);
+      dialog.close(); dialog.remove();
+      showFeatureToast("Parenting schedule saved");
+      if (featureModule && !featureModule.classList.contains("hidden")) {
+        const d = window._lastFeatureData;
+        if (d) renderCalendarFeature(d);
+      }
+    });
+  }
 
   dialog.showModal();
+  render();
 }
 
 // ---- Vacation schedule (overlays normal custody without destroying it) ----
@@ -900,6 +1151,59 @@ function propagateWeekSchedule(referenceWeekDays, schedule) {
   saveCustodySchedule(updated);
 }
 
+// Propagate the current month's per-day overrides to the next N months
+function propagateMonthSchedule(sourceYear, sourceMonth, numMonths, schedule) {
+  const newOverrides = { ...(schedule.overrides || {}) };
+  const daysInSource = new Date(sourceYear, sourceMonth + 1, 0).getDate();
+  for (let m = 1; m <= numMonths; m++) {
+    let ty = sourceYear, tm = sourceMonth + m;
+    while (tm > 11) { tm -= 12; ty++; }
+    const daysInTarget = new Date(ty, tm + 1, 0).getDate();
+    for (let day = 1; day <= Math.min(daysInSource, daysInTarget); day++) {
+      const sk = `${sourceYear}-${String(sourceMonth + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+      const tk = `${ty}-${String(tm + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+      const ov = (schedule.overrides || {})[sk];
+      if (ov) newOverrides[tk] = ov; else delete newOverrides[tk];
+    }
+  }
+  schedule.overrides = newOverrides;
+  saveCustodySchedule({ ...schedule });
+}
+
+// Create change-request records for each day change (divorced mode)
+function createScheduleChangeRequests(changedDays, workingOverrides) {
+  const existing = loadChangeRequests();
+  const now = new Date().toISOString();
+  const newCrs = Object.entries(changedDays).map(([dateStr, change]) => ({
+    id: "cr-sched-" + Date.now() + "-" + dateStr.replace(/-/g, ""),
+    createdAt: now,
+    type: "schedule",
+    requestedDate: dateStr,
+    requestedOwner: change.owner,
+    requestedOverride: workingOverrides[dateStr] || null,
+    prevOverride: change.prevOverride || null,
+    reason: "",
+    status: "pending",
+  }));
+  saveChangeRequests([...existing, ...newCrs]);
+}
+
+// Create a vacation change-request record (divorced mode)
+function createVacationChangeRequest(vacAction, vacData) {
+  const existing = loadChangeRequests();
+  const cr = {
+    id: "cr-vac-" + Date.now(),
+    createdAt: new Date().toISOString(),
+    type: "vacation",
+    vacAction,   // "add" | "update" | "delete"
+    vacData,     // full vacation object
+    requestedDate: vacData.startDate,
+    reason: "",
+    status: "pending",
+  };
+  saveChangeRequests([...existing, cr]);
+}
+
 window.openCustodyScheduleDialog = openCustodyScheduleDialog;
 window.renderCalendarFeature = renderCalendarFeature;
 window.syncCalendarEventsFromCards = syncCalendarEventsFromCards;
@@ -925,6 +1229,16 @@ function bindCustodySettings() {
     save();
   });
   featureModule.querySelector("#custodyReferenceDate")?.addEventListener("change", save);
+
+  // Divorced toggle
+  featureModule.querySelector("#divorcedToggle")?.addEventListener("change", (e) => {
+    setDivorced(e.target.checked);
+    showFeatureToast(e.target.checked ? "Divorced mode enabled" : "Divorced mode disabled");
+  });
+
+  // Open schedule editor from settings
+  featureModule.querySelector("#openSchedEditorFromSettings")?.addEventListener("click", () => openCustodyScheduleDialog());
+  featureModule.querySelector("#openVacationsFromSettings")?.addEventListener("click", () => openVacationsDialog());
 
   // Color swatches
   featureModule.querySelectorAll(".custody-color-swatches").forEach((group) => {
@@ -2771,7 +3085,16 @@ function renderCalendarFeature(data) {
         cr.status = "approved";
         cr.resolvedAt = new Date().toISOString();
         saveChangeRequests(crs);
-        setCustodyDayOverride(cr.requestedDate, cr.requestedOwner);
+        if (cr.type === "vacation") {
+          const vacs = loadVacations();
+          if (cr.vacAction === "add") saveVacations([...vacs, cr.vacData]);
+          else if (cr.vacAction === "update") saveVacations(vacs.map(v => v.id === cr.vacData.id ? cr.vacData : v));
+          else if (cr.vacAction === "delete") saveVacations(vacs.filter(v => v.id !== cr.vacData.id));
+        } else if (cr.type === "schedule") {
+          setCustodyDayOverride(cr.requestedDate, cr.requestedOverride || cr.requestedOwner);
+        } else {
+          setCustodyDayOverride(cr.requestedDate, cr.requestedOwner);
+        }
       }
       renderCalendarFeature(data);
       showFeatureToast("Change approved and applied to schedule");
@@ -3120,20 +3443,39 @@ function renderDaySchedule(key) {
 function renderChangeRequestAgendaItem(cr) {
   const setup = window.getOnboardingState?.() || {};
   const coparentName = setup.parents?.coparent || "Co-parent";
-  const newOwnerLabel = cr.requestedOwner === "mine" ? "Your day" : `${coparentName}'s day`;
+  const myName = setup.parents?.primary || "Parent A";
   const statusColors = { pending: "#f59e0b", approved: "#22c55e", declined: "#ef4444" };
   const statusColor = statusColors[cr.status] || "#999";
   const statusLabel = cr.status === "pending" ? "Pending" : cr.status === "approved" ? "Approved" : "Declined";
+
+  let bodyHtml = "";
+  if (cr.type === "vacation") {
+    const vd = cr.vacData || {};
+    const ownerLabel = vd.owner === "mine" ? myName : vd.owner === "co" ? coparentName : "Alternating";
+    const actionLabel = cr.vacAction === "add" ? "Add vacation" : cr.vacAction === "update" ? "Update vacation" : "Remove vacation";
+    bodyHtml = `
+      <strong>${actionLabel}: ${escapeHtml(vd.name || "Vacation")}</strong>
+      <span class="change-request-reason">${escapeHtml(vd.startDate || "")} - ${escapeHtml(vd.endDate || "")} | ${escapeHtml(ownerLabel)}</span>`;
+  } else {
+    const ov = cr.requestedOverride;
+    const isSplit = ov && ov.type === "split";
+    const ownerLabel = cr.requestedOwner === "mine" ? myName
+      : cr.requestedOwner === "co" ? coparentName
+      : (cr.requestedOwner === "split" || isSplit) ? "Split day"
+      : "Auto";
+    bodyHtml = `
+      <strong>Propose: ${escapeHtml(ownerLabel)}</strong>
+      ${isSplit ? `<span class="change-request-reason">Handover at ${escapeHtml(ov.time || "12:00")} | Morning: ${ov.morning === "mine" ? myName : coparentName}</span>` : ""}
+      ${cr.reason ? `<span class="change-request-reason">${escapeHtml(cr.reason)}</span>` : ""}`;
+  }
+
   return `
     <article class="change-request-card" data-cr-id="${escapeHtml(cr.id)}">
       <div class="change-request-header">
-        <span class="change-request-label">↔ Change request</span>
+        <span class="change-request-label">&#8596; ${cr.type === "vacation" ? "Vacation request" : "Schedule change"}</span>
         <span class="change-request-status" style="color:${statusColor};">${statusLabel}</span>
       </div>
-      <div class="change-request-body">
-        <strong>Propose: ${escapeHtml(newOwnerLabel)}</strong>
-        ${cr.reason ? `<span class="change-request-reason">${escapeHtml(cr.reason)}</span>` : ""}
-      </div>
+      <div class="change-request-body">${bodyHtml}</div>
       ${cr.status === "pending" ? `
         <div class="change-request-actions">
           <button class="custody-chip active" type="button" data-cr-approve="${escapeHtml(cr.id)}">Approve</button>
@@ -3316,6 +3658,7 @@ function openVacationsDialog(editId = null) {
           <button class="ghost-button" type="button" id="closeVacationsDialog" style="font-size:20px;line-height:1;padding:4px 10px;">✕</button>
         </div>
         <p class="vac-dialog-desc">Vacation periods override custody without erasing the regular schedule. It resumes automatically after the vacation ends.</p>
+        ${isDivorced() ? `<div class="sched-divorced-notice">Separated/divorced mode - vacation changes are sent to ${escapeHtml(coparentName)} for approval.</div>` : ""}
 
         <div id="vacationsList">${vacListHtml}</div>
 
@@ -3351,7 +3694,7 @@ function openVacationsDialog(editId = null) {
             </label>
           </div>
           <div class="vac-form-btns">
-            <button class="primary-button" type="button" id="saveVacationBtn">${vState.editingId ? "Update vacation" : "Add vacation"}</button>
+            <button class="primary-button" type="button" id="saveVacationBtn">${isDivorced() ? (vState.editingId ? "Request update" : "Request vacation") : (vState.editingId ? "Update vacation" : "Add vacation")}</button>
             ${vState.editingId ? `<button class="custody-chip custody-chip-reset" type="button" id="cancelVacEdit">Cancel edit</button>` : ""}
           </div>
         </div>
@@ -3433,6 +3776,20 @@ function openVacationsDialog(editId = null) {
       const owner = dialog.querySelector("#vacOwner")?.value || "mine";
       const alternatingStart = dialog.querySelector("#vacAlternatingStart")?.value || "mine";
       const existingVacs = loadVacations();
+
+      if (isDivorced()) {
+        // Divorced mode: create a change request instead of saving directly
+        const vacData = vState.editingId
+          ? { ...(existingVacs.find(v => v.id === vState.editingId) || {}), name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart }
+          : { id: "vac-" + Date.now(), name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart };
+        createVacationChangeRequest(vState.editingId ? "update" : "add", vacData);
+        vState.editingId = null; vState.rangeStart = null; vState.rangeEnd = null; vState._editLoaded = false;
+        refreshVacDialog();
+        showFeatureToast("Vacation request sent - awaiting approval");
+        if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
+        return;
+      }
+
       if (vState.editingId) {
         saveVacations(existingVacs.map((v) => v.id === vState.editingId
           ? { ...v, name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart }
@@ -3934,6 +4291,13 @@ function renderSpecialPanel(moduleName, part = "all") {
               </span>
               <input type="checkbox" id="custodyEnabledToggle" ${cs.enabled ? "checked" : ""} />
             </label>
+            <label class="settings-toggle-row">
+              <span>
+                <strong>Separated / divorced</strong>
+                <em>Schedule changes require co-parent approval and are logged for records.</em>
+              </span>
+              <input type="checkbox" id="divorcedToggle" ${isDivorced() ? "checked" : ""} />
+            </label>
             <label class="settings-select-row">
               <span>
                 <strong>${_ct("custody.type")}</strong>
@@ -3954,6 +4318,14 @@ function renderSpecialPanel(moduleName, part = "all") {
             </label>
             ${swatchRow("myColor", cs.myColor, _ct("custody.my_color"))}
             ${swatchRow("coColor", cs.coColor, _ct("custody.co_color"))}
+            <div class="settings-select-row sched-settings-buttons">
+              <span><strong>Parenting schedule</strong><em>Edit the full month calendar and handover times.</em></span>
+              <button class="ghost-button sched-settings-open-btn" type="button" id="openSchedEditorFromSettings">Edit schedule</button>
+            </div>
+            <div class="settings-select-row sched-settings-buttons">
+              <span><strong>Vacation schedules</strong><em>Add vacation periods with a different custody split.</em></span>
+              <button class="ghost-button sched-settings-open-btn" type="button" id="openVacationsFromSettings">Manage vacations</button>
+            </div>
           </div>
         </section>`;
       })() : ""}
