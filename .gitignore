@@ -4,3 +4,9 @@ Git token.md.rtf
 plan/
 node_modules/
 .DS_Store
+
+# Local-only documentation - never publish to Git
+CHANGELOG.md
+README.md
+CLAUDE.md
+*.md
