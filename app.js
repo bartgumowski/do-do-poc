@@ -1,4 +1,4 @@
-const APP_VERSION = "0.19.1";
+const APP_VERSION = "0.20.1";
 const APP_VERSION_DATE = "2026-06-14";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -777,6 +777,19 @@ async function handleAuthCallback() {
     return;
   }
 
+  // SEG-11.3: Capture mediator referral code from ?ref=MED-xxx before we lose the URL
+  try {
+    const refParams = new URLSearchParams(window.location.search);
+    const refCode = refParams.get("ref");
+    if (refCode && /^MED-[A-Za-z0-9]+$/.test(refCode)) {
+      localStorage.setItem("dodo_mediator_ref", refCode);
+      // Clean the ref param from URL without reloading
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("ref");
+      window.history.replaceState({}, "", cleanUrl.toString());
+    }
+  } catch { /* ignore */ }
+
   // Detect /invite/:token in the URL path
   const inviteMatch = window.location.pathname.match(/^\/invite\/([^/?#]+)/);
   if (inviteMatch) {
@@ -1212,7 +1225,10 @@ function showApp(session) {
   }, 0);
   // Load real data from Supabase in the background
   if (window.initSupabaseData) {
-    window.initSupabaseData(currentAuthSession).catch(() => {});
+    window.initSupabaseData(currentAuthSession).then(() => {
+      // SEG-11.3: apply mediator referral code if one was captured from URL
+      window.applyMediatorReferral?.().catch(() => {});
+    }).catch(() => {});
   }
   // Initialize notifications - silent re-subscribe only; permission prompt deferred to first card save
   initNotifications();
@@ -1924,6 +1940,8 @@ function createCardFromInlineCapture(input) {
   input.value = "";
   showToast(buildCreateToast(card));
   render();
+  // SEG-11.2: milestone toast
+  window.checkCardMilestoneToast?.(state.cards.length);
 }
 
 function openCardDialog(id = "", focusSection = "info", prefill = {}) {
