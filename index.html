@@ -185,6 +185,12 @@
               Password
               <input id="authPasswordInput" type="password" autocomplete="current-password" placeholder="At least 6 characters" minlength="6" required />
             </label>
+            <div class="auth-consent-row" id="authConsentRow" hidden>
+              <label class="auth-consent-label">
+                <input type="checkbox" id="authConsentCheckbox" />
+                <span data-i18n="auth.consent_label">I agree to the <a href="legal.html" target="_blank" rel="noopener">Terms &amp; Privacy Policy</a> / <a href="prywatnosc.html" target="_blank" rel="noopener">Polityka prywatnosci</a></span>
+              </label>
+            </div>
             <button class="auth-continue-button" type="submit" id="authSubmitButton">Sign in</button>
             <span class="auth-confirm-label" id="authError" role="status"></span>
           </form>

@@ -899,6 +899,34 @@ body.auth-locked .onboarding-screen {
   box-shadow: 0 1px 4px rgba(17, 24, 39, 0.1);
 }
 
+.auth-consent-row {
+  margin: 6px 0 2px;
+}
+
+.auth-consent-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.auth-consent-label input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--ink);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.auth-consent-label a {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
 .auth-continue-button,
 .auth-switch-button {
   min-height: 46px;

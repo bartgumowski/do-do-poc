@@ -1,4 +1,4 @@
-const APP_VERSION = "0.21.0";
+const APP_VERSION = "0.21.1";
 const APP_VERSION_DATE = "2026-06-14";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -586,6 +586,11 @@ function bindEvents() {
       document.querySelectorAll("[data-auth-mode]").forEach((b) => b.classList.toggle("active", b === btn));
       const submitBtn = document.querySelector("#authSubmitButton");
       if (submitBtn) submitBtn.textContent = mode === "signup" ? "Create account" : "Sign in";
+      // SEG-20.1: show consent checkbox only on signup
+      const consentRow = document.getElementById("authConsentRow");
+      if (consentRow) consentRow.hidden = mode !== "signup";
+      const consentBox = document.getElementById("authConsentCheckbox");
+      if (consentBox && mode !== "signup") consentBox.checked = false;
       clearAuthError();
     });
   });
@@ -1097,6 +1102,12 @@ async function signInWithPassword(email, password) {
 
 async function signUp(email, password) {
   if (!supabaseClient || !validateAuthCredentials(email, password)) return;
+  // SEG-20.1: GDPR/RODO - require explicit consent before account creation
+  const consentBox = document.getElementById("authConsentCheckbox");
+  if (consentBox && !consentBox.checked) {
+    showAuthError((window.t || ((k, fb) => fb || k))("auth.consent_required", "Please agree to the Terms and Privacy Policy to create an account."));
+    return;
+  }
   clearAuthError();
   try {
     const { data, error } = await supabaseClient.auth.signUp({ email, password });
