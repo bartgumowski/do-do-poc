@@ -359,7 +359,7 @@ const featureData = {
   },
   files: {
     eyebrow: "Documents and records",
-    title: "Shared and private family record vault",
+    title: "Shared and private record vault",
     summary: "This includes previews, export, version history, private sharing, and a mock authentication code for legal-record testing.",
     actions: ["Preview PDF", "Create export", "Share with attorney"],
     stats: [
@@ -403,7 +403,7 @@ const featureData = {
   },
   shopping: {
     eyebrow: "Shopping list",
-    title: "Shared family shopping list",
+    title: "Shared shopping list",
     summary: "A later workflow for turning cards into buyable household items, with owners, children, stores, and expense handoff.",
     actions: ["Add item", "Assign buyer", "Convert to expense"],
     stats: [
@@ -504,12 +504,12 @@ const featureData = {
   },
   pricing: {
     eyebrow: "Pricing and billing",
-    title: "Transparent family plan",
-    summary: "This models a simple billing page with flat family pricing, free trial, annual discount, waiver path, and data portability.",
+    title: "Transparent pricing",
+    summary: "This models a simple billing page with flat pricing, free trial, annual discount, waiver path, and data portability.",
     actions: ["Start trial", "Apply waiver", "Export before cancel"],
     stats: [
       ["Trial", "30 days"],
-      ["Members", "Unlimited family"],
+      ["Members", "Both parents"],
       ["Annual discount", "20%"],
       ["Export window", "60 days"],
     ],
@@ -517,7 +517,7 @@ const featureData = {
       {
         title: "Plan rules",
         items: [
-          ["Family plan", "One price covers both parents, children, and approved helpers."],
+          ["Standard plan", "One price covers both parents, children, and approved helpers."],
           ["Court-mandated waiver", "Accessible from billing, no hidden support ticket."],
           ["Cancellation", "Immediate effect with export window before deletion."],
         ],
@@ -1339,7 +1339,7 @@ function bindAutomationSettings() {
   familyCalendarToggle?.addEventListener("change", (e) => {
     if (e.target.checked && !window.isPaidUser?.()) {
       e.target.checked = false; // revert
-      window.showUpgradePrompt?.("Calendar sync is available on the Family plan.");
+      window.showUpgradePrompt?.("Calendar sync is available on the paid plan.");
       return;
     }
     save();
@@ -2908,7 +2908,7 @@ function renderCalendarFeature(data) {
         return `
         <div class="cal-sync-strip">
           <button class="custody-schedule-btn cal-sync-item${familyOk ? " cal-sync-connected" : ""}" type="button" data-sync-goto="family">
-            ${calIcon} Kalendarz rodzinny${familyOk ? " ✓" : ""}
+            ${calIcon} Wspólny kalendarz${familyOk ? " ✓" : ""}
           </button>
           <button class="custody-schedule-btn cal-sync-item${workGoogleOk ? " cal-sync-connected" : ""}" type="button" data-sync-goto="work-google">
             ${calIcon} Google Work${workGoogleOk ? " ✓" : ""}
@@ -4054,7 +4054,7 @@ function buildCalendarEvents(baseDate) {
       date: toCalendarKey(date),
       time: item.allDay ? (window.t?.("cal.all_day") ?? "All day") : date.toLocaleTimeString(_getDateLocale(), { hour: "2-digit", minute: "2-digit", hour12: false }),
       title: isBusy ? "Busy" : item.title,
-      detail: isBusy ? "Private calendar - details hidden" : (item.description || "Family calendar"),
+      detail: isBusy ? "Private calendar - details hidden" : (item.description || "Shared calendar"),
       kind: isBusy ? "busy" : "event",
       badge: isBusy ? "Busy" : (item.source === "family" ? "GCal" : "Calendar"),
       person: item.person || null,
@@ -5672,9 +5672,9 @@ async function renderSubscriptionPanel() {
 
   const statusLabel = {
     free:     _st("sub.free",     "Free plan"),
-    trialing: _st("sub.trial",    "Family - free trial"),
-    active:   _st("sub.active",   "Family"),
-    past_due: _st("sub.past_due", "Family - payment past due"),
+    trialing: _st("sub.trial",    "Standard - free trial"),
+    active:   _st("sub.active",   "Standard"),
+    past_due: _st("sub.past_due", "Standard - payment past due"),
     canceled: _st("sub.canceled", "Canceled"),
   }[status] || _st("sub.free", "Free plan");
 
@@ -5725,11 +5725,11 @@ async function renderSubscriptionPanel() {
         <p style="font-size:13px;color:var(--muted);margin:0;">
           ${_st("sub.upgrade_note", "Upgrade for unlimited Dos, calendar sync, AI, and co-parent collaboration.")}
         </p>
-        <button class="primary-button" id="upgradeSubBtn">${_st("sub.upgrade_btn", "Upgrade to Family")} - ${LOCALE_CONFIG.monthlyPrice}/mo</button>
+        <button class="primary-button" id="upgradeSubBtn">${_st("sub.upgrade_btn", "Upgrade to Standard")} - ${LOCALE_CONFIG.monthlyPrice}/mo</button>
       </article>
     `;
     panel.querySelector("#upgradeSubBtn")?.addEventListener("click", () => {
-      window.showUpgradePrompt?.("Upgrade to Do-Do Family for unlimited Dos and all features.");
+      window.showUpgradePrompt?.("Upgrade to Standard for unlimited Dos and all features.");
     });
   }
 }
@@ -5737,24 +5737,6 @@ async function renderSubscriptionPanel() {
 async function renderInvitePanel() {
   const panel = featureModule.querySelector("#invitePanelContent");
   if (!panel) return;
-
-  // Co-parent invite is a paid feature (free plan = single user only)
-  if (!window.isPaidUser?.()) {
-    const _it = window.t || ((k) => k);
-    panel.innerHTML = `
-      <article class="feature-item">
-        <div>
-          <strong style="display:block;margin-bottom:4px;">${_it("invite.heading")}</strong>
-          <span style="color:var(--muted);font-size:13px;">${_it("invite.paid_desc")}</span>
-        </div>
-        <button class="secondary-button" id="inviteUpgradeBtn" style="white-space:nowrap;">${_it("invite.upgrade")}</button>
-      </article>
-    `;
-    panel.querySelector("#inviteUpgradeBtn")?.addEventListener("click", () => {
-      window.showUpgradePrompt?.("Co-parent collaboration is available on the Family plan.");
-    });
-    return;
-  }
 
   const hasPair = Boolean(window.getCurrentPairId?.());
   const setup = window.getOnboardingState?.() || {};

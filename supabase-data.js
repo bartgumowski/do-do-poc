@@ -62,6 +62,10 @@ const ASSIGNEE_FROM_DB = {
 // ─── Convert app card ↔ DB row ────────────────────────────────────────────────
 
 function cardToDbRow(card, pairId, userId) {
+  // SEG-11.1: append to edit_history on every save (tamper-evident audit trail)
+  const existingHistory = card._edit_history || [];
+  const newHistoryEntry = { ts: new Date().toISOString(), by: userId, action: card._isNew ? "create" : "edit" };
+
   return {
     id: card.id,
     pair_id: pairId,
@@ -81,6 +85,11 @@ function cardToDbRow(card, pairId, userId) {
     payment_amount: card.payment_amount != null ? parseFloat(card.payment_amount) || null : null,
     payment_paid_at: card.payment_paid_at || null,
     receipt_url: card.receipt_url || null,
+    // SEG-11.4: schedule cascade fields
+    schedule_id: card.schedule_id || null,
+    schedule_day_offset: card.schedule_day_offset != null ? card.schedule_day_offset : null,
+    // SEG-11.1: edit history
+    edit_history: [...existingHistory, newHistoryEntry],
     metadata: {
       comments: card.comments || [],
       reminder: card.reminder || null,
@@ -116,6 +125,11 @@ function dbRowToCard(row) {
     payment_amount: row.payment_amount != null ? row.payment_amount : null,
     payment_paid_at: row.payment_paid_at || null,
     receipt_url: row.receipt_url || null,
+    // SEG-11.1: edit history (kept on card object for legal export reference)
+    _edit_history: row.edit_history || [],
+    // SEG-11.4: schedule cascade
+    schedule_id: row.schedule_id || null,
+    schedule_day_offset: row.schedule_day_offset != null ? row.schedule_day_offset : null,
   };
 }
 
@@ -461,7 +475,7 @@ async function loadChildrenFromSupabase(familyId) {
 //   Each parent maintains their own copy - they both see all cards via
 //   Supabase real-time, and each syncs their personal Google calendar.
 
-const FAMILY_CALENDAR_NAME = "Do-Do Family";
+const FAMILY_CALENDAR_NAME = "Do-Do";
 const CAL_STORAGE_KEY = "do-do-gcal-id-v1";
 
 let googleAccessToken = null;
@@ -746,7 +760,7 @@ async function _initFamilyCalendar(token) {
           },
           body: JSON.stringify({
             summary: FAMILY_CALENDAR_NAME,
-            description: "Shared family coordination calendar - managed by Do-Do app",
+            description: "Shared coordination calendar - managed by Do-Do",
             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           }),
         }
@@ -1625,3 +1639,156 @@ async function acceptInviteToken(token, userId, displayName) {
     return { ok: false, reason: err.message };
   }
 }
+
+// ─── SEG-11.3: Mediator referral tracking ─────────────────────────────────────
+
+/**
+ * If a mediator referral code was stored in localStorage (from ?ref=MED-xxx),
+ * write it to the user's profile and the pair after signup.
+ */
+async function applyMediatorReferral() {
+  if (!window.supabaseClient || !currentUserId) return;
+  const ref = localStorage.getItem("dodo_mediator_ref");
+  if (!ref) return;
+
+  try {
+    // Write to profile
+    await window.supabaseClient
+      .from("profiles")
+      .update({ referred_by: ref })
+      .eq("id", currentUserId);
+
+    // If pair exists, write mediator_code there too
+    if (currentPairId) {
+      await window.supabaseClient
+        .from("pairs")
+        .update({ mediator_code: ref })
+        .eq("id", currentPairId)
+        .is("mediator_code", null); // only if not already set
+    }
+
+    localStorage.removeItem("dodo_mediator_ref");
+  } catch (err) {
+    console.warn("applyMediatorReferral failed:", err.message);
+  }
+}
+
+/**
+ * Generate a unique mediator code for this user (for sharing with mediators).
+ * Format: MED-<first6charsOfUserId>
+ */
+function getMediatorCode() {
+  if (!currentUserId) return null;
+  return "MED-" + currentUserId.replace(/-/g, "").slice(0, 8).toUpperCase();
+}
+
+// ─── SEG-11.4: Schedule CRUD ──────────────────────────────────────────────────
+
+/**
+ * Load all custody schedules for current pair.
+ */
+async function loadSchedules() {
+  if (!currentPairId || !window.supabaseClient) return [];
+  const { data, error } = await window.supabaseClient
+    .from("schedules")
+    .select("*")
+    .eq("pair_id", currentPairId)
+    .order("created_at", { ascending: true });
+  if (error) { console.warn("loadSchedules failed:", error.message); return []; }
+  return data || [];
+}
+
+/**
+ * Save (upsert) a schedule.
+ */
+async function saveSchedule(schedule) {
+  if (!currentPairId || !currentUserId || !window.supabaseClient) return null;
+  const row = {
+    id: schedule.id || undefined,
+    pair_id: currentPairId,
+    name: schedule.name,
+    color: schedule.color || null,
+    repeat_every_weeks: schedule.repeatEveryWeeks || 2,
+    anchor_date: schedule.anchorDate,
+    created_by: currentUserId,
+  };
+  const { data, error } = await window.supabaseClient
+    .from("schedules")
+    .upsert(row, { onConflict: "id" })
+    .select()
+    .single();
+  if (error) { console.warn("saveSchedule failed:", error.message); return null; }
+  return data;
+}
+
+/**
+ * Delete a schedule (and unlink cards from it).
+ */
+async function deleteSchedule(scheduleId) {
+  if (!currentPairId || !window.supabaseClient) return;
+  // Unlink cards first
+  await window.supabaseClient
+    .from("unified_cards")
+    .update({ schedule_id: null, schedule_day_offset: null })
+    .eq("pair_id", currentPairId)
+    .eq("schedule_id", scheduleId);
+  // Delete schedule
+  await window.supabaseClient
+    .from("schedules")
+    .delete()
+    .eq("id", scheduleId)
+    .eq("pair_id", currentPairId);
+}
+
+/**
+ * SEG-11.4: Cascade a schedule shift.
+ * Moves all cards in a schedule occurrence by `deltaDays`.
+ * mode: "this" (only cards in the current week) | "all" (all future cards)
+ * weekStart: ISO date string of the Monday of the week being shifted
+ */
+async function cascadeSchedule({ scheduleId, weekStart, deltaDays, mode }) {
+  if (!currentPairId || !window.supabaseClient || !scheduleId) return { moved: 0 };
+
+  const weekStartDate = new Date(weekStart);
+  const weekEnd = new Date(weekStartDate);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+
+  // Fetch relevant cards
+  let query = window.supabaseClient
+    .from("unified_cards")
+    .select("id, due_at, metadata")
+    .eq("pair_id", currentPairId)
+    .eq("schedule_id", scheduleId)
+    .is("deleted_at", null);
+
+  if (mode === "this") {
+    query = query
+      .gte("due_at", weekStartDate.toISOString())
+      .lt("due_at", weekEnd.toISOString());
+  } else {
+    // all future from weekStart
+    query = query.gte("due_at", weekStartDate.toISOString());
+  }
+
+  const { data: cards, error } = await query;
+  if (error) { console.warn("cascadeSchedule query failed:", error.message); return { moved: 0 }; }
+
+  const updates = (cards || []).map((c) => {
+    const newDue = new Date(c.due_at);
+    newDue.setDate(newDue.getDate() + deltaDays);
+    return window.supabaseClient
+      .from("unified_cards")
+      .update({ due_at: newDue.toISOString() })
+      .eq("id", c.id);
+  });
+
+  await Promise.all(updates);
+  return { moved: updates.length };
+}
+
+window.loadSchedules = loadSchedules;
+window.saveSchedule = saveSchedule;
+window.deleteSchedule = deleteSchedule;
+window.cascadeSchedule = cascadeSchedule;
+window.getMediatorCode = getMediatorCode;
+window.applyMediatorReferral = applyMediatorReferral;

@@ -1,4 +1,4 @@
-const APP_VERSION = "0.20.4";
+const APP_VERSION = "0.21.0";
 const APP_VERSION_DATE = "2026-06-14";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -328,7 +328,7 @@ function showUpgradePrompt(reason) {
     <div class="dialog-content">
       <div class="dialog-header">
         <div>
-          <p class="eyebrow">Do-Do Family</p>
+          <p class="eyebrow">Do-Do Standard</p>
           <h2>Upgrade to unlock all features</h2>
         </div>
         <div class="dialog-header-actions">
@@ -894,7 +894,7 @@ async function finishInviteAcceptance(session) {
   const displayName = session.user?.user_metadata?.full_name || session.user?.email?.split("@")[0] || "Parent B";
   const result = await window.acceptInviteToken(token, session.user.id, displayName);
   if (!result?.ok) {
-    showToast(result?.reason === "already_accepted" ? "Invite already accepted" : "Could not join family - try again");
+    showToast(result?.reason === "already_accepted" ? "Invite already accepted" : "Could not connect - try again");
   } else {
     showToast((window.t || ((k) => k))("toast.joined"));
   }
@@ -1355,7 +1355,7 @@ function completeOnboarding(event) {
       }
     }).catch(() => {});
   }
-  showToast("Family board setup complete");
+  showToast("Board setup complete");
 }
 
 function getOnboardingState() {
@@ -2501,7 +2501,7 @@ async function callAiInterpret(text) {
   if (!text?.trim()) return;
   // AI interpret is a paid feature - show upgrade prompt for free users
   if (!isPaidUser()) {
-    showUpgradePrompt("AI field extraction is available on the Family plan.");
+    showUpgradePrompt("AI field extraction is available on the paid plan.");
     return;
   }
   const interpretBtn = elements.llmInterpretButton;

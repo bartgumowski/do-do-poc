@@ -33,7 +33,7 @@ module.exports = async function handler(req, res) {
       </div>
       <h1 style="font-size: 24px; font-weight: 900; margin: 0 0 12px;">You've been invited to Do-Do</h1>
       <p style="color: #78747e; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
-        <strong>${senderName}</strong> invited you to join their family coordination board on Do-Do.
+        <strong>${senderName}</strong> invited you to a shared board on Do-Do.
         Accept to share schedules, messages, expenses, and a calendar in one place.
       </p>
       <a href="${inviteLink}" style="display: inline-block; background: #65d6c6; color: white; font-weight: 700; font-size: 15px; padding: 14px 28px; border-radius: 999px; text-decoration: none;">
