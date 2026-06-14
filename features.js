@@ -5269,7 +5269,7 @@ function renderPrzekazanieFeature(container) {
   const _t = window.t || ((k, p) => p ? Object.entries(p).reduce((s,[a,b]) => s.replace(`{{${a}}}`, b), k) : k);
   const _pContainer = container || featureModule;
   const packItems = loadPrzekazPackList();
-  const packTitle = _t("przekaz.pack_title");
+  const packTitle = _t("handover.pack_title");
   const packGroup = renderShoppingGroup("przekaz-pack", packTitle, packItems);
 
   _pContainer.innerHTML = `
@@ -5277,7 +5277,7 @@ function renderPrzekazanieFeature(container) {
 
       ${allChildren.length > 0 ? `
       <section class="card-info-section">
-        <div class="section-heading">${_t("przekaz.for_children")}</div>
+        <div class="section-heading">${_t("handover.for_children")}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           ${allChildren.map((child) => {
             const active = data.selectedChildren.includes(child);
@@ -5295,22 +5295,22 @@ function renderPrzekazanieFeature(container) {
       ${packGroup}
 
       <section class="card-info-section">
-        <div class="section-heading">${_t("przekaz.health_note")}</div>
+        <div class="section-heading">${_t("handover.health_note")}</div>
         <textarea id="przekazHealthNote" rows="3"
-          placeholder="${_t("przekaz.health_ph")}"
+          placeholder="${_t("handover.health_ph")}"
           style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:10px 12px;
           font-size:14px;font-family:inherit;background:transparent;color:var(--text);
           resize:vertical;min-height:76px;outline:none;">${escapeFeatureHtml(data.healthNote)}</textarea>
       </section>
 
       <section class="card-info-section" id="przekazReminderSection">
-        <div class="section-heading">${_t("przekaz.reminders")}</div>
+        <div class="section-heading">${_t("handover.reminders")}</div>
         <div id="przekazReminderList" style="display:flex;flex-wrap:wrap;gap:8px;${data.reminders.length ? "" : "display:none;"}">
           ${data.reminders.map((item) => _renderPrzekazReminderChip(item)).join("")}
         </div>
         <form id="przekazReminderForm" style="display:flex;gap:8px;align-items:center;">
           <label class="clean-field" style="flex:1;margin:0;">
-            <input data-przekaz-input="reminders" placeholder="${_t("przekaz.reminder_ph")}"
+            <input data-przekaz-input="reminders" placeholder="${_t("handover.reminder_ph")}"
               autocomplete="off" autocapitalize="sentences" enterkeyhint="done"
               style="width:100%;" />
           </label>
@@ -5324,7 +5324,7 @@ function renderPrzekazanieFeature(container) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true">
             <path d="M22 2 11 13M22 2 15 22 11 13 2 9l20-7Z"/>
           </svg>
-          ${_t("przekaz.send", { name: escapeFeatureHtml(coparent) })}
+          ${_t("handover.send", { name: escapeFeatureHtml(coparent) })}
         </button>
       </div>
 
@@ -5369,7 +5369,7 @@ window.openPrzekazanieDialog = function() {
   const dateLabel2 = _przekazNextHandoverLabel();
   dlg.querySelector("#przekazanieDlgTitle").textContent = `${handoverLabel}`;
   const eyebrow = dlg.querySelector("#przekazanieDlgEyebrow");
-  if (eyebrow) eyebrow.textContent = `${_t2("przekaz.title", { name: coparent }) || coparent} · ${dateLabel2}`;
+  if (eyebrow) eyebrow.textContent = `${_t2("handover.title", { name: coparent }) || coparent} · ${dateLabel2}`;
 
   renderPrzekazanieFeature(dlg.querySelector("#przekazanieDlgBody"));
   dlg.showModal();
