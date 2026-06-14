@@ -5257,11 +5257,16 @@ function renderPrzekazanieFeature(container) {
   const setup = window.getOnboardingState?.() || {};
   const coparent = setup.parents?.coparent || "Co-rodzica";
   const allChildren = (setup.children || []).map((c) => c.name || c).filter(Boolean);
+  const allPets = (setup.pets || []).map((p) => p.name || p).filter(Boolean);
+  const allMembers = [
+    ...allChildren.map((n) => ({ name: n, type: "child" })),
+    ...allPets.map((n) => ({ name: n, type: "pet" })),
+  ];
   const data = loadPrzekazanieData();
 
-  // Default: select all children if nothing stored yet
-  if (data.selectedChildren.length === 0 && allChildren.length > 0) {
-    data.selectedChildren = [...allChildren];
+  // Default: select all children/pets if nothing stored yet
+  if (data.selectedChildren.length === 0 && allMembers.length > 0) {
+    data.selectedChildren = allMembers.map((m) => m.name);
     savePrzekazanieData(data);
   }
 
@@ -5275,22 +5280,31 @@ function renderPrzekazanieFeature(container) {
   _pContainer.innerHTML = `
     <div style="display:grid;gap:12px;">
 
-      ${allChildren.length > 0 ? `
       <section class="card-info-section">
         <div class="section-heading">${_t("handover.for_children")}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          ${allChildren.map((child) => {
-            const active = data.selectedChildren.includes(child);
-            return `<button type="button" class="przekaz-child-chip${active ? " active" : ""}" data-child="${escapeFeatureHtml(child)}"
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          ${allMembers.map(({ name, type }) => {
+            const active = data.selectedChildren.includes(name);
+            const prefix = type === "pet" ? "🐾 " : "";
+            return `<button type="button" class="przekaz-child-chip${active ? " active" : ""}" data-child="${escapeFeatureHtml(name)}"
               style="padding:8px 18px;border-radius:999px;border:2px solid ${active ? "var(--accent,#6366f1)" : "var(--border)"};
               background:${active ? "rgba(99,102,241,.12)" : "transparent"};font-size:14px;font-weight:600;cursor:pointer;
               color:var(--text);transition:all .15s;">
-              ${escapeFeatureHtml(child)}
+              ${prefix}${escapeFeatureHtml(name)}
             </button>`;
           }).join("")}
+          <button type="button" id="przekazAddChildBtn"
+            style="padding:6px 14px;border-radius:999px;border:2px dashed var(--border);background:transparent;
+            font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap;">
+            ${_t("handover.add_child")}
+          </button>
+          <button type="button" id="przekazAddPetBtn"
+            style="padding:6px 14px;border-radius:999px;border:2px dashed var(--border);background:transparent;
+            font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap;">
+            ${_t("handover.add_pet")}
+          </button>
         </div>
       </section>
-      ` : ""}
 
       ${packGroup}
 
@@ -5331,7 +5345,7 @@ function renderPrzekazanieFeature(container) {
     </div>
   `;
 
-  _bindPrzekazanieEvents(data, allChildren, coparent, _pContainer);
+  _bindPrzekazanieEvents(data, allMembers, coparent, _pContainer);
 }
 
 // Open the Przekazanie / Handover card as a modal dialog from anywhere (e.g. calendar handover marker)
@@ -5497,10 +5511,10 @@ function _bindSingleShoppingGroup(container, key, loadFn, saveFn) {
   });
 }
 
-function _bindPrzekazanieEvents(data, allChildren, coparent, mod) {
+function _bindPrzekazanieEvents(data, allMembers, coparent, mod) {
   mod = mod || featureModule;
 
-  // Child selector chips
+  // Child/pet selector chips
   mod.querySelectorAll(".przekaz-child-chip").forEach((btn) => {
     btn.addEventListener("click", () => {
       const child = btn.dataset.child;
@@ -5513,6 +5527,34 @@ function _bindPrzekazanieEvents(data, allChildren, coparent, mod) {
       btn.style.borderColor = active ? "var(--accent,#6366f1)" : "var(--border)";
       btn.style.background = active ? "rgba(99,102,241,.12)" : "transparent";
     });
+  });
+
+  // Add child inline
+  mod.querySelector("#przekazAddChildBtn")?.addEventListener("click", async () => {
+    const name = window.prompt(window.t?.("handover.add_child_prompt") || "Child's first name:");
+    if (!name?.trim()) return;
+    const setup = window.getOnboardingState?.() || {};
+    if (!setup.familyId) { showFeatureToast("Complete setup first"); return; }
+    await window.saveChildrenToSupabase?.(setup.familyId, [{ name: name.trim() }]);
+    const updated = { ...setup, children: [...(setup.children || []), { name: name.trim() }] };
+    window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+    data.selectedChildren.push(name.trim());
+    savePrzekazanieData(data);
+    showFeatureToast(name.trim() + " added");
+    renderPrzekazanieFeature(mod === featureModule ? null : mod);
+  });
+
+  // Add pet inline
+  mod.querySelector("#przekazAddPetBtn")?.addEventListener("click", () => {
+    const name = window.prompt(window.t?.("handover.add_pet_prompt") || "Pet's name:");
+    if (!name?.trim()) return;
+    const setup = window.getOnboardingState?.() || {};
+    const updated = { ...setup, pets: [...(setup.pets || []), { name: name.trim() }] };
+    window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
+    data.selectedChildren.push(name.trim());
+    savePrzekazanieData(data);
+    showFeatureToast(name.trim() + " added");
+    renderPrzekazanieFeature(mod === featureModule ? null : mod);
   });
 
   // Pack list (rzeczy) uses full shopping-group behaviour

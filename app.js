@@ -1,4 +1,4 @@
-const APP_VERSION = "0.17.1";
+const APP_VERSION = "0.17.4";
 const APP_VERSION_DATE = "2026-06-14";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1710,13 +1710,23 @@ function renderCard(card) {
   return renderUnifiedCard(card);
 }
 
+function _cardOwnerClass(card) {
+  const family = getFamilyPeople();
+  const assignee = card.assignee;
+  if (!assignee) return "";
+  if (assignee === "Both parents") return "card-owner-both";
+  if (assignee === "Parent B" || assignee === family?.coparent?.name) return "card-owner-co";
+  return "card-owner-mine";
+}
+
 function renderUnifiedCard(card, options = {}) {
   const _t = window.t || ((k, fb) => fb || k);
   const actionLabel = card.type === "Expense" ? _t("card.paid", "Paid") : _t("card.done", "Done");
   const isDone = card.status === "Done";
   const showActions = options.showActions !== false;
   const attributes = options.attributes || `data-card-id="${card.id}" role="button" tabindex="0"`;
-  const className = ["card", "unified-card", options.className || "", isDone ? "done-card" : ""].filter(Boolean).join(" ");
+  const ownerClass = _cardOwnerClass(card);
+  const className = ["card", "unified-card", options.className || "", isDone ? "done-card" : "", ownerClass].filter(Boolean).join(" ");
 
   const dateStr = formatDate(card.due);
   const statusLabel = isDone ? _t("card.done", "Done")
@@ -5300,9 +5310,26 @@ function renderBoardCalendar(cards) {
         const [_gradFirst, _gradSecond] = _ov.morning === "co" ? [_coColor, _mineColor] : [_mineColor, _coColor];
         splitBandEl = `<div class="bcal-split-band" style="top:${_splitTop}px;height:${BCAL_SLOT_H}px;background:linear-gradient(to bottom,color-mix(in srgb,${_gradFirst} 20%,transparent),color-mix(in srgb,${_gradSecond} 20%,transparent));border-top-color:color-mix(in srgb,${_gradFirst} 60%,transparent);border-bottom-color:color-mix(in srgb,${_gradSecond} 60%,transparent)"></div>`;
         const _handoverLabel = (window.t?.("cal.handover")) || "Handover";
-        handoverMarkerEl = `<div class="bcal-handover-marker" data-open-przekazanie="1" role="button" tabindex="0" style="top:${_splitTop}px">
-          <span class="bcal-handover-icon">↔</span>
-          <span class="bcal-handover-label">${_handoverLabel} ${_splitTime}</span>
+        const _reminderLabel = (window.t?.("card.action.reminder")) || "Reminder";
+        const _messageLabel  = (window.t?.("card.action.message"))  || "Message";
+        handoverMarkerEl = `<div class="bcal-handover-marker bcal-do-card" data-open-przekazanie="1" role="button" tabindex="0" style="top:${_splitTop}px">
+          <article class="card unified-card bcal-handover-card">
+            <div class="card-state-row">
+              <span class="card-handover-badge">↔</span>
+              <span class="card-date-tag">${_splitTime}</span>
+            </div>
+            <h3 class="card-title">${_handoverLabel}</h3>
+            <div class="card-footer-actions">
+              <button class="card-footer-btn" type="button" data-handover-remind="1">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+                ${_reminderLabel}
+              </button>
+              <button class="card-footer-btn" type="button" data-handover-message="1">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/></svg>
+                ${_messageLabel}
+              </button>
+            </div>
+          </article>
         </div>`;
       }
     }
@@ -5372,9 +5399,17 @@ function renderBoardCalendar(cards) {
     grid.innerHTML = gridHTML;
     _bindBoardCalDragDrop(grid);
     window.bindUnifiedCardInteractions?.(grid);
-    // Handover marker click -> open Przekazanie dialog
+    // Handover card click -> open Przekazanie dialog (skip if clicking a footer button)
     grid.querySelectorAll("[data-open-przekazanie]").forEach((el) => {
-      el.addEventListener("click", (e) => { e.stopPropagation(); window.openPrzekazanieDialog?.(); });
+      el.addEventListener("click", (e) => {
+        if (e.target.closest("[data-handover-remind],[data-handover-message]")) {
+          e.stopPropagation();
+          window.openPrzekazanieDialog?.();
+          return;
+        }
+        e.stopPropagation();
+        window.openPrzekazanieDialog?.();
+      });
       el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); window.openPrzekazanieDialog?.(); } });
     });
     // Scroll to show current time (or start of day if outside range)
