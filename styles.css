@@ -9424,6 +9424,39 @@ html[data-theme="dark"] .change-request-card {
   flex-shrink: 0;
 }
 
+/* Multi-day selection helpers */
+.sched-sel-count {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+  margin-top: 4px;
+  font-style: italic;
+}
+.sched-day-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sched-clear-sel {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+}
+.sched-clear-sel:hover { background: var(--surface-hover, #f0f0f0); }
+.sched-clear-schedule-btn {
+  font-size: 12px;
+  color: var(--danger, #e53935);
+  border-color: var(--danger, #e53935);
+  opacity: 0.8;
+  width: 100%;
+}
+.sched-clear-schedule-btn:hover { opacity: 1; }
+
 /* ─── SEG-13: Guest preview (read-only invite, no account) ─────────────────── */
 
 .guest-preview-link {
