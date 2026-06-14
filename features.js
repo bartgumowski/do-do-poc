@@ -1300,6 +1300,8 @@ function bindCustodySettings() {
   // Divorced toggle
   featureModule.querySelector("#divorcedToggle")?.addEventListener("change", (e) => {
     setDivorced(e.target.checked);
+    const legalSection = featureModule.querySelector("#legalExportSection");
+    if (legalSection) legalSection.style.display = e.target.checked ? "block" : "none";
     showFeatureToast(e.target.checked ? "Divorced mode enabled" : "Divorced mode disabled");
   });
 
@@ -4369,6 +4371,22 @@ function renderSpecialPanel(moduleName, part = "all") {
               <span><strong>Vacation schedules</strong><em>Add periods with a different custody split.</em></span>
               <button class="ghost-button sched-settings-open-btn" type="button" id="openVacationsFromSettings">Manage vacations</button>
             </div>
+            <div id="legalExportSection" style="display:${isDivorced() ? "block" : "none"};border-top:1px solid var(--border-color,#eee);margin-top:8px;padding-top:12px;">
+              <div class="settings-select-row sched-settings-buttons">
+                <span>
+                  <strong data-i18n="settings.legal_record">${window.t?.("settings.legal_record") ?? "Legal record"}</strong>
+                  <em data-i18n="settings.legal_record_hint">${window.t?.("settings.legal_record_hint") ?? "Court-ready PDF with timestamped expenses, events and messages."}</em>
+                </span>
+                <button class="ghost-button sched-settings-open-btn" type="button" id="downloadLegalRecordButton" data-i18n="settings.download_legal_pdf">${window.t?.("settings.download_legal_pdf") ?? "Download PDF"}</button>
+              </div>
+              <div class="settings-select-row sched-settings-buttons">
+                <span>
+                  <strong data-i18n="settings.download_data_title">${window.t?.("settings.download_data_title") ?? "Export my data"}</strong>
+                  <em data-i18n="settings.download_data_hint">${window.t?.("settings.download_data_hint") ?? "Full JSON export of your data (GDPR / RODO)."}</em>
+                </span>
+                <button class="ghost-button sched-settings-open-btn" type="button" id="downloadMyDataButton" data-i18n="settings.download_data">${window.t?.("settings.download_data") ?? "Download"}</button>
+              </div>
+            </div>
           </div>
         </section>`;
       })() : ""}
@@ -4783,6 +4801,32 @@ function renderSettingsFeature() {
   `;
 
   const _st = window.t || ((k) => k);
+
+  const renderCaregiverRow = (cg, index) => {
+    const name = cg.name || cg;
+    const email = cg.email || "";
+    return `
+      <article class="feature-item feature-item-editable">
+        <div class="feature-item-main">
+          <strong>${escapeHtml(name)}</strong>
+          ${email ? `<span style="color:var(--muted);font-size:12px;">${escapeHtml(email)}</span>` : ""}
+        </div>
+        <div class="feature-item-actions">
+          <button class="icon-button icon-button-sm" data-edit-caregiver="${index}" aria-label="Edit ${escapeHtml(name)}">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/>
+            </svg>
+          </button>
+          <button class="icon-button icon-button-sm icon-button-danger" data-delete-caregiver="${index}" aria-label="Delete ${escapeHtml(name)}">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="M3 4h10M6 4V2.5h4V4M5 4l.5 9h5L11 4"/>
+            </svg>
+          </button>
+        </div>
+      </article>
+    `;
+  };
+
   const caregivers = setup.caregivers || [];
   featureModule.innerHTML = `
     <div class="feature-layout settings-layout">
@@ -4812,16 +4856,17 @@ function renderSettingsFeature() {
         </div>
       </section>
 
-      <section class="feature-panel">
+      <section class="feature-panel" id="caregiversPanel">
         <div class="feature-panel-header">
-          <h3>Opiekunowie</h3>
-          <button class="secondary-button" id="addCaregiverBtn">Dodaj opiekuna</button>
+          <h3>${_st("settings.caregivers")}</h3>
+          <button class="secondary-button" id="addCaregiverBtn">${_st("settings.add_caregiver")}</button>
         </div>
         <div class="feature-items" id="caregiversList">
           ${caregivers.length
-            ? caregivers.map((c, i) => renderMemberRow(c.name || c, i, "caregiver")).join("")
-            : `<p class="feature-empty" style="font-size:13px;color:var(--muted);">Babcia, opiekunka, dziadek - osoby ktore pomagaja w opiece</p>`}
+            ? caregivers.map((c, i) => renderCaregiverRow(c, i)).join("")
+            : `<p class="feature-empty" style="font-size:13px;color:var(--muted);">${_st("settings.no_caregivers")}</p>`}
         </div>
+        <div id="addCaregiverForm" style="display:none;padding:12px 0 4px;"></div>
       </section>
 
       <section class="feature-panel">
@@ -4912,19 +4957,6 @@ function renderSettingsFeature() {
         </div>
       </section>
 
-      <!-- SEG-11.1: Legal export -->
-      <section class="feature-panel">
-        <h3>Legal record</h3>
-        <p class="feature-note" style="font-size:13px;color:var(--muted);margin:0 0 12px;">
-          Download a timestamped record of all expenses, events, and messages in court-presentable format.
-          Records are server-timestamped and neither party can silently edit the other's entries.
-        </p>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-          <button class="secondary-button" id="downloadLegalRecordButton" style="color:var(--accent);border-color:var(--accent);">
-            Download legal record (PDF)
-          </button>
-        </div>
-      </section>
 
       <!-- SEG-11.3: Mediator referral -->
       <section class="feature-panel" id="mediatorPanel">
@@ -4967,33 +4999,10 @@ function renderSettingsFeature() {
         </div>
         <div class="account-action-row" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
           <button class="secondary-button" id="signOutButton" style="color:#ef4444;border-color:#ef4444;">${_st("settings.sign_out")}</button>
+          <a class="secondary-button" href="/legal.html" target="_blank" rel="noopener" style="text-decoration:none;">${_st("settings.privacy")}</a>
         </div>
-      </section>
-
-      <section class="feature-panel">
-        <h3>Your data &amp; privacy</h3>
-        <div class="feature-items">
-          <article class="feature-item">
-            <div>
-              <strong>Download my data</strong>
-              <span>Export everything - cards, messages, expenses and calendar events as a JSON file (GDPR / RODO).</span>
-            </div>
-            <button class="secondary-button" id="downloadMyDataButton" style="flex-shrink:0;">Download</button>
-          </article>
-          <article class="feature-item">
-            <div>
-              <strong>Privacy policy</strong>
-              <span>How we store and protect your data. Servers in the EU.</span>
-            </div>
-            <a class="secondary-button" href="/legal.html" target="_blank" rel="noopener" style="text-decoration:none;flex-shrink:0;">Read</a>
-          </article>
-          <article class="feature-item" style="border-top:1px solid var(--border-color,#eee);padding-top:14px;margin-top:4px;">
-            <div>
-              <strong style="color:var(--danger,#e53935);">Delete account</strong>
-              <span>Permanently removes your profile and messages. Cannot be undone.</span>
-            </div>
-            <button class="secondary-button" id="deleteAccountButton" style="flex-shrink:0;color:var(--danger,#e53935);border-color:var(--danger,#e53935);">Delete</button>
-          </article>
+        <div style="margin-top:12px;">
+          <button class="ghost-button" id="deleteAccountButton" style="color:var(--muted);font-size:12px;padding:4px 0;">${_st("settings.delete_account")}</button>
         </div>
       </section>
 
@@ -5052,7 +5061,7 @@ function renderSettingsFeature() {
   // Add child/pet/caregiver
   featureModule.querySelector("#addChildBtn")?.addEventListener("click", () => promptAddChild());
   featureModule.querySelector("#addPetBtn")?.addEventListener("click", () => promptAddPet());
-  featureModule.querySelector("#addCaregiverBtn")?.addEventListener("click", () => promptAddCaregiver());
+  featureModule.querySelector("#addCaregiverBtn")?.addEventListener("click", () => showAddCaregiverForm());
 
   // Share Do-Do
   const SHARE_URL = "https://do-do.app";
@@ -5958,38 +5967,142 @@ async function confirmDeleteChild(index) {
 
 // ─── Caregivers CRUD ──────────────────────────────────────────────────────────
 
-function promptAddCaregiver() {
-  const name = window.prompt("Imie opiekuna (np. Babcia, Pani Kasia):");
-  if (!name?.trim()) return;
+function _cgt(key) {
+  return (window.t || ((k) => k))(key);
+}
+
+function _saveCaregivers(caregivers) {
   const setup = window.getOnboardingState?.() || {};
-  const updated = { ...setup, caregivers: [...(setup.caregivers || []), { name: name.trim() }] };
+  const updated = { ...setup, caregivers };
   window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
-  showFeatureToast(`${name.trim()} dodany/a`);
-  window.switchModule("settings");
+  return updated;
+}
+
+function showAddCaregiverForm(editIndex = -1) {
+  const panel = document.querySelector("#caregiversPanel");
+  const formContainer = panel?.querySelector("#addCaregiverForm");
+  if (!formContainer) return;
+
+  const setup = window.getOnboardingState?.() || {};
+  const existing = editIndex >= 0 ? (setup.caregivers || [])[editIndex] : null;
+  const existingName  = existing?.name  || existing || "";
+  const existingEmail = existing?.email || "";
+
+  const isEdit = editIndex >= 0;
+
+  formContainer.style.display = "block";
+  formContainer.innerHTML = `
+    <div style="display:grid;gap:10px;border-top:1px solid var(--line);padding-top:12px;">
+      <div style="display:grid;gap:5px;">
+        <label style="font-size:12px;font-weight:700;color:var(--muted);">${_cgt("settings.caregiver_name_label")}</label>
+        <input id="cgNameInput" type="text" autocomplete="off"
+          placeholder="${_cgt("settings.caregiver_name_ph")}"
+          value="${escapeHtml(existingName)}"
+          style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;background:var(--soft);color:var(--ink);width:100%;box-sizing:border-box;" />
+      </div>
+      <div style="display:grid;gap:5px;">
+        <label style="font-size:12px;font-weight:700;color:var(--muted);">${_cgt("settings.caregiver_email_label")}</label>
+        <input id="cgEmailInput" type="email" autocomplete="off"
+          placeholder="${_cgt("settings.caregiver_email_ph")}"
+          value="${escapeHtml(existingEmail)}"
+          style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;background:var(--soft);color:var(--ink);width:100%;box-sizing:border-box;" />
+        <span style="font-size:11px;color:var(--muted);">${_cgt("settings.caregiver_email_hint")}</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="cgSaveBtn" class="secondary-button" style="min-height:36px;padding:0 16px;">${_cgt("settings.save_caregiver")}</button>
+        <button id="cgCancelBtn" class="ghost-button" style="min-height:36px;padding:0 12px;font-size:13px;">&#x2715;</button>
+      </div>
+    </div>
+  `;
+
+  const nameInput  = formContainer.querySelector("#cgNameInput");
+  const emailInput = formContainer.querySelector("#cgEmailInput");
+  const saveBtn    = formContainer.querySelector("#cgSaveBtn");
+  const cancelBtn  = formContainer.querySelector("#cgCancelBtn");
+
+  nameInput?.focus();
+
+  cancelBtn?.addEventListener("click", () => {
+    formContainer.style.display = "none";
+    formContainer.innerHTML = "";
+  });
+
+  saveBtn?.addEventListener("click", async () => {
+    const name  = nameInput?.value.trim();
+    const email = emailInput?.value.trim();
+    if (!name) { nameInput?.focus(); return; }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = "...";
+
+    const setup2 = window.getOnboardingState?.() || {};
+    const caregivers = [...(setup2.caregivers || [])];
+    const entry = { name, ...(email ? { email } : {}) };
+
+    if (isEdit) {
+      caregivers[editIndex] = { ...(typeof caregivers[editIndex] === "object" ? caregivers[editIndex] : {}), ...entry };
+    } else {
+      caregivers.push(entry);
+    }
+
+    _saveCaregivers(caregivers);
+
+    // Send calendar link email if email provided and not an edit
+    if (email && !isEdit) {
+      try {
+        const guestLink = await getOrCreateGuestLink();
+        if (guestLink) {
+          await fetch("/api/invite-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...(await window.getAuthHeader?.() || {}) },
+            body: JSON.stringify({
+              toEmail: email,
+              fromName: setup2.parents?.primary || null,
+              inviteLink: guestLink,
+              role: "caregiver",
+              caregiverName: name,
+            }),
+          });
+        }
+      } catch { /* silent - email is optional */ }
+    }
+
+    showFeatureToast(isEdit ? _cgt("settings.caregiver_updated") : _cgt("settings.caregiver_added"));
+    formContainer.style.display = "none";
+    formContainer.innerHTML = "";
+    window.switchModule("settings");
+  });
+}
+
+async function getOrCreateGuestLink() {
+  try {
+    let link = sessionStorage.getItem("do-do-pending-invite-link");
+    if (!link && window.getCurrentPairId?.()) {
+      const { data } = await window.supabaseClient
+        .from("pairs")
+        .select("invite_token")
+        .eq("id", window.getCurrentPairId())
+        .maybeSingle();
+      if (data?.invite_token) {
+        link = `${window.location.origin}/invite/${data.invite_token}`;
+      }
+    }
+    return link || null;
+  } catch { return null; }
 }
 
 function promptEditCaregiver(index) {
-  const setup = window.getOnboardingState?.() || {};
-  const caregivers = [...(setup.caregivers || [])];
-  const current = caregivers[index]?.name || caregivers[index] || "";
-  const name = window.prompt("Zmien imie:", current);
-  if (!name?.trim() || name.trim() === current) return;
-  caregivers[index] = { ...(typeof caregivers[index] === "object" ? caregivers[index] : {}), name: name.trim() };
-  const updated = { ...setup, caregivers };
-  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
-  showFeatureToast(`Zmieniono na ${name.trim()}`);
-  window.switchModule("settings");
+  showAddCaregiverForm(index);
 }
 
 function confirmDeleteCaregiver(index) {
   const setup = window.getOnboardingState?.() || {};
   const caregivers = [...(setup.caregivers || [])];
-  const name = caregivers[index]?.name || caregivers[index] || "tego opiekuna";
-  if (!window.confirm(`Usunac ${name}?`)) return;
+  const name = caregivers[index]?.name || caregivers[index] || "?";
+  if (!window.confirm(`${_cgt("settings.caregiver_remove_confirm")} ${name}?`)) return;
   caregivers.splice(index, 1);
-  const updated = { ...setup, caregivers };
-  window.appStorage?.setItem("ido-you-do-onboarding-v1", JSON.stringify(updated));
-  showFeatureToast(`${name} usuniety/a`);
+  _saveCaregivers(caregivers);
+  showFeatureToast(_cgt("settings.caregiver_removed"));
   window.switchModule("settings");
 }
 
