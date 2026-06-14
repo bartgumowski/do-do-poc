@@ -4904,6 +4904,59 @@ function renderSettingsFeature() {
         </div>
       </section>
 
+      <!-- SEG-11.2: Shared history view - shown after 30 days -->
+      <section class="feature-panel" id="sharedHistoryPanel" style="display:none;">
+        <h3>Your shared record</h3>
+        <div id="sharedHistoryContent">
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">Loading...</p>
+        </div>
+      </section>
+
+      <!-- SEG-11.1: Legal export -->
+      <section class="feature-panel">
+        <h3>Legal record</h3>
+        <p class="feature-note" style="font-size:13px;color:var(--muted);margin:0 0 12px;">
+          Download a timestamped record of all expenses, events, and messages in court-presentable format.
+          Records are server-timestamped and neither party can silently edit the other's entries.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+          <button class="secondary-button" id="downloadLegalRecordButton" style="color:var(--accent);border-color:var(--accent);">
+            Download legal record (PDF)
+          </button>
+        </div>
+      </section>
+
+      <!-- SEG-11.3: Mediator referral -->
+      <section class="feature-panel" id="mediatorPanel">
+        <h3>Share with a mediator</h3>
+        <p class="feature-note" style="font-size:13px;color:var(--muted);margin:0 0 12px;">
+          Give this link to your mediator. They can bookmark it to track how families you refer are doing - no login required.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="mediatorLinkInput" readonly
+            style="flex:1;min-width:180px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-alt);color:var(--ink);font-size:13px;"
+            value="Generating...">
+          <button class="secondary-button" id="copyMediatorLinkBtn">Copy link</button>
+        </div>
+        <p id="mediatorLinkNote" style="font-size:12px;color:var(--muted);margin-top:8px;display:none;">
+          Link copied to clipboard
+        </p>
+      </section>
+
+      <!-- SEG-11.4: Schedule cascade -->
+      <section class="feature-panel" id="scheduleCascadePanel">
+        <div class="feature-panel-header">
+          <h3>Custody week templates</h3>
+          <button class="secondary-button" id="addScheduleTemplateBtn">+ New template</button>
+        </div>
+        <p class="feature-note" style="font-size:13px;color:var(--muted);margin:6px 0 12px;">
+          Named recurring custody weeks. Moving one template updates all linked cards and calendar events in one action.
+        </p>
+        <div id="scheduleTemplatesList">
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">Loading templates...</p>
+        </div>
+      </section>
+
       <section class="feature-panel">
         <h3>${_st("settings.account")}</h3>
         <div class="feature-items">
@@ -4914,13 +4967,36 @@ function renderSettingsFeature() {
         </div>
         <div class="account-action-row" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
           <button class="secondary-button" id="signOutButton" style="color:#ef4444;border-color:#ef4444;">${_st("settings.sign_out")}</button>
-          <button class="secondary-button" id="downloadMyDataButton">${_st("settings.download_data")}</button>
-          <a class="secondary-button" href="/legal.html" target="_blank" rel="noopener" style="text-decoration:none;">${_st("settings.privacy")}</a>
-        </div>
-        <div style="margin-top:12px;">
-          <button class="ghost-button" id="deleteAccountButton" style="color:var(--muted);font-size:12px;padding:4px 0;">${_st("settings.delete_account")}</button>
         </div>
       </section>
+
+      <section class="feature-panel">
+        <h3>Your data &amp; privacy</h3>
+        <div class="feature-items">
+          <article class="feature-item">
+            <div>
+              <strong>Download my data</strong>
+              <span>Export everything - cards, messages, expenses and calendar events as a JSON file (GDPR / RODO).</span>
+            </div>
+            <button class="secondary-button" id="downloadMyDataButton" style="flex-shrink:0;">Download</button>
+          </article>
+          <article class="feature-item">
+            <div>
+              <strong>Privacy policy</strong>
+              <span>How we store and protect your data. Servers in the EU.</span>
+            </div>
+            <a class="secondary-button" href="/legal.html" target="_blank" rel="noopener" style="text-decoration:none;flex-shrink:0;">Read</a>
+          </article>
+          <article class="feature-item" style="border-top:1px solid var(--border-color,#eee);padding-top:14px;margin-top:4px;">
+            <div>
+              <strong style="color:var(--danger,#e53935);">Delete account</strong>
+              <span>Permanently removes your profile and messages. Cannot be undone.</span>
+            </div>
+            <button class="secondary-button" id="deleteAccountButton" style="flex-shrink:0;color:var(--danger,#e53935);border-color:var(--danger,#e53935);">Delete</button>
+          </article>
+        </div>
+      </section>
+
 
       <section class="feature-panel" id="notifPrefsPanel">
         <h3>${_st("settings.notifications")}</h3>
@@ -5094,6 +5170,64 @@ function renderSettingsFeature() {
   // Vaccine panel interactions
   bindVaccinePanel();
 
+  // ── SEG-11.1: Legal export PDF ────────────────────────────────────────────
+  featureModule.querySelector("#downloadLegalRecordButton")?.addEventListener("click", async () => {
+    const btn = featureModule.querySelector("#downloadLegalRecordButton");
+    btn.disabled = true;
+    btn.textContent = "Preparing record...";
+    try {
+      const session = (await window.supabaseClient?.auth?.getSession())?.data?.session;
+      const token = session?.access_token;
+      if (!token) { showFeatureToast("Sign in required"); return; }
+
+      const res = await fetch("/api/export-data?action=legal-export", {
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      await generateLegalPdf(data);
+    } catch (err) {
+      showFeatureToast("Export failed: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Download legal record (PDF)";
+    }
+  });
+
+  // ── SEG-11.2: Shared history panel ───────────────────────────────────────
+  renderSharedHistoryPanel();
+
+  // ── SEG-11.3: Mediator referral link ─────────────────────────────────────
+  (async () => {
+    const input = featureModule.querySelector("#mediatorLinkInput");
+    const copyBtn = featureModule.querySelector("#copyMediatorLinkBtn");
+    const note = featureModule.querySelector("#mediatorLinkNote");
+    if (!input) return;
+    const code = window.getMediatorCode?.();
+    const link = code ? `${window.location.origin}/mediator/${code}` : null;
+    if (link) {
+      input.value = link;
+    } else {
+      input.value = "Sign in to generate your link";
+    }
+    copyBtn?.addEventListener("click", async () => {
+      if (!link) return;
+      try {
+        await navigator.clipboard.writeText(link);
+        if (note) { note.style.display = ""; setTimeout(() => { note.style.display = "none"; }, 2500); }
+      } catch {
+        showFeatureToast(link);
+      }
+    });
+  })();
+
+  // ── SEG-11.4: Schedule templates ─────────────────────────────────────────
+  renderScheduleTemplates();
+  featureModule.querySelector("#addScheduleTemplateBtn")?.addEventListener("click", () => {
+    openScheduleTemplateDialog(null);
+  });
+
   // Edit/delete children
   featureModule.querySelectorAll("[data-edit-child]").forEach((btn) => {
     const i = Number(btn.dataset.editChild);
@@ -5127,6 +5261,396 @@ function renderSettingsFeature() {
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
+}
+
+// ─── SEG-11.1: Legal PDF generation (client-side via jsPDF) ──────────────────
+
+async function generateLegalPdf(data) {
+  // Dynamically load jsPDF from CDN on first use
+  if (!window.jspdf?.jsPDF) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
+      s.onload = resolve;
+      s.onerror = () => reject(new Error("Could not load PDF library"));
+      document.head.appendChild(s);
+    });
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageW = 210;
+  const marginL = 18;
+  const marginR = 18;
+  const contentW = pageW - marginL - marginR;
+  let y = 20;
+  const lineH = 6;
+
+  const addLine = (text, opts = {}) => {
+    const size = opts.size || 10;
+    const bold = opts.bold || false;
+    const color = opts.color || [17, 24, 39];
+    doc.setFontSize(size);
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setTextColor(...color);
+    if (y > 270) { doc.addPage(); y = 20; addFooter(); }
+    const lines = doc.splitTextToSize(text, contentW);
+    doc.text(lines, marginL, y);
+    y += lines.length * (size * 0.35) + (opts.after || 2);
+  };
+
+  const addFooter = () => {
+    const pg = doc.getNumberOfPages();
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Exported from Do-Do (do-do.app) on ${new Date(data.generated_at).toISOString().replace("T", " ").slice(0, 19)} UTC  |  Pair ID: ${data.pair?.id?.slice(0, 8) || "—"}  |  Page ${pg}`,
+      marginL, 290
+    );
+  };
+
+  const hr = () => {
+    doc.setDrawColor(229, 231, 235);
+    doc.line(marginL, y, pageW - marginR, y);
+    y += 4;
+  };
+
+  // Cover page
+  doc.setFillColor(124, 58, 237);
+  doc.rect(0, 0, pageW, 8, "F");
+  y = 28;
+  addLine("Do-Do", { size: 26, bold: true, color: [17, 24, 39], after: 3 });
+  addLine("Legal Record Export", { size: 16, color: [107, 114, 128], after: 10 });
+  hr();
+  addLine(`Parents: ${data.pair?.parent_a || "Parent A"} & ${data.pair?.parent_b || "Parent B"}`, { size: 11, bold: true, after: 3 });
+  if (data.pair?.pair_start) addLine(`Coordinating since: ${new Date(data.pair.pair_start).toLocaleDateString()}`, { size: 10, color: [107, 114, 128], after: 2 });
+  addLine(`Export generated: ${new Date(data.generated_at).toLocaleString()}`, { size: 10, color: [107, 114, 128], after: 2 });
+  addLine(`Records: ${(data.cards || []).length} cards, ${(data.messages || []).length} messages`, { size: 10, color: [107, 114, 128], after: 8 });
+  hr();
+  addLine(data.tamper_note || "", { size: 9, color: [107, 114, 128], after: 4 });
+  addFooter();
+
+  // Section 1: Cards
+  doc.addPage(); y = 20; addFooter();
+  addLine("Section 1 - Expense & Event Cards", { size: 14, bold: true, after: 6 });
+  hr();
+
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString() : "-";
+  const fmtAmt = (a) => a != null ? String(a) : "-";
+
+  for (const card of (data.cards || [])) {
+    if (y > 255) { doc.addPage(); y = 20; addFooter(); }
+    addLine(`[${card.type?.toUpperCase() || "CARD"}] ${card.title || "Untitled"}`, { size: 10, bold: true, after: 1 });
+    addLine(`  Date: ${fmtDate(card.due || card.created_at)}  |  Status: ${card.status || "-"}  |  Amount: ${fmtAmt(card.amount)}`, { size: 9, color: [107, 114, 128], after: 1 });
+    if (card.details) addLine(`  Details: ${card.details}`, { size: 9, color: [55, 65, 81], after: 1 });
+    if (card.receipt_url) addLine(`  Receipt: ${card.receipt_url}`, { size: 8, color: [107, 114, 128], after: 1 });
+    const editCount = (card.edit_history || []).length;
+    addLine(`  Created: ${fmtDate(card.created_at)}  |  Last updated: ${fmtDate(card.updated_at)}  |  Edit entries: ${editCount}`, { size: 8, color: [156, 163, 175], after: 3 });
+    hr();
+  }
+
+  // Section 2: Messages
+  doc.addPage(); y = 20; addFooter();
+  addLine("Section 2 - Messages", { size: 14, bold: true, after: 6 });
+  hr();
+  for (const msg of (data.messages || [])) {
+    if (y > 260) { doc.addPage(); y = 20; addFooter(); }
+    addLine(`${msg.sender || "Parent"} - ${fmtDate(msg.sent_at)}`, { size: 9, bold: true, after: 1 });
+    addLine(`  ${msg.body || ""}`, { size: 9, after: 3 });
+    hr();
+  }
+
+  // Section 3: Audit note
+  doc.addPage(); y = 20; addFooter();
+  addLine("Section 3 - Tamper-Evidence Note", { size: 14, bold: true, after: 6 });
+  hr();
+  addLine(
+    "All records in this export are server-timestamped at the moment of creation. " +
+    "Neither party can retroactively edit records created by the other party. " +
+    "Every edit is logged with a timestamp and user identifier in the edit_history field. " +
+    "This export was generated on demand and cannot be modified after generation.",
+    { size: 10, after: 6 }
+  );
+
+  const filename = `do-do-legal-${new Date().toISOString().slice(0, 10)}.pdf`;
+  doc.save(filename);
+}
+
+// ─── SEG-11.2: Shared history panel ──────────────────────────────────────────
+
+async function renderSharedHistoryPanel() {
+  const panel = featureModule.querySelector("#sharedHistoryPanel");
+  const content = featureModule.querySelector("#sharedHistoryContent");
+  if (!panel || !content) return;
+
+  try {
+    const session = (await window.supabaseClient?.auth?.getSession())?.data?.session;
+    const token = session?.access_token;
+    if (!token) return;
+
+    const res = await fetch("/api/export-data?action=history-stats", {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const stats = await res.json();
+
+    if (!stats.daysSinceFirst || stats.daysSinceFirst < 30) return; // gate: 30 days minimum
+
+    panel.style.display = "";
+    const since = stats.firstCardDate
+      ? new Date(stats.firstCardDate).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+      : null;
+
+    content.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+        <div style="background:var(--surface-alt);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:700;color:var(--accent);line-height:1;">${stats.totalCards}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.04em;">Shared items</div>
+        </div>
+        <div style="background:var(--surface-alt);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:700;color:var(--accent);line-height:1;">${stats.totalExpenses}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.04em;">Expenses</div>
+        </div>
+        <div style="background:var(--surface-alt);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:700;color:var(--accent);line-height:1;">${stats.receiptCount}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.04em;">Receipts stored</div>
+        </div>
+      </div>
+      ${since ? `<p style="font-size:13px;color:var(--muted);margin-bottom:8px;">You've been coordinating since <strong style="color:var(--ink);">${since}</strong> - ${stats.daysSinceFirst} days of shared history.</p>` : ""}
+      <p style="font-size:12px;color:var(--muted);">This record is stored securely and cannot be altered by either party.</p>
+    `;
+  } catch { /* non-fatal */ }
+}
+
+// ─── SEG-11.2: Milestone toast ────────────────────────────────────────────────
+
+function checkCardMilestoneToast(totalCards) {
+  const milestones = [10, 50, 100];
+  const reached = milestones.filter((m) => totalCards === m);
+  if (!reached.length) return;
+  const n = reached[0];
+  const setup = window.getOnboardingState?.() || {};
+  const partner = setup.parents?.coparent || "your co-parent";
+  showFeatureToast(`You and ${partner} have created ${n} shared items together.`);
+}
+
+window.checkCardMilestoneToast = checkCardMilestoneToast;
+
+// ─── SEG-11.4: Schedule templates UI ─────────────────────────────────────────
+
+async function renderScheduleTemplates() {
+  const list = featureModule.querySelector("#scheduleTemplatesList");
+  if (!list) return;
+
+  const schedules = await window.loadSchedules?.() || [];
+
+  if (!schedules.length) {
+    list.innerHTML = `<p class="feature-empty" style="font-size:13px;color:var(--muted);">No templates yet. Create one to group custody week cards together.</p>`;
+    return;
+  }
+
+  list.innerHTML = schedules.map((s) => `
+    <article class="feature-item feature-item-editable" style="margin-bottom:8px;">
+      <div class="feature-item-main">
+        ${s.color ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${escapeHtml(s.color)};margin-right:6px;vertical-align:middle;"></span>` : ""}
+        <strong>${escapeHtml(s.name)}</strong>
+        <span style="font-size:12px;color:var(--muted);margin-left:6px;">Every ${s.repeat_every_weeks || 2} weeks</span>
+      </div>
+      <div class="feature-item-actions">
+        <button class="secondary-button" style="font-size:12px;padding:4px 10px;" data-cascade-btn="${escapeHtml(s.id)}" data-cascade-name="${escapeHtml(s.name)}">Move week</button>
+        <button class="icon-button icon-button-sm" data-edit-schedule="${escapeHtml(s.id)}" aria-label="Edit ${escapeHtml(s.name)}">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/></svg>
+        </button>
+        <button class="icon-button icon-button-sm icon-button-danger" data-delete-schedule="${escapeHtml(s.id)}" aria-label="Delete ${escapeHtml(s.name)}">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 4h10M6 4V2.5h4V4M5 4l.5 9h5L11 4"/></svg>
+        </button>
+      </div>
+    </article>
+  `).join("");
+
+  // Bind cascade buttons
+  list.querySelectorAll("[data-cascade-btn]").forEach((btn) => {
+    btn.addEventListener("click", () => openCascadeDialog(btn.dataset.cascadeBtn, btn.dataset.cascadeName));
+  });
+  // Bind edit buttons
+  list.querySelectorAll("[data-edit-schedule]").forEach((btn) => {
+    btn.addEventListener("click", () => openScheduleTemplateDialog(btn.dataset.editSchedule));
+  });
+  // Bind delete buttons
+  list.querySelectorAll("[data-delete-schedule]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(`Delete template "${btn.dataset.deleteSchedule}"? Linked cards will not be deleted but will be unlinked.`)) return;
+      await window.deleteSchedule?.(btn.dataset.deleteSchedule);
+      renderScheduleTemplates();
+    });
+  });
+}
+
+function openScheduleTemplateDialog(scheduleId) {
+  document.getElementById("scheduleTemplateDialog")?.remove();
+  const COLORS = ["#7c3aed","#2563eb","#16a34a","#dc2626","#d97706","#0891b2","#db2777","#4b5563"];
+
+  // Fetch existing schedule if editing
+  const edit = scheduleId ? null : null; // loaded async below
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "scheduleTemplateDialog";
+  dialog.className = "card-dialog";
+  dialog.innerHTML = `
+    <div class="dialog-header">
+      <h2 class="dialog-title">${scheduleId ? "Edit" : "New"} custody week template</h2>
+      <button class="icon-button" id="closeSched" aria-label="Close">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+      <label style="font-size:13px;font-weight:600;">Template name
+        <input type="text" id="schedNameInput" placeholder="e.g. Week A - Bart's week" maxlength="60"
+          style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--surface-page);color:var(--ink);">
+      </label>
+      <label style="font-size:13px;font-weight:600;">Repeats every
+        <select id="schedRepeatSelect" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--surface-page);color:var(--ink);">
+          <option value="1">1 week</option>
+          <option value="2" selected>2 weeks</option>
+          <option value="3">3 weeks</option>
+          <option value="4">4 weeks</option>
+        </select>
+      </label>
+      <label style="font-size:13px;font-weight:600;">First week starts on
+        <input type="date" id="schedAnchorInput"
+          style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--surface-page);color:var(--ink);"
+          value="${new Date().toISOString().slice(0, 10)}">
+      </label>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Color</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="schedColorRow">
+          ${COLORS.map((c) => `<button type="button" data-color="${c}" style="width:24px;height:24px;border-radius:50%;background:${c};border:2px solid transparent;cursor:pointer;" aria-label="${c}"></button>`).join("")}
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px;">
+        <button class="primary-button" id="saveSchedBtn" style="flex:1;">Save template</button>
+        <button class="secondary-button" id="cancelSchedBtn">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  dialog.showModal();
+
+  let selectedColor = COLORS[0];
+  dialog.querySelectorAll("[data-color]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedColor = btn.dataset.color;
+      dialog.querySelectorAll("[data-color]").forEach((b) => b.style.borderColor = "transparent");
+      btn.style.borderColor = "#111";
+    });
+  });
+  // Select first color by default
+  dialog.querySelector(`[data-color="${selectedColor}"]`).style.borderColor = "#111";
+
+  dialog.querySelector("#closeSched").addEventListener("click", () => dialog.close());
+  dialog.querySelector("#cancelSchedBtn").addEventListener("click", () => dialog.close());
+
+  dialog.querySelector("#saveSchedBtn").addEventListener("click", async () => {
+    const name = dialog.querySelector("#schedNameInput").value.trim();
+    if (!name) { showFeatureToast("Enter a template name"); return; }
+    const repeatEveryWeeks = Number(dialog.querySelector("#schedRepeatSelect").value) || 2;
+    const anchorDate = dialog.querySelector("#schedAnchorInput").value;
+    if (!anchorDate) { showFeatureToast("Pick a start date"); return; }
+
+    const btn = dialog.querySelector("#saveSchedBtn");
+    btn.disabled = true; btn.textContent = "Saving...";
+
+    const saved = await window.saveSchedule?.({
+      id: scheduleId || undefined,
+      name,
+      color: selectedColor,
+      repeatEveryWeeks,
+      anchorDate,
+    });
+
+    dialog.close();
+    if (saved) {
+      showFeatureToast("Template saved");
+      renderScheduleTemplates();
+    } else {
+      showFeatureToast("Save failed - check Supabase DB migration for schedules table");
+    }
+  });
+}
+
+function openCascadeDialog(scheduleId, scheduleName) {
+  document.getElementById("cascadeDialog")?.remove();
+  const dialog = document.createElement("dialog");
+  dialog.id = "cascadeDialog";
+  dialog.className = "card-dialog";
+
+  const today = new Date();
+  // Find the Monday of this week
+  const dayOfWeek = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  const mondayStr = monday.toISOString().slice(0, 10);
+
+  dialog.innerHTML = `
+    <div class="dialog-header">
+      <h2 class="dialog-title">Move "${escapeHtml(scheduleName)}" week</h2>
+      <button class="icon-button" id="closeCascade" aria-label="Close">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+      <label style="font-size:13px;font-weight:600;">Week to move (Monday)
+        <input type="date" id="cascadeWeekInput" value="${mondayStr}"
+          style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--surface-page);color:var(--ink);">
+      </label>
+      <label style="font-size:13px;font-weight:600;">Shift by
+        <select id="cascadeDeltaSelect" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--surface-page);color:var(--ink);">
+          <option value="-14">-2 weeks</option>
+          <option value="-7">-1 week</option>
+          <option value="7" selected>+1 week</option>
+          <option value="14">+2 weeks</option>
+        </select>
+      </label>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Apply to</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;cursor:pointer;">
+          <input type="radio" name="cascadeMode" value="this" checked> Just this week
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="cascadeMode" value="all"> This week and all future occurrences
+        </label>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px;">
+        <button class="primary-button" id="runCascadeBtn" style="flex:1;">Move all cards</button>
+        <button class="secondary-button" id="cancelCascadeBtn">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  dialog.showModal();
+
+  dialog.querySelector("#closeCascade").addEventListener("click", () => dialog.close());
+  dialog.querySelector("#cancelCascadeBtn").addEventListener("click", () => dialog.close());
+
+  dialog.querySelector("#runCascadeBtn").addEventListener("click", async () => {
+    const weekStart = dialog.querySelector("#cascadeWeekInput").value;
+    const deltaDays = Number(dialog.querySelector("#cascadeDeltaSelect").value) || 7;
+    const mode = dialog.querySelector("input[name='cascadeMode']:checked")?.value || "this";
+
+    if (!weekStart) { showFeatureToast("Pick a week"); return; }
+
+    const btn = dialog.querySelector("#runCascadeBtn");
+    btn.disabled = true; btn.textContent = "Moving...";
+
+    const result = await window.cascadeSchedule?.({ scheduleId, weekStart, deltaDays, mode });
+    dialog.close();
+    const moved = result?.moved || 0;
+    showFeatureToast(moved > 0
+      ? `Moved ${moved} card${moved === 1 ? "" : "s"} by ${deltaDays > 0 ? "+" : ""}${deltaDays} days`
+      : "No cards found in that week for this template"
+    );
+  });
 }
 
 async function renderSubscriptionPanel() {
