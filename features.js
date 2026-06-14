@@ -952,8 +952,8 @@ function openCustodyScheduleDialog() {
               <span>My schedule starts</span>
               <input type="date" id="schedRefDate" value="${dlgState.working.referenceDate || toCalendarKey(new Date())}" />
             </label>
-            ${buildSwatchRow("myColor", "My days colour")}
-            ${buildSwatchRow("coColor", "Co-parent days colour")}
+            ${buildSwatchRow("myColor", "My days colour (your view only)")}
+            ${buildSwatchRow("coColor", "Co-parent days colour (your view only)")}
           </div>
           ${buildMonthCalHTML()}
           <div id="schedDayPanel">${buildDayPanel()}</div>
@@ -1290,26 +1290,12 @@ window.renderCalendarFeature = renderCalendarFeature;
 window.syncCalendarEventsFromCards = syncCalendarEventsFromCards;
 
 function bindCustodySettings() {
-  const save = () => {
-    const schedule = {
-      enabled: featureModule.querySelector("#custodyEnabledToggle")?.checked || false,
-      type: featureModule.querySelector("#custodyType")?.value || "7-7",
-      referenceDate: featureModule.querySelector("#custodyReferenceDate")?.value || new Date().toISOString().slice(0, 10),
-      myColor: getCustodySchedule().myColor,
-      coColor: getCustodySchedule().coColor,
-    };
-    saveCustodySchedule(schedule);
-    showFeatureToast("Parenting schedule saved");
-  };
-
-  // Toggle, type, date changes - auto-save
-  featureModule.querySelector("#custodyEnabledToggle")?.addEventListener("change", save);
-  featureModule.querySelector("#custodyType")?.addEventListener("change", (e) => {
-    const refRow = featureModule.querySelector("#custodyRefDateRow");
-    if (refRow) refRow.style.display = e.target.value === "5-2" ? "none" : "";
-    save();
+  // Enabled toggle - auto-save immediately
+  featureModule.querySelector("#custodyEnabledToggle")?.addEventListener("change", (e) => {
+    const current = getCustodySchedule();
+    saveCustodySchedule({ ...current, enabled: e.target.checked });
+    showFeatureToast(e.target.checked ? "Custody calendar enabled" : "Custody calendar disabled");
   });
-  featureModule.querySelector("#custodyReferenceDate")?.addEventListener("change", save);
 
   // Divorced toggle
   featureModule.querySelector("#divorcedToggle")?.addEventListener("change", (e) => {
@@ -1321,26 +1307,6 @@ function bindCustodySettings() {
   featureModule.querySelector("#openSchedEditorFromSettings")?.addEventListener("click", () => openCustodyScheduleDialog());
   featureModule.querySelector("#openVacationsFromSettings")?.addEventListener("click", () => openVacationsDialog());
 
-  // Color swatches
-  featureModule.querySelectorAll(".custody-color-swatches").forEach((group) => {
-    group.querySelectorAll(".custody-swatch").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const target = group.dataset.custodyTarget; // "myColor" or "coColor"
-        const color = btn.dataset.custodyColor;
-        // Update active state visually
-        group.querySelectorAll(".custody-swatch").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        // Save with the new color
-        const current = getCustodySchedule();
-        current[target] = color;
-        current.enabled = featureModule.querySelector("#custodyEnabledToggle")?.checked || false;
-        current.type = featureModule.querySelector("#custodyType")?.value || current.type;
-        current.referenceDate = featureModule.querySelector("#custodyReferenceDate")?.value || current.referenceDate;
-        saveCustodySchedule(current);
-        showFeatureToast("Colour updated");
-      });
-    });
-  });
 }
 
 function bindAutomationSettings() {
@@ -3895,16 +3861,32 @@ function openVacationsDialog(editId = null) {
 
 function _buildVacRangeCalHTML(vState, vacations) {
   const { viewYear, viewMonth, rangeStart, rangeEnd, editingId } = vState;
-  const today = new Date();
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const weekStart = parseInt(localStorage.getItem("do-do-week-start") || "1");
-  // Day letter headers rotated from weekStart
   const allDayLetters = ["S","M","T","W","T","F","S"];
   const headerLetters = Array.from({ length: 7 }, (_, i) => allDayLetters[(i + weekStart) % 7]);
 
   const firstDay = new Date(viewYear, viewMonth, 1);
   const startDow = (firstDay.getDay() - weekStart + 7) % 7;
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const todayStr = toCalendarKey(new Date());
+
+  // Get custody schedule for coloring days
+  const cs = getCustodySchedule();
+  function _vacGetOwner(dateStr) {
+    const ov = (cs.overrides || {})[dateStr];
+    if (ov === "mine" || ov === "co") return ov;
+    if (ov && ov.type === "split") return "split";
+    if (!cs.referenceDate || !cs.enabled) return null;
+    const d = parseCalendarKey(dateStr);
+    const ref = new Date(cs.referenceDate + "T00:00:00");
+    const diff = Math.round((d - ref) / 86400000);
+    const t = cs.type || "7-7";
+    if (t === "7-7") return ((Math.floor(diff / 7) % 2) + 2) % 2 === 0 ? "mine" : "co";
+    if (t === "2-2-3") { const p = ((diff % 14) + 14) % 14; return p <= 1 ? "mine" : p <= 3 ? "co" : "mine"; }
+    if (t === "5-2") { const dow = d.getDay(); return (dow === 0 || dow === 6) ? "co" : "mine"; }
+    return null;
+  }
 
   let cells = "";
   let dayNum = 1;
@@ -3915,18 +3897,21 @@ function _buildVacRangeCalHTML(vState, vacations) {
       if (ci < startDow || dayNum > daysInMonth) { cells += "<td></td>"; }
       else {
         const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-        const isToday = new Date(viewYear, viewMonth, dayNum).toDateString() === today.toDateString();
         const isStart = dateStr === rangeStart;
         const isEnd = dateStr === rangeEnd;
-        const isHovering = rangeStart && !rangeEnd && dateStr === rangeStart;
         const inRange = rangeStart && rangeEnd && dateStr > rangeStart && dateStr < rangeEnd;
         const existingVac = vacations.find((v) => v.id !== editingId && dateStr >= v.startDate && dateStr <= v.endDate);
-        let cls = "mc-day vac-range-day";
-        if (isToday) cls += " mc-today";
-        if (isStart || isEnd) cls += " mc-selected vac-ep";
-        if (inRange) cls += " vac-in-range";
+        const owner = _vacGetOwner(dateStr);
+        let cls = "sched-day-btn";
+        if (owner === "mine") cls += " sched-mine";
+        else if (owner === "co") cls += " sched-co";
+        else if (owner === "split") cls += " sched-split";
+        if (dateStr === todayStr) cls += " sched-today";
+        if (isStart) cls += " sched-selected vac-range-start";
+        else if (isEnd) cls += " sched-selected vac-range-end";
+        else if (inRange) cls += " vac-range-in";
         if (existingVac) cls += " vac-existing-day";
-        cells += `<td${inRange ? ' class="vac-in-range-cell"' : ""}><button class="${cls}" type="button" data-vac-date="${dateStr}">${dayNum}</button></td>`;
+        cells += `<td${inRange ? ' class="vac-range-in-cell"' : ""}><button class="${cls}" type="button" data-vac-date="${dateStr}">${dayNum}</button></td>`;
         dayNum++;
       }
     }
@@ -3934,17 +3919,20 @@ function _buildVacRangeCalHTML(vState, vacations) {
     if (dayNum > daysInMonth) break;
   }
 
+  const rangeHint = rangeStart && !rangeEnd ? `<span class="sched-sel-count">Now tap the end date</span>` : rangeStart && rangeEnd ? `<span class="sched-sel-count">${rangeStart} to ${rangeEnd}</span>` : `<span class="sched-sel-count">Tap the first day of the vacation</span>`;
+
   return `
-    <div class="vac-range-cal">
+    <div class="sched-month-cal">
       <div class="mc-header">
         <button class="mc-nav" type="button" id="vacCalPrev">&#8249;</button>
         <span class="mc-month-label">${monthNames[viewMonth]} ${viewYear}</span>
         <button class="mc-nav" type="button" id="vacCalNext">&#8250;</button>
       </div>
-      <table class="mc-grid">
+      <table class="sched-cal-table">
         <thead><tr>${headerLetters.map((d) => `<th>${d}</th>`).join("")}</tr></thead>
         <tbody>${cells}</tbody>
       </table>
+      ${rangeHint}
     </div>`;
 }
 
@@ -4353,15 +4341,6 @@ function renderSpecialPanel(moduleName, part = "all") {
     return `
       ${part === "all" || part === "custody" ? (() => {
         const cs = getCustodySchedule();
-        const swatchRow = (target, currentColor, label) => `
-          <div class="settings-select-row">
-            <span>
-              <strong>${label}</strong>
-            </span>
-            <div class="custody-color-swatches" data-custody-target="${target}">
-              ${CUSTODY_COLORS.map(c => `<button type="button" class="custody-swatch${cs[target] === c.value ? " active" : ""}" data-custody-color="${c.value}" style="background:${c.value};" title="${c.label}" aria-label="${c.label}"></button>`).join("")}
-            </div>
-          </div>`;
         const _ct = window.t || ((k) => k);
         return `
         <section class="feature-panel custody-settings">
@@ -4382,32 +4361,12 @@ function renderSpecialPanel(moduleName, part = "all") {
               </span>
               <input type="checkbox" id="divorcedToggle" ${isDivorced() ? "checked" : ""} />
             </label>
-            <label class="settings-select-row">
-              <span>
-                <strong>${_ct("custody.type")}</strong>
-                <em>${_ct("custody.type_hint")}</em>
-              </span>
-              <select id="custodyType">
-                <option value="7-7" ${cs.type === "7-7" ? "selected" : ""}>${_ct("custody.7_7")}</option>
-                <option value="2-2-3" ${cs.type === "2-2-3" ? "selected" : ""}>${_ct("custody.2_2_3")}</option>
-                <option value="5-2" ${cs.type === "5-2" ? "selected" : ""}>${_ct("custody.5_2")}</option>
-              </select>
-            </label>
-            <label class="settings-select-row" id="custodyRefDateRow" ${cs.type === "5-2" ? 'style="display:none"' : ""}>
-              <span>
-                <strong>${_ct("custody.starts")}</strong>
-                <em>${_ct("custody.starts_hint")}</em>
-              </span>
-              <input type="date" id="custodyReferenceDate" value="${cs.referenceDate || new Date().toISOString().slice(0,10)}" style="max-width:160px;" />
-            </label>
-            ${swatchRow("myColor", cs.myColor, _ct("custody.my_color"))}
-            ${swatchRow("coColor", cs.coColor, _ct("custody.co_color"))}
             <div class="settings-select-row sched-settings-buttons">
-              <span><strong>Parenting schedule</strong><em>Edit the full month calendar and handover times.</em></span>
+              <span><strong>Parenting schedule</strong><em>Set pattern, colours, and day-by-day overrides.</em></span>
               <button class="ghost-button sched-settings-open-btn" type="button" id="openSchedEditorFromSettings">Edit schedule</button>
             </div>
             <div class="settings-select-row sched-settings-buttons">
-              <span><strong>Vacation schedules</strong><em>Add vacation periods with a different custody split.</em></span>
+              <span><strong>Vacation schedules</strong><em>Add periods with a different custody split.</em></span>
               <button class="ghost-button sched-settings-open-btn" type="button" id="openVacationsFromSettings">Manage vacations</button>
             </div>
           </div>

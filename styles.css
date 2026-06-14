@@ -9457,6 +9457,25 @@ html[data-theme="dark"] .change-request-card {
 }
 .sched-clear-schedule-btn:hover { opacity: 1; }
 
+/* Vacation range picking on the shared calendar */
+.sched-day-btn.vac-range-start,
+.sched-day-btn.vac-range-end {
+  outline: 3px solid var(--accent, #2196f3);
+  outline-offset: 1px;
+}
+.sched-day-btn.vac-range-in {
+  opacity: 0.65;
+  outline: 2px dashed var(--accent, #2196f3);
+  outline-offset: 1px;
+}
+td.vac-range-in-cell {
+  background: color-mix(in srgb, var(--accent, #2196f3) 8%, transparent);
+}
+.sched-day-btn.vac-existing-day {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ─── SEG-13: Guest preview (read-only invite, no account) ─────────────────── */
 
 .guest-preview-link {
