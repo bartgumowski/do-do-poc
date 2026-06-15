@@ -6,7 +6,8 @@
   "outputDirectory": ".",
   "rewrites": [
     { "source": "/invite/:token", "destination": "/index.html" },
-    { "source": "/pay/:intent", "destination": "/api/expense-pay?intent=:intent" }
+    { "source": "/pay/:intent", "destination": "/api/expense-pay?intent=:intent" },
+    { "source": "/mediator/:code", "destination": "/mediator.html" }
   ],
   "headers": [
     {

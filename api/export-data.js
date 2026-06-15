@@ -2,6 +2,9 @@
 // GDPR data portability: exports all personal data for the requesting user as JSON.
 // GET with Authorization: Bearer <jwt>
 // Returns: JSON file download containing profile, cards, messages, shopping, expenses
+//
+// SEG-11.1 legal-export: action=legal-export - structured JSON for client-side PDF generation
+// SEG-11.2 history-stats: action=history-stats - pair activity stats for shared history panel
 
 const { createClient } = require("@supabase/supabase-js");
 
@@ -26,6 +29,158 @@ module.exports = async function handler(req, res) {
   if (authErr || !user) return res.status(401).json({ error: "Invalid token" });
 
   const userId = user.id;
+
+  // ─── SEG-11.1: Legal export ──────────────────────────────────────────────────
+  if (action === "legal-export") {
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("display_name, first_name, pair_id, family_id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const pairId = profile?.pair_id;
+      if (!pairId) return res.status(400).json({ error: "No pair found" });
+
+      // Fetch co-parent profile
+      const { data: pairRow } = await supabaseAdmin
+        .from("pairs")
+        .select("parent_a, parent_b, created_at")
+        .eq("id", pairId)
+        .maybeSingle();
+
+      const coParentId = pairRow?.parent_a === userId ? pairRow?.parent_b : pairRow?.parent_a;
+      let coParentName = null;
+      if (coParentId) {
+        const { data: cp } = await supabaseAdmin
+          .from("profiles")
+          .select("display_name, first_name")
+          .eq("id", coParentId)
+          .maybeSingle();
+        coParentName = cp?.display_name || cp?.first_name || null;
+      }
+
+      // All cards for this pair - include edit_history
+      const { data: cards } = await supabaseAdmin
+        .from("unified_cards")
+        .select("id, title, body, card_type, topic, status, assigned_to, child_label, due_at, amount, payment_status, payment_amount, payment_paid_at, receipt_url, created_at, updated_at, edit_history")
+        .eq("pair_id", pairId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+
+      // All messages for this pair
+      const { data: messages } = await supabaseAdmin
+        .from("messages_v2")
+        .select("id, topic, body, card_id, sender_id, created_at")
+        .eq("pair_id", pairId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+
+      // Profiles map for sender name resolution
+      const profileMap = {};
+      profileMap[userId] = profile?.display_name || profile?.first_name || "Parent A";
+      if (coParentId && coParentName) profileMap[coParentId] = coParentName;
+
+      const now = new Date().toISOString();
+
+      return res.status(200).json({
+        format: "do-do-legal-export-v1",
+        generated_at: now,
+        tamper_note: "Records are server-timestamped. Neither party can retroactively edit records created by the other party. Editing history is preserved.",
+        pair: {
+          id: pairId,
+          pair_start: pairRow?.created_at || null,
+          parent_a: profileMap[pairRow?.parent_a] || "Parent A",
+          parent_b: profileMap[pairRow?.parent_b] || "Parent B",
+        },
+        requesting_user: profileMap[userId],
+        cards: (cards || []).map((c) => ({
+          id: c.id,
+          title: c.title,
+          type: c.card_type,
+          topic: c.topic,
+          status: c.status,
+          assigned_to: c.assigned_to,
+          child: c.child_label,
+          due: c.due_at,
+          amount: c.amount,
+          payment_status: c.payment_status,
+          payment_amount: c.payment_amount,
+          payment_paid_at: c.payment_paid_at,
+          receipt_url: c.receipt_url,
+          details: c.body,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          edit_history: c.edit_history || [],
+        })),
+        messages: (messages || []).map((m) => ({
+          id: m.id,
+          topic: m.topic,
+          body: m.body,
+          card_id: m.card_id,
+          sender: profileMap[m.sender_id] || "Parent",
+          sent_at: m.created_at,
+        })),
+      });
+    } catch (err) {
+      console.error("legal-export error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // ─── SEG-11.2: History stats ──────────────────────────────────────────────────
+  if (action === "history-stats") {
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("pair_id, display_name, first_name")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const pairId = profile?.pair_id;
+      if (!pairId) return res.status(200).json({ daysSinceFirst: 0, totalCards: 0, totalExpenses: 0, totalAmount: 0, receiptCount: 0, firstCardDate: null });
+
+      // All cards stats
+      const { data: cards } = await supabaseAdmin
+        .from("unified_cards")
+        .select("id, card_type, amount, receipt_url, created_at")
+        .eq("pair_id", pairId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+
+      const all = cards || [];
+      const firstCard = all[0];
+      const daysSinceFirst = firstCard
+        ? Math.floor((Date.now() - new Date(firstCard.created_at).getTime()) / 86400000)
+        : 0;
+
+      const expenses = all.filter((c) => c.card_type === "Expense" || c.card_type === "expense");
+      const parseAmt = (v) => Number(String(v || "").replace(/[^\d.,-]/g, "").replace(",", ".")) || 0;
+      const totalAmount = expenses.reduce((s, c) => s + parseAmt(c.amount), 0);
+      const receiptCount = all.filter((c) => c.receipt_url).length;
+
+      // Per-user card counts
+      const { data: myCards } = await supabaseAdmin
+        .from("unified_cards")
+        .select("id")
+        .eq("pair_id", pairId)
+        .eq("created_by", userId)
+        .is("deleted_at", null);
+
+      return res.status(200).json({
+        daysSinceFirst,
+        totalCards: all.length,
+        myCards: (myCards || []).length,
+        totalExpenses: expenses.length,
+        totalAmount,
+        receiptCount,
+        firstCardDate: firstCard?.created_at || null,
+      });
+    } catch (err) {
+      console.error("history-stats error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  }
 
   // ─── SEG-16: Expense export routes ───────────────────────────────────────────
   if (action === "expenses" || action === "expenses-csv") {

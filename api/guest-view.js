@@ -3,6 +3,9 @@
 // GET ?token=<invite_token>
 // Returns a sanitized snapshot: inviter name, children names, recent cards
 // (limited fields only - no bodies, no messages, no receipts, no IDs).
+//
+// SEG-11.3: Also handles mediator stats page
+// GET ?type=mediator&code=<code>
 
 const { createClient } = require("@supabase/supabase-js");
 
@@ -17,6 +20,60 @@ module.exports = async function handler(req, res) {
   }
 
   res.setHeader("Cache-Control", "no-store");
+
+  // ─── SEG-11.3: Mediator stats (no auth) ──────────────────────────────────────
+  if (req.query.type === "mediator") {
+    const code = (req.query.code || "").trim();
+    if (!code || code.length < 6 || !/^[A-Za-z0-9_-]+$/.test(code)) {
+      return res.status(404).json({ error: "invalid_code" });
+    }
+    try {
+      // Find all pairs referred by this mediator code
+      const { data: pairs } = await supabaseAdmin
+        .from("pairs")
+        .select("id, created_at, parent_a, parent_b")
+        .eq("mediator_code", code);
+
+      const referred = (pairs || []).length;
+      if (referred === 0) {
+        return res.status(200).json({ referred: 0, bothActive: 0, avgDays: 0, code });
+      }
+
+      // For each pair, check if both parents have activity (cards created) in last 14 days
+      const pairIds = pairs.map((p) => p.id);
+      const cutoff = new Date(Date.now() - 14 * 86400000).toISOString();
+
+      const { data: recentCards } = await supabaseAdmin
+        .from("unified_cards")
+        .select("pair_id, created_by")
+        .in("pair_id", pairIds)
+        .gte("created_at", cutoff)
+        .is("deleted_at", null);
+
+      // Group active users per pair
+      const activePairUsers = {};
+      (recentCards || []).forEach((c) => {
+        if (!activePairUsers[c.pair_id]) activePairUsers[c.pair_id] = new Set();
+        activePairUsers[c.pair_id].add(c.created_by);
+      });
+
+      let bothActive = 0;
+      let totalDays = 0;
+      pairs.forEach((p) => {
+        const activeUsers = activePairUsers[p.id]?.size || 0;
+        if (activeUsers >= 2) bothActive++;
+        totalDays += Math.floor((Date.now() - new Date(p.created_at).getTime()) / 86400000);
+      });
+
+      const avgDays = Math.round(totalDays / referred);
+
+      return res.status(200).json({ referred, bothActive, avgDays, code });
+    } catch (err) {
+      console.error("mediator-stats error:", err.message);
+      return res.status(500).json({ error: "server_error" });
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const token = (req.query.token || "").trim();
   // Tokens are UUIDs / long random strings - reject anything short or odd early

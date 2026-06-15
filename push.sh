@@ -2,7 +2,7 @@
 set -e
 cd "$(dirname "$0")"
 find .git -name "*.lock" -delete 2>/dev/null || true
-git add app.js features.js styles.css i18n.js
-git commit -m "fix: sync strip uses system button style, Polish 'Nowe zadanie' -> 'Dodaj Do' everywhere v0.10.2"
+git add app.js features.js i18n.js index.html
+git commit -m "fix: rename przekaz.* i18n keys to handover.* and add missing translations v0.17.1"
 git push origin main
-echo "Pushed v0.10.2"
+echo "Pushed v0.17.1"
