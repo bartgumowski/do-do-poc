@@ -2,6 +2,21 @@
 
 ---
 
+## v0.25.1 - 2026-06-17 - Calendar right panel: tabbed sections
+
+The calendar's right panel now has four tabs replacing the old "Selected day" label. All schedule management is inline - no more separate dialogs.
+
+- **Agenda tab** - unchanged day view: events, custody strip, week overview
+- **Schedule tab** - full parenting schedule editor embedded directly in the panel. Includes the mini-calendar with color-coded days, owner chips (Mine / Co-parent / Split / Auto), split-day handover time, propagate controls, and Save/Request button. No dialog needed.
+- **Changes tab** - all change requests in one place (local + Supabase SCR cards), grouped into Pending and Resolved. Approve, decline, and remove from here. Badge shows the count of active requests.
+- **Vacations tab** - full vacation manager inline: existing vacation list, range-picker calendar, add/edit form with owner and alternating-week options. Badge shows vacation count.
+- Schedule and vacation panel state persists across calendar re-renders so you do not lose work mid-edit
+- After saving a vacation or schedule change in divorced mode, the app switches automatically to the Changes tab to confirm the request was sent
+- The old "Parenting schedule" and "Vacations" buttons in the toolbar row are removed - replaced by the tabs
+- The "Manage" link in the vacation banner (agenda tab) now switches to the Vacations tab instead of opening a dialog
+
+---
+
 ## v0.24.1 - 2026-06-17 - Caregivers section in Settings
 
 - Settings now has a unified "Caregivers" section replacing the separate "Your profile", "Co-parent", and "Caregivers" panels

@@ -1414,7 +1414,7 @@
     <div class="journey-icon bg-green">&#128337;</div>
     <div>
       <h3>Journey 8 - Set Up Custody Calendar</h3>
-      <p>Configuring the custody schedule, setting colors, adding a vacation override, and requesting a custody change.</p>
+      <p>Configuring the custody schedule, setting colors, adding a vacation override, and requesting a custody change. <em>Updated v0.25.1: all managed via inline right-panel tabs (Schedule / Vacations / Changes) - no dialogs.</em></p>
       <div class="journey-meta">
         <span class="journey-meta-pill">Frequency: setup once, occasional edits</span>
         <span class="journey-meta-pill">Complexity: medium-high</span>
@@ -1426,12 +1426,12 @@
     <div class="steps-scroll">
       <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle active">1</div><div class="step-label">Open Calendar</div><div class="step-sub">Module tab</div></div></div>
       <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">2</div><div class="step-label">See custody colours</div><div class="step-sub">Default 7-7 pattern shown</div></div></div>
-      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">3</div><div class="step-label">Open schedule settings</div><div class="step-sub">Custody dialog</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">3</div><div class="step-label">Tap Schedule tab</div><div class="step-sub">Inline editor in right panel</div></div></div>
       <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">4</div><div class="step-label">Choose pattern</div><div class="step-sub">7-7 / 2-2-3 / 5-2</div></div></div>
-      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">5</div><div class="step-label">Set reference date</div><div class="step-sub">When pattern starts</div></div></div>
-      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">6</div><div class="step-label">Choose colours</div><div class="step-sub">Mine vs co-parent</div></div></div>
-      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">7</div><div class="step-label">Add vacation</div><div class="step-sub">(optional) date range</div></div></div>
-      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">8</div><div class="step-label">Request swap</div><div class="step-sub">Tap day -> change request</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">5</div><div class="step-label">Set reference date &amp; colours</div><div class="step-sub">When pattern starts; mine vs co-parent</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">6</div><div class="step-label">Save schedule</div><div class="step-sub">Calendar updates instantly</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">7</div><div class="step-label">Tap Vacations tab</div><div class="step-sub">Pick date range inline</div></div></div>
+      <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle">8</div><div class="step-label">Tap Changes tab</div><div class="step-sub">View or create change requests</div></div></div>
       <div class="step"><div class="step-connector"></div><div class="step-inner"><div class="step-circle success">&#10003;</div><div class="step-label">Partner approves</div><div class="step-sub">Calendar updated</div></div></div>
     </div>
   </div>
@@ -1441,12 +1441,12 @@
       <div class="row-cells">
         <div class="row-cell"><span class="emotion">&#128522;</span>Clear visual on first open</div>
         <div class="row-cell"><span class="emotion">&#128064;</span>Unsure if defaults are correct</div>
-        <div class="row-cell"><span class="emotion">&#128528;</span>Finding the settings - not obvious</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Schedule tab visible immediately - no hunting</div>
         <div class="row-cell"><span class="emotion">&#128528;</span>Pattern options: "What is 2-2-3?"</div>
-        <div class="row-cell"><span class="emotion">&#128542;</span>Reference date concept confusing</div>
+        <div class="row-cell"><span class="emotion">&#128542;</span>Reference date concept still confusing</div>
         <div class="row-cell"><span class="emotion">&#128522;</span>Colour picking = fun, personal</div>
-        <div class="row-cell"><span class="emotion">&#128528;</span>Vacation overlays - process unclear</div>
-        <div class="row-cell"><span class="emotion">&#128528;</span>Swap request - "will this cause conflict?"</div>
+        <div class="row-cell"><span class="emotion">&#128522;</span>Vacation tab easy to find and use</div>
+        <div class="row-cell"><span class="emotion">&#128528;</span>Changes tab clear but "will partner see it quickly?"</div>
         <div class="row-cell"><span class="emotion">&#129321;</span>Approved = clarity and peace of mind</div>
       </div>
     </div>
@@ -1455,11 +1455,11 @@
       <div class="row-cells">
         <div class="row-cell"></div>
         <div class="row-cell"><span class="friction-item">No onboarding hint that custody is pre-set</span></div>
-        <div class="row-cell"><span class="friction-item">No visible "Edit custody" button on calendar view</span></div>
+        <div class="row-cell"><!-- RESOLVED v0.25.1: Schedule tab always visible in panel --></div>
         <div class="row-cell"><span class="friction-item">Pattern labels lack short descriptions</span></div>
-        <div class="row-cell"><span class="friction-item">"Reference date" needs explanation</span></div>
+        <div class="row-cell"><span class="friction-item">"Reference date" needs explanation tooltip</span></div>
         <div class="row-cell"></div>
-        <div class="row-cell"><span class="friction-item">Vacation entry UI not prominent</span></div>
+        <div class="row-cell"><!-- RESOLVED v0.25.1: Vacations tab prominent in panel --></div>
         <div class="row-cell"><span class="friction-item">Change request - partner may not see it quickly</span></div>
         <div class="row-cell"></div>
       </div>
@@ -1469,11 +1469,11 @@
       <div class="row-cells">
         <div class="row-cell"></div>
         <div class="row-cell"><span class="opportunity-item">Show "Is this your schedule?" prompt on first calendar open</span></div>
-        <div class="row-cell"><span class="opportunity-item">Edit pencil icon directly on calendar header</span></div>
+        <div class="row-cell"><!-- IMPLEMENTED v0.25.1: Schedule tab replaces toolbar button --></div>
         <div class="row-cell"><span class="opportunity-item">Add visual diagram per pattern (small calendar preview)</span></div>
         <div class="row-cell"><span class="opportunity-item">Tooltip: "The Monday your week with [child] starts"</span></div>
         <div class="row-cell"></div>
-        <div class="row-cell"></div>
+        <div class="row-cell"><!-- IMPLEMENTED v0.25.1: Vacations tab in panel --></div>
         <div class="row-cell"><span class="opportunity-item">Swap request sends push to co-parent immediately</span></div>
         <div class="row-cell"></div>
       </div>
@@ -1482,7 +1482,7 @@
   <div class="journey-summary">
     <div class="summary-block"><strong>Goal</strong>Custody schedule accurate, both parents aligned visually</div>
     <div class="summary-block"><strong>Emotional note</strong>Custody is a sensitive topic - language matters; avoid clinical terms</div>
-    <div class="summary-block"><strong>Quick win</strong>Add a tooltip explaining "reference date" and show a preview of the schedule before saving</div>
+    <div class="summary-block"><strong>v0.25.1 update</strong>Schedule, Vacations, and Changes now live in always-visible right-panel tabs - no modal dialogs. "Edit custody" and "Add vacation" friction points resolved. Remaining: tooltip for "reference date", pattern diagram previews.</div>
   </div>
 </div>
 

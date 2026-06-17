@@ -6125,8 +6125,9 @@ function renderSettingsFeature() {
         </div>
 
         <!-- Additional caregivers -->
-        <div class="cg-extra-header">
+        <div class="cg-extra-header" style="display:flex;align-items:center;justify-content:space-between;">
           <span style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;">Additional</span>
+          <button class="secondary-button" id="addCaregiverBtn2" style="font-size:12px;padding:4px 10px;min-height:28px;">${_st("settings.add_caregiver")}</button>
         </div>
         <div class="feature-items" id="caregiversList">
           ${caregivers.length
@@ -6329,6 +6330,7 @@ function renderSettingsFeature() {
   featureModule.querySelector("#addChildBtn")?.addEventListener("click", () => promptAddChild());
   featureModule.querySelector("#addPetBtn")?.addEventListener("click", () => promptAddPet());
   featureModule.querySelector("#addCaregiverBtn")?.addEventListener("click", () => showAddCaregiverForm());
+  featureModule.querySelector("#addCaregiverBtn2")?.addEventListener("click", () => showAddCaregiverForm());
 
   // Share Do-Do
   const SHARE_URL = "https://do-do.app";
