@@ -2,6 +2,14 @@
 
 ---
 
+## v0.24.1 - 2026-06-17 - Caregivers section in Settings
+
+- Settings now has a unified "Caregivers" section replacing the separate "Your profile", "Co-parent", and "Caregivers" panels
+- Both parents shown with their colored avatar, name, and inline color swatches - clicking a swatch updates the color immediately across the whole app
+- "Edit schedule" button now lives in the Caregivers section
+- Additional caregivers (grandma, nanny, etc.) listed below with existing add/edit/delete controls
+- Co-parent invite/status panel embedded in the co-parent row
+
 ## v0.23.5 - 2026-06-17 - Parent icon colors follow schedule colors
 
 - Parent A and parent B avatar icons (mini initials circles) now use the same colors the user picks for their custody schedule

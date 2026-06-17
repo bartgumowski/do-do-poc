@@ -203,6 +203,34 @@ const calendarState = {
   cursor: new Date(today.getFullYear(), today.getMonth(), 1),
   selected: toCalendarKey(today),
   events: buildCalendarEvents(today),
+  rightPanel: "agenda", // "agenda" | "schedule" | "changes" | "vacations"
+};
+
+// ---- Inline panel states (persist across renderCalendarFeature re-renders) ----
+let _panelSchedState = null;
+function _getSchedPanelState() {
+  if (!_panelSchedState) {
+    const cs = getCustodySchedule();
+    _panelSchedState = {
+      viewYear: new Date().getFullYear(),
+      viewMonth: new Date().getMonth(),
+      selectedDays: new Set(),
+      working: { ...cs, overrides: { ...(cs.overrides || {}) } },
+      changedDays: {},
+    };
+  }
+  return _panelSchedState;
+}
+function _resetSchedPanelState() { _panelSchedState = null; }
+
+const _panelVacState = {
+  editingId: null,
+  rangeStart: null,
+  rangeEnd: null,
+  viewYear: new Date().getFullYear(),
+  viewMonth: new Date().getMonth(),
+  weekStart: parseInt(localStorage.getItem("do-do-week-start") || "1"),
+  _editLoaded: false,
 };
 
 const featureData = {
@@ -1379,7 +1407,196 @@ async function createVacationChangeRequest(vacAction, vacData) {
   _notifyPartner("Do-Do: wniosek urlopowy", `Propozycja: ${actionLabel} (${vacData.startDate || ""} - ${vacData.endDate || ""})`);
 }
 
+// Create a holiday change-request record (divorced mode).
+// ONE local CR + ONE Supabase card per holiday action.
+async function createHolidayChangeRequest(holAction, holData) {
+  const existing = loadChangeRequests();
+  const cardId = "scr-hol-" + Date.now();
+  const cr = {
+    id: "cr-hol-" + Date.now(),
+    createdAt: new Date().toISOString(),
+    type: "holiday",
+    holAction,   // "add" | "update" | "delete"
+    holData,     // full holiday object
+    requestedDate: holData.startDate,
+    reason: "",
+    status: "pending",
+    supabaseCardId: cardId,
+  };
+  saveChangeRequests([...existing, cr]);
+
+  const actionLabel = holAction === "add" ? "nowe swieto" : holAction === "update" ? "zmiana swieta" : "usuniecie swieta";
+  await _saveScheduleRequestCard({
+    cardId,
+    title: `Wniosek: ${holData.name || "Swieto"} (${holData.startDate || ""} - ${holData.endDate || ""})`,
+    detailsTag: "__SCR_HOL__",
+    payload: { crId: cr.id, holAction, holData },
+  });
+  _notifyPartner("Do-Do: wniosek swiateczny", `Propozycja: ${actionLabel} - ${holData.name || ""} (${holData.startDate || ""} - ${holData.endDate || ""})`);
+}
+
+// Initial schedule setup wizard - a focused 2-step dialog separate from the day-editing dialog.
+// In divorced mode also sends a __SCR_SETUP__ card so co-parent sees the proposed pattern.
+function openScheduleSetupDialog() {
+  document.getElementById("scheduleSetupDialog")?.remove();
+  const setup = window.getOnboardingState?.() || {};
+  const coparentName = setup.parents?.coparent || "Co-parent";
+  const divorced = isDivorced();
+  const cs = getCustodySchedule();
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "scheduleSetupDialog";
+  dialog.className = "card-dialog custody-schedule-dialog sched-editor-dialog";
+  document.body.appendChild(dialog);
+
+  let step = 1;
+  let setupData = {
+    type: cs.type || "7-7",
+    referenceDate: cs.referenceDate || toCalendarKey(new Date()),
+    myColor: cs.myColor || "blue",
+    coColor: cs.coColor || "orange",
+  };
+
+  function render() {
+    const COLORS = ["blue","green","purple","orange","red","teal","pink","gray"];
+    const swatchRow = (key, label) => `
+      <label class="clean-field custody-dialog-field">
+        <span>${label}</span>
+        <div class="custody-color-swatches" data-custody-target="${key}">
+          ${COLORS.map((c) => `<button class="custody-swatch${setupData[key] === c ? " active" : ""}" type="button" data-custody-color="${c}" style="background:var(--custody-${c})">&nbsp;</button>`).join("")}
+        </div>
+      </label>`;
+
+    if (step === 1) {
+      dialog.innerHTML = `
+        <div class="dialog-content sched-editor-content">
+          <div class="dialog-header">
+            <div><p class="eyebrow">Step 1 of 2</p><h2>Set up parenting schedule</h2></div>
+            <button class="icon-button" type="button" id="closeSetupBtn" aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="custody-dialog-body sched-dialog-body">
+            <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">Choose how custody is shared. You can always fine-tune individual days afterward.</p>
+            <div class="custody-dialog-fields">
+              <label class="clean-field custody-dialog-field">
+                <span>Schedule pattern</span>
+                <select id="setupType">
+                  <option value="7-7"${setupData.type === "7-7" ? " selected" : ""}>Alternating weeks (7-7)</option>
+                  <option value="2-2-3"${setupData.type === "2-2-3" ? " selected" : ""}>2-2-3 rotation</option>
+                  <option value="5-2"${setupData.type === "5-2" ? " selected" : ""}>Weekdays / weekends split</option>
+                  <option value="manual"${setupData.type === "manual" ? " selected" : ""}>Manual (set each day)</option>
+                </select>
+              </label>
+              <label class="clean-field custody-dialog-field" id="setupRefRow"${(setupData.type === "5-2" || setupData.type === "manual") ? ' style="display:none"' : ""}>
+                <span>My first week starts on</span>
+                <input type="date" id="setupRefDate" value="${setupData.referenceDate}" />
+              </label>
+              ${swatchRow("myColor", "Your days colour")}
+              ${swatchRow("coColor", `${escapeHtml(coparentName)}'s days colour`)}
+            </div>
+            ${divorced ? `<div class="sched-divorced-notice" style="margin-top:12px;">Separated/divorced mode - this setup will be sent to ${escapeHtml(coparentName)} for review and stored for records.</div>` : ""}
+          </div>
+          <div class="dialog-actions">
+            <button class="ghost-button" type="button" id="cancelSetupBtn">Cancel</button>
+            <button class="primary-button" type="button" id="setupNextBtn">Next: confirm &rarr;</button>
+          </div>
+        </div>`;
+    } else {
+      // Step 2: summary + confirm
+      const typeLabel = { "7-7": "Alternating weeks (7-7)", "2-2-3": "2-2-3 rotation", "5-2": "Weekdays / weekends split", manual: "Manual" }[setupData.type] || setupData.type;
+      dialog.innerHTML = `
+        <div class="dialog-content sched-editor-content">
+          <div class="dialog-header">
+            <div><p class="eyebrow">Step 2 of 2</p><h2>Confirm schedule</h2></div>
+            <button class="icon-button" type="button" id="closeSetupBtn" aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="custody-dialog-body sched-dialog-body">
+            <div class="sched-summary-block" style="background:var(--surface-raised);border-radius:10px;padding:14px;margin-bottom:16px;">
+              <div style="margin-bottom:8px;font-size:14px;"><strong>Pattern:</strong> ${typeLabel}</div>
+              ${setupData.type !== "5-2" && setupData.type !== "manual" ? `<div style="margin-bottom:8px;font-size:14px;"><strong>Starts:</strong> ${setupData.referenceDate}</div>` : ""}
+              <div style="font-size:14px;"><strong>Colours:</strong>
+                <span style="background:var(--custody-${setupData.myColor});display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:middle;margin:0 4px;"></span>You &nbsp;/&nbsp;
+                <span style="background:var(--custody-${setupData.coColor});display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:middle;margin:0 4px;"></span>${escapeHtml(coparentName)}
+              </div>
+            </div>
+            ${divorced ? `<div class="sched-divorced-notice">This will be saved as a schedule-setup request visible to ${escapeHtml(coparentName)}.</div>` : ""}
+          </div>
+          <div class="dialog-actions">
+            <button class="ghost-button" type="button" id="setupBackBtn">&larr; Back</button>
+            <button class="primary-button" type="button" id="setupSaveBtn">${divorced ? "Send for review" : "Save schedule"}</button>
+          </div>
+        </div>`;
+    }
+    bindSetupEvents();
+  }
+
+  function bindSetupEvents() {
+    const close = () => { dialog.close(); dialog.remove(); };
+    dialog.querySelector("#closeSetupBtn").addEventListener("click", close);
+    dialog.addEventListener("click", (e) => { if (e.target === dialog) close(); });
+
+    if (step === 1) {
+      dialog.querySelector("#cancelSetupBtn").addEventListener("click", close);
+      dialog.querySelector("#setupType").addEventListener("change", (e) => {
+        setupData.type = e.target.value;
+        const refRow = dialog.querySelector("#setupRefRow");
+        if (refRow) refRow.style.display = (e.target.value === "5-2" || e.target.value === "manual") ? "none" : "";
+      });
+      dialog.querySelector("#setupRefDate")?.addEventListener("change", (e) => { setupData.referenceDate = e.target.value; });
+      dialog.querySelectorAll(".custody-color-swatches").forEach((group) => {
+        group.querySelectorAll(".custody-swatch").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            group.querySelectorAll(".custody-swatch").forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            setupData[group.dataset.custodyTarget] = btn.dataset.custodyColor;
+          });
+        });
+      });
+      dialog.querySelector("#setupNextBtn").addEventListener("click", () => {
+        setupData.type = dialog.querySelector("#setupType").value;
+        setupData.referenceDate = dialog.querySelector("#setupRefDate")?.value || setupData.referenceDate;
+        step = 2;
+        render();
+      });
+    } else {
+      dialog.querySelector("#setupBackBtn").addEventListener("click", () => { step = 1; render(); });
+      dialog.querySelector("#setupSaveBtn").addEventListener("click", async () => {
+        const current = getCustodySchedule();
+        const schedule = { ...current, enabled: true, type: setupData.type, referenceDate: setupData.referenceDate, myColor: setupData.myColor, coColor: setupData.coColor };
+        saveCustodySchedule(schedule);
+
+        if (divorced) {
+          const cardId = "scr-setup-" + Date.now();
+          await _saveScheduleRequestCard({
+            cardId,
+            title: `Konfiguracja harmonogramu: ${setupData.type}`,
+            detailsTag: "__SCR_SETUP__",
+            payload: { type: setupData.type, referenceDate: setupData.referenceDate },
+          });
+          _notifyPartner("Do-Do: nowy harmonogram opieki", `Wzorzec: ${setupData.type}, start: ${setupData.referenceDate}`);
+          showFeatureToast("Schedule setup sent for review");
+        } else {
+          showFeatureToast("Parenting schedule saved");
+        }
+
+        dialog.close(); dialog.remove();
+        if (featureModule && !featureModule.classList.contains("hidden")) {
+          const d = window._lastFeatureData;
+          if (d) renderCalendarFeature(d);
+        }
+      });
+    }
+  }
+
+  dialog.showModal();
+  render();
+}
+
 window.openCustodyScheduleDialog = openCustodyScheduleDialog;
+window.openScheduleSetupDialog = openScheduleSetupDialog;
 window.renderCalendarFeature = renderCalendarFeature;
 window.syncCalendarEventsFromCards = syncCalendarEventsFromCards;
 
@@ -1400,6 +1617,23 @@ function bindCustodySettings() {
   // Open schedule editor from settings
   featureModule.querySelector("#openSchedEditorFromSettings")?.addEventListener("click", () => openCustodyScheduleDialog());
   featureModule.querySelector("#openVacationsFromSettings")?.addEventListener("click", () => openVacationsDialog());
+
+  // Inline color swatches in the caregivers panel - immediate save on click
+  featureModule.querySelectorAll(".cg-swatches").forEach(group => {
+    group.querySelectorAll(".cg-swatch").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = group.dataset.cgColorTarget; // "myColor" or "coColor"
+        const color  = btn.dataset.custodyColor;
+        // Update active state in this swatch row
+        group.querySelectorAll(".cg-swatch").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        // Save immediately - this also calls applyCustodyColors() to update CSS vars + avatars
+        const current = getCustodySchedule();
+        saveCustodySchedule({ ...current, [target]: color });
+        showFeatureToast(target === "myColor" ? "Your colour updated" : "Co-parent colour updated");
+      });
+    });
+  });
 
 }
 
@@ -2945,6 +3179,339 @@ function renderMessage(initial, name, text, time, own, tags = []) {
   `;
 }
 
+// ── Inline panel render helpers ──────────────────────────────────────────────
+
+function _renderSchedulePanelHTML() {
+  const setup = window.getOnboardingState?.() || {};
+  const coparentName = setup.parents?.coparent || "Co-parent";
+  const myName = setup.parents?.primary || "Parent A";
+  const divorced = isDivorced();
+  const sp = _getSchedPanelState();
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const CUSTODY_COLORS_LOCAL = [
+    { value: "#6366f1", label: "Indigo" }, { value: "#22c55e", label: "Green" },
+    { value: "#f59e0b", label: "Amber" }, { value: "#ef4444", label: "Red" },
+    { value: "#3b82f6", label: "Blue" }, { value: "#ec4899", label: "Pink" },
+    { value: "#14b8a6", label: "Teal" }, { value: "#a855f7", label: "Purple" },
+  ];
+
+  function _spGetOwner(dateStr) {
+    const ov = (sp.working.overrides || {})[dateStr];
+    if (ov === "mine" || ov === "co") return ov;
+    if (ov && ov.type === "split") return "split";
+    if (!sp.working.referenceDate || !sp.working.enabled) return null;
+    const d = parseCalendarKey(dateStr);
+    const ref = new Date(sp.working.referenceDate + "T00:00:00");
+    const diff = Math.round((d - ref) / 86400000);
+    const t = sp.working.type || "7-7";
+    if (t === "7-7") return ((Math.floor(diff / 7) % 2) + 2) % 2 === 0 ? "mine" : "co";
+    if (t === "2-2-3") { const p = ((diff % 14) + 14) % 14; return p <= 1 ? "mine" : p <= 3 ? "co" : "mine"; }
+    if (t === "5-2") { const dow = d.getDay(); return (dow === 0 || dow === 6) ? "co" : "mine"; }
+    return null;
+  }
+
+  // Month calendar
+  const ws = parseInt(localStorage.getItem("do-do-week-start") || "1");
+  const letters = ["S","M","T","W","T","F","S"];
+  const headers = Array.from({ length: 7 }, (_, i) => letters[(i + ws) % 7]);
+  const firstDay = new Date(sp.viewYear, sp.viewMonth, 1);
+  const startDow = (firstDay.getDay() - ws + 7) % 7;
+  const daysInMonth = new Date(sp.viewYear, sp.viewMonth + 1, 0).getDate();
+  const todayStr = toCalendarKey(new Date());
+  let rows = "";
+  let dayNum = 1;
+  for (let r = 0; r < 6; r++) {
+    rows += "<tr>";
+    for (let c = 0; c < 7; c++) {
+      const ci = r * 7 + c;
+      if (ci < startDow || dayNum > daysInMonth) { rows += "<td></td>"; continue; }
+      const dateStr = `${sp.viewYear}-${String(sp.viewMonth + 1).padStart(2,"0")}-${String(dayNum).padStart(2,"0")}`;
+      const owner = _spGetOwner(dateStr);
+      const ov = (sp.working.overrides || {})[dateStr];
+      const isSplit = ov && ov.type === "split";
+      let cls = "sched-day-btn";
+      if (owner === "mine") cls += " sched-mine";
+      else if (owner === "co") cls += " sched-co";
+      else if (owner === "split") cls += " sched-split";
+      if (sp.selectedDays.has(dateStr)) cls += " sched-selected";
+      if (dateStr === todayStr) cls += " sched-today";
+      if (ov) cls += " sched-override";
+      if (divorced && dateStr in sp.changedDays) cls += " sched-pending";
+      rows += `<td><button class="${cls}" type="button" data-sp-date="${dateStr}">${dayNum}${isSplit ? '<span class="sched-split-dot">&#8596;</span>' : ""}</button></td>`;
+      dayNum++;
+    }
+    rows += "</tr>";
+    if (dayNum > daysInMonth) break;
+  }
+  const selCount = sp.selectedDays.size;
+  const selHint = selCount > 0 ? `<span class="sched-sel-count">${selCount} day${selCount > 1 ? "s" : ""} selected</span>` : "";
+
+  // Day chip panel
+  let dayPanelHtml = `<p class="sched-day-hint">Tap a day to set who has the children.</p>`;
+  if (sp.selectedDays.size > 0) {
+    let dayLabel = "";
+    let showSplit = false, splitTime = "12:00", splitMorning = "mine";
+    if (sp.selectedDays.size === 1) {
+      const ds = [...sp.selectedDays][0];
+      const d = parseCalendarKey(ds);
+      dayLabel = d.toLocaleDateString(_getDateLocale(), { weekday: "long", day: "numeric", month: "short" });
+      const ov2 = (sp.working.overrides || {})[ds];
+      showSplit = ov2 && ov2.type === "split";
+      if (showSplit) { splitTime = ov2.time || "12:00"; splitMorning = ov2.morning || "mine"; }
+    } else {
+      dayLabel = `${sp.selectedDays.size} days selected`;
+    }
+    const owners2 = [...sp.selectedDays].map(ds => _spGetOwner(ds));
+    const allSame = owners2.every(o => o === owners2[0]);
+    const sharedOwner = allSame ? owners2[0] : null;
+    dayPanelHtml = `
+      <div class="sched-day-panel">
+        <div class="sched-day-label">
+          ${dayLabel}
+          ${sp.selectedDays.size > 1 ? `<button class="sched-clear-sel" type="button" id="spClearSelBtn">Clear</button>` : ""}
+        </div>
+        <div class="sched-day-chips">
+          <button class="custody-chip${sharedOwner === "mine" ? " active" : ""}" type="button" data-sp-owner="mine">${myName}</button>
+          <button class="custody-chip${sharedOwner === "co" ? " active" : ""}" type="button" data-sp-owner="co">${coparentName}</button>
+          <button class="custody-chip${sharedOwner === "split" ? " active" : ""}" type="button" data-sp-owner="split">Split &#8596;</button>
+          <button class="custody-chip custody-chip-secondary" type="button" data-sp-owner="auto">Auto</button>
+        </div>
+        ${showSplit ? `
+          <div class="sched-handover-panel">
+            <label class="sched-handover-field"><span>Handover time</span><input type="time" id="spSplitTime" value="${splitTime}" /></label>
+            <label class="sched-handover-field"><span>Morning with</span>
+              <select id="spSplitMorning">
+                <option value="mine"${splitMorning === "mine" ? " selected" : ""}>${myName}</option>
+                <option value="co"${splitMorning === "co" ? " selected" : ""}>${coparentName}</option>
+              </select>
+            </label>
+          </div>` : ""}
+      </div>`;
+  }
+
+  // Color swatches helper
+  function swatchRow(target, label) {
+    const COLORS_REF = typeof CUSTODY_COLORS !== "undefined" ? CUSTODY_COLORS : CUSTODY_COLORS_LOCAL;
+    return `<div class="custody-dialog-swatch-row">
+      <span class="custody-dialog-swatch-label">${label}</span>
+      <div class="custody-color-swatches" data-sp-color-target="${target}">
+        ${COLORS_REF.map(c => `<button type="button" class="custody-swatch${sp.working[target] === c.value ? " active" : ""}" data-sp-color="${c.value}" style="background:${c.value};" title="${c.label}" aria-label="${c.label}"></button>`).join("")}
+      </div>
+    </div>`;
+  }
+
+  // Pending changes summary (divorced mode)
+  const pendingEntries = Object.entries(sp.changedDays);
+  const pendingHtml = (divorced && pendingEntries.length) ? `
+    <div class="sched-pending-section">
+      <strong>Proposed changes (${pendingEntries.length})</strong>
+      <ul class="sched-pending-list">${pendingEntries.map(([ds, ch]) => {
+        const lbl = ch.owner === "mine" ? myName : ch.owner === "co" ? coparentName : ch.owner === "split" ? "Split" : "Auto";
+        return `<li>${ds}: <strong>${lbl}</strong></li>`;
+      }).join("")}</ul>
+      <button class="custody-chip custody-chip-reset" type="button" id="spClearPendingBtn" style="margin-top:6px;font-size:11px;">Clear all</button>
+    </div>` : "";
+
+  const hasPending = divorced && pendingEntries.length > 0;
+  const saveLabel = hasPending ? "Request changes" : "Save schedule";
+  const showRefRow = sp.working.type !== "5-2" && sp.working.type !== "manual";
+
+  return `
+    <div class="cal-inline-panel-schedule">
+      <div class="custody-dialog-fields" style="margin-bottom:10px;">
+        <label class="clean-field custody-dialog-field">
+          <span>Show custody calendar</span>
+          <input type="checkbox" id="spEnabled" ${sp.working.enabled ? "checked" : ""} />
+        </label>
+        <label class="clean-field custody-dialog-field">
+          <span>Schedule pattern</span>
+          <select id="spType">
+            <option value="7-7"${sp.working.type === "7-7" ? " selected" : ""}>Alternating weeks (7-7)</option>
+            <option value="2-2-3"${sp.working.type === "2-2-3" ? " selected" : ""}>2-2-3 rotation</option>
+            <option value="5-2"${sp.working.type === "5-2" ? " selected" : ""}>Weekdays / weekends split</option>
+            <option value="manual"${sp.working.type === "manual" ? " selected" : ""}>Manual (set each day)</option>
+          </select>
+        </label>
+        <label class="clean-field custody-dialog-field" id="spRefRow"${showRefRow ? "" : ' style="display:none"'}>
+          <span>My schedule starts</span>
+          <input type="date" id="spRefDate" value="${sp.working.referenceDate || toCalendarKey(new Date())}" />
+        </label>
+        ${swatchRow("myColor", "My days colour")}
+        ${swatchRow("coColor", "Co-parent days colour")}
+      </div>
+      <div class="sched-month-cal">
+        <div class="mc-header">
+          <button class="mc-nav" type="button" id="spCalPrev">&#8249;</button>
+          <span class="mc-month-label">${MONTH_NAMES[sp.viewMonth]} ${sp.viewYear}</span>
+          <button class="mc-nav" type="button" id="spCalNext">&#8250;</button>
+        </div>
+        <table class="sched-cal-table">
+          <thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        ${selHint}
+      </div>
+      <div id="spDayPanel">${dayPanelHtml}</div>
+      ${divorced ? `<div class="sched-divorced-notice">Separated/divorced mode - schedule changes sent to ${escapeHtml(coparentName)} for approval.</div>` : ""}
+      ${pendingHtml}
+      <div class="sched-propagate-section">
+        <span class="sched-propagate-label">Propagate:</span>
+        <div class="sched-propagate-chips">
+          <button class="custody-chip" type="button" data-sp-propagate="this-week-all">This week - all weeks</button>
+          <button class="custody-chip" type="button" data-sp-propagate="3">3 months</button>
+          <button class="custody-chip" type="button" data-sp-propagate="6">6 months</button>
+          <button class="custody-chip" type="button" data-sp-propagate="12">Full year</button>
+        </div>
+      </div>
+      <div class="sched-panel-actions">
+        <button class="ghost-button sched-clear-schedule-btn" type="button" id="spClearSchedBtn">Clear entire schedule${divorced ? " (requires approval)" : ""}</button>
+        <button class="primary-button" type="button" id="spSaveBtn">${saveLabel}</button>
+      </div>
+    </div>`;
+}
+
+function _renderChangesPanelHTML() {
+  const allLocalCRs = loadChangeRequests();
+  const localLinkedCardIds = new Set(allLocalCRs.map(c => c.supabaseCardId).filter(Boolean));
+  const allScrCards = (typeof state !== "undefined" ? state.cards : [])
+    .filter(card => card.details?.startsWith("__SCR_") && !localLinkedCardIds.has(card.id));
+
+  const pendingCRs = allLocalCRs.filter(c => c.status === "pending");
+  const resolvedCRs = allLocalCRs.filter(c => c.status !== "pending");
+  const total = allLocalCRs.length + allScrCards.length;
+
+  if (total === 0) {
+    return `
+      <div class="cal-inline-panel-changes">
+        <p class="agenda-empty" style="margin-top:16px;">No change requests yet.</p>
+        <button class="custody-schedule-btn" type="button" id="changesNewRequestBtn" style="margin-top:12px;">&#8596; New change request</button>
+      </div>`;
+  }
+
+  const pendingSection = (pendingCRs.length || allScrCards.length) ? `
+    <div class="changes-section-label">Pending (${pendingCRs.length + allScrCards.length})</div>
+    ${pendingCRs.map(cr => renderChangeRequestAgendaItem(cr)).join("")}
+    ${allScrCards.map(card => renderScrCardAgendaItem(card)).join("")}` : "";
+
+  const resolvedSection = resolvedCRs.length ? `
+    <div class="changes-section-label" style="margin-top:16px;">Resolved (${resolvedCRs.length})</div>
+    ${resolvedCRs.map(cr => renderChangeRequestAgendaItem(cr)).join("")}` : "";
+
+  return `
+    <div class="cal-inline-panel-changes">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+        <button class="custody-schedule-btn" type="button" id="changesNewRequestBtn">&#8596; New request</button>
+      </div>
+      ${pendingSection}
+      ${resolvedSection}
+    </div>`;
+}
+
+function _renderVacationsPanelHTML() {
+  const setup = window.getOnboardingState?.() || {};
+  const coparentName = setup.parents?.coparent || "Co-parent";
+  const weekDayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const vp = _panelVacState;
+  const vacations = loadVacations();
+
+  // Pre-fill when entering edit mode
+  if (vp.editingId && !vp._editLoaded) {
+    const editing = vacations.find(v => v.id === vp.editingId);
+    if (editing) {
+      vp.rangeStart = editing.startDate;
+      vp.rangeEnd = editing.endDate;
+      vp.viewYear = parseInt(editing.startDate.slice(0, 4));
+      vp.viewMonth = parseInt(editing.startDate.slice(5, 7)) - 1;
+      vp._editLoaded = true;
+    }
+  }
+  if (!vp.editingId) vp._editLoaded = false;
+
+  const editing = vp.editingId ? vacations.find(v => v.id === vp.editingId) : null;
+  const editOwner = editing?.owner || "mine";
+  const editAltStart = editing?.alternatingStart || "mine";
+
+  const vacListHtml = vacations.length === 0
+    ? `<p class="vac-empty-msg">No vacation periods yet.</p>`
+    : vacations.map(v => {
+        const ownerLabel = v.owner === "mine" ? "Your days"
+          : v.owner === "co" ? `${escapeHtml(coparentName)}'s days`
+          : `Alternating (starts: ${v.alternatingStart === "mine" ? "you" : escapeHtml(coparentName)})`;
+        const isEdit = vp.editingId === v.id;
+        return `<div class="vacation-list-item${isEdit ? " vac-editing" : ""}">
+          <div class="vacation-list-info">
+            <strong>${escapeHtml(v.name || "Vacation")}</strong>
+            <span>${v.startDate} - ${v.endDate}</span>
+            <span class="vacation-list-owner">${ownerLabel}</span>
+          </div>
+          <div class="vac-item-actions">
+            <button class="vac-edit-btn${isEdit ? " active" : ""}" type="button" data-vp-edit="${v.id}" title="Edit">&#9998;</button>
+            <button class="custody-chip custody-chip-reset" type="button" data-vp-delete="${v.id}">Remove</button>
+          </div>
+        </div>`;
+      }).join("");
+
+  const rangeCalHtml = _buildVacRangeCalHTML({ ...vp, weekStart: vp.weekStart }, vacations)
+    .replace(/id="vacCalPrev"/g, 'id="vpCalPrev"')
+    .replace(/id="vacCalNext"/g, 'id="vpCalNext"')
+    .replace(/data-vac-date=/g, 'data-vp-date=')
+    .replace(/id="vacRangeClear"/g, 'id="vpRangeClear"');
+
+  const rangeDisplay = `
+    <div class="vac-range-display">
+      <span class="vac-range-label">From</span>
+      <span class="vac-range-val${vp.rangeStart ? "" : " placeholder"}">${vp.rangeStart || "tap a date"}</span>
+      <span class="vac-range-arrow">&#8594;</span>
+      <span class="vac-range-label">To</span>
+      <span class="vac-range-val${vp.rangeEnd ? "" : " placeholder"}">${vp.rangeEnd || (vp.rangeStart ? "tap end date" : "-")}</span>
+      ${vp.rangeStart ? `<button class="vac-range-clear-btn" type="button" id="vpRangeClear">&#10005;</button>` : ""}
+    </div>`;
+
+  const saveLabel = isDivorced() ? (vp.editingId ? "Request update" : "Request vacation") : (vp.editingId ? "Update vacation" : "Add vacation");
+
+  return `
+    <div class="cal-inline-panel-vacations">
+      ${isDivorced() ? `<div class="sched-divorced-notice" style="margin-bottom:10px;">Separated/divorced mode - vacation changes sent to ${escapeHtml(coparentName)} for approval.</div>` : ""}
+      <div id="vpVacationsList">${vacListHtml}</div>
+      <div class="vac-form-section">
+        <div class="vac-form-heading">${vp.editingId ? "Edit vacation" : "Add vacation"}</div>
+        ${rangeCalHtml}
+        ${rangeDisplay}
+        <label class="clean-field" style="margin-top:10px;">
+          <span>Name</span>
+          <input type="text" id="vpVacName" placeholder='e.g. "Summer 2026"' value="${escapeHtml(editing?.name || "")}" />
+        </label>
+        <label class="clean-field">
+          <span>Who has the kids?</span>
+          <select id="vpVacOwner">
+            <option value="mine"${editOwner === "mine" ? " selected" : ""}>Your days (whole period)</option>
+            <option value="co"${editOwner === "co" ? " selected" : ""}>${escapeHtml(coparentName)}'s days</option>
+            <option value="alternating"${editOwner === "alternating" ? " selected" : ""}>Alternating weeks</option>
+          </select>
+        </label>
+        <div id="vpAlternatingRows" class="${editOwner === "alternating" ? "" : "hidden"}">
+          <label class="clean-field">
+            <span>First week with</span>
+            <select id="vpAlternatingStart">
+              <option value="mine"${editAltStart === "mine" ? " selected" : ""}>You</option>
+              <option value="co"${editAltStart === "co" ? " selected" : ""}>${escapeHtml(coparentName)}</option>
+            </select>
+          </label>
+          <label class="clean-field">
+            <span>Week starts on</span>
+            <select id="vpWeekStartDay">
+              ${[1, 2, 3, 4, 5, 6, 0].map(d => `<option value="${d}"${vp.weekStart === d ? " selected" : ""}>${weekDayNames[d]}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+        <div class="vac-form-btns">
+          <button class="primary-button" type="button" id="vpSaveVacBtn">${saveLabel}</button>
+          ${vp.editingId ? `<button class="custody-chip custody-chip-reset" type="button" id="vpCancelVacEdit">Cancel</button>` : ""}
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderCalendarFeature(data) {
   window._lastFeatureData = data; // store for custody dialog refresh
   syncCalendarEventsFromCards();
@@ -3062,10 +3629,9 @@ function renderCalendarFeature(data) {
     <section class="calendar-agenda">
       <div class="agenda-heading">
         <div>
-          <span>${window.t?.("cal.selected_day") ?? "Selected day"}</span>
           <strong>${formatAgendaDate(selectedDate)}</strong>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        ${calendarState.rightPanel === "agenda" ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           ${(() => {
             const _spt = localStorage.getItem("do-do-show-personal-titles") === "true";
             return `<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;" title="Show titles from your personal calendar">
@@ -3077,21 +3643,40 @@ function renderCalendarFeature(data) {
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
             ${window.t?.("board.new_do") ?? "New Do"}
           </button>
-        </div>
+        </div>` : ""}
       </div>
-      ${weekOverview}
-      ${custodyStrip}
-      <div class="calendar-toolbar-row">
-        <button class="custody-schedule-btn" type="button" id="openCustodyDialogBtn" aria-label="Edit parenting schedule">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="14" height="14"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg>
-          ${custody.enabled ? (window.t?.("cal.parenting_schedule") ?? "Parenting schedule") : (window.t?.("cal.set_up_schedule") ?? "Set up parenting schedule")}
-        </button>
-        ${custody.enabled ? `<button class="custody-schedule-btn custody-vacations-btn" type="button" id="openVacationsBtn" aria-label="Manage vacations">✈ Vacations${loadVacations().length ? ` <span class="vac-count-badge">${loadVacations().length}</span>` : ""}</button>` : ""}
-      </div>
-      <div class="agenda-list">
-        ${selectedEvents.length
-          ? selectedEvents.map(renderAgendaCard).join("")
-          : `<article class="agenda-empty">${window.t?.("cal.no_dos") ?? "No Dos on this day."}</article>`}
+
+      <!-- Panel tab bar (replaces "Selected day" label) -->
+      ${(() => {
+        const allCRCount = loadChangeRequests().length + (typeof state !== "undefined" ? state.cards : []).filter(c => c.details?.startsWith("__SCR_")).length;
+        const vacCount = loadVacations().length;
+        const rp = calendarState.rightPanel;
+        return `<div class="cal-panel-tabs">
+          <button class="cal-panel-tab${rp === "agenda" ? " active" : ""}" type="button" data-cal-panel="agenda">Agenda</button>
+          <button class="cal-panel-tab${rp === "schedule" ? " active" : ""}" type="button" data-cal-panel="schedule">Schedule</button>
+          <button class="cal-panel-tab${rp === "changes" ? " active" : ""}" type="button" data-cal-panel="changes">
+            Changes${allCRCount ? `<span class="tab-badge">${allCRCount}</span>` : ""}
+          </button>
+          <button class="cal-panel-tab${rp === "vacations" ? " active" : ""}" type="button" data-cal-panel="vacations">
+            Vacations${vacCount ? `<span class="tab-badge">${vacCount}</span>` : ""}
+          </button>
+        </div>`;
+      })()}
+
+      <!-- Panel content -->
+      <div class="cal-panel-content">
+        ${calendarState.rightPanel === "agenda" ? `
+          ${weekOverview}
+          ${custodyStrip}
+          <div class="agenda-list">
+            ${selectedEvents.length
+              ? selectedEvents.map(renderAgendaCard).join("")
+              : `<article class="agenda-empty">${window.t?.("cal.no_dos") ?? "No Dos on this day."}</article>`}
+          </div>
+        ` : ""}
+        ${calendarState.rightPanel === "schedule" ? _renderSchedulePanelHTML() : ""}
+        ${calendarState.rightPanel === "changes" ? _renderChangesPanelHTML() : ""}
+        ${calendarState.rightPanel === "vacations" ? _renderVacationsPanelHTML() : ""}
       </div>
     </section>
     </div>
@@ -3187,8 +3772,15 @@ function renderCalendarFeature(data) {
     });
   });
 
-  // Open custody schedule dialog
-  featureModule.querySelector("#openCustodyDialogBtn")?.addEventListener("click", () => openCustodyScheduleDialog());
+  // Open custody schedule dialog - setup wizard when not yet configured, edit dialog when active
+  featureModule.querySelector("#openCustodyDialogBtn")?.addEventListener("click", () => {
+    const cs = getCustodySchedule();
+    if (!cs.enabled) {
+      openScheduleSetupDialog();
+    } else {
+      openCustodyScheduleDialog();
+    }
+  });
 
   // Custody day override chips
   featureModule.querySelectorAll("[data-custody-override]").forEach((btn) => {
@@ -3354,7 +3946,298 @@ function renderCalendarFeature(data) {
     });
   });
 
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  featureModule.querySelectorAll("[data-cal-panel]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      calendarState.rightPanel = btn.dataset.calPanel;
+      // Reset schedule panel working state when switching to schedule tab so it picks up latest saved schedule
+      if (btn.dataset.calPanel === "schedule") _resetSchedPanelState();
+      renderCalendarFeature(data);
+    });
+  });
+
+  // ── Schedule panel ────────────────────────────────────────────────────────
+  const sp = _getSchedPanelState();
+
+  featureModule.querySelector("#spCalPrev")?.addEventListener("click", () => {
+    _flushSpSplitInputs();
+    sp.selectedDays.clear();
+    sp.viewMonth--;
+    if (sp.viewMonth < 0) { sp.viewMonth = 11; sp.viewYear--; }
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelector("#spCalNext")?.addEventListener("click", () => {
+    _flushSpSplitInputs();
+    sp.selectedDays.clear();
+    sp.viewMonth++;
+    if (sp.viewMonth > 11) { sp.viewMonth = 0; sp.viewYear++; }
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelectorAll("[data-sp-date]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      _flushSpSplitInputs();
+      const ds = btn.dataset.spDate;
+      if (sp.selectedDays.has(ds)) sp.selectedDays.delete(ds);
+      else sp.selectedDays.add(ds);
+      renderCalendarFeature(data);
+    });
+  });
+
+  featureModule.querySelectorAll("[data-sp-owner]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (sp.selectedDays.size === 0) return;
+      const owner = btn.dataset.spOwner;
+      sp.selectedDays.forEach((ds) => {
+        if (owner === "split") {
+          const prev = sp.working.overrides[ds];
+          sp.working.overrides[ds] = { type: "split", time: prev?.time || "12:00", morning: prev?.morning || "mine" };
+          sp.changedDays[ds] = { owner: "split", prevOverride: getCustodySchedule().overrides?.[ds] || null };
+        } else if (owner === "auto") {
+          delete sp.working.overrides[ds];
+          sp.changedDays[ds] = { owner: "auto", prevOverride: getCustodySchedule().overrides?.[ds] || null };
+        } else {
+          sp.working.overrides[ds] = owner;
+          sp.changedDays[ds] = { owner, prevOverride: getCustodySchedule().overrides?.[ds] || null };
+        }
+      });
+      renderCalendarFeature(data);
+    });
+  });
+
+  featureModule.querySelector("#spClearSelBtn")?.addEventListener("click", () => {
+    _flushSpSplitInputs();
+    sp.selectedDays.clear();
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelector("#spEnabled")?.addEventListener("change", (e) => {
+    sp.working.enabled = e.target.checked;
+  });
+
+  featureModule.querySelector("#spType")?.addEventListener("change", (e) => {
+    sp.working.type = e.target.value;
+    const refRow = featureModule.querySelector("#spRefRow");
+    if (refRow) refRow.style.display = (e.target.value === "5-2" || e.target.value === "manual") ? "none" : "";
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelector("#spRefDate")?.addEventListener("change", (e) => {
+    sp.working.referenceDate = e.target.value;
+  });
+
+  featureModule.querySelectorAll(".custody-color-swatches[data-sp-color-target]").forEach((group) => {
+    group.querySelectorAll("[data-sp-color]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        group.querySelectorAll("[data-sp-color]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        sp.working[group.dataset.spColorTarget] = btn.dataset.spColor;
+      });
+    });
+  });
+
+  featureModule.querySelectorAll("[data-sp-propagate]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      _flushSpSplitInputs();
+      _applySpFieldsToWorking();
+      saveCustodySchedule(sp.working);
+      const action = btn.dataset.spPropagate;
+      if (action === "this-week-all") {
+        const ws = parseInt(localStorage.getItem("do-do-week-start") || "1");
+        const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(new Date(), ws), i));
+        propagateWeekSchedule(weekDays, sp.working);
+        sp.working = { ...sp.working, overrides: { ...(getCustodySchedule().overrides || {}) } };
+        showFeatureToast("Applied this week's pattern to all weeks");
+      } else {
+        propagateMonthSchedule(sp.viewYear, sp.viewMonth, parseInt(action), sp.working);
+        sp.working = { ...sp.working, overrides: { ...(getCustodySchedule().overrides || {}) } };
+        showFeatureToast(`Applied to next ${action} months`);
+      }
+      renderCalendarFeature(data);
+    });
+  });
+
+  featureModule.querySelector("#spClearPendingBtn")?.addEventListener("click", () => {
+    sp.changedDays = {};
+    sp.working.overrides = { ...(getCustodySchedule().overrides || {}) };
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelector("#spClearSchedBtn")?.addEventListener("click", () => {
+    if (!confirm("Clear the entire parenting schedule? This removes all custom day overrides.")) return;
+    if (isDivorced()) {
+      const existing = loadChangeRequests();
+      existing.push({
+        id: "cr-sched-clear-" + Date.now(), createdAt: new Date().toISOString(),
+        type: "schedule-clear", requestedDate: toCalendarKey(new Date()),
+        requestedOwner: null, requestedOverride: null, prevOverride: null,
+        reason: "Clear entire schedule", status: "pending",
+      });
+      saveChangeRequests(existing);
+      showFeatureToast("Clear schedule request sent - awaiting approval");
+    } else {
+      sp.working.overrides = {};
+      sp.changedDays = {};
+      showFeatureToast("Schedule cleared");
+    }
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelector("#spSaveBtn")?.addEventListener("click", () => {
+    _flushSpSplitInputs();
+    _applySpFieldsToWorking();
+    if (isDivorced() && Object.keys(sp.changedDays).length > 0) {
+      createScheduleChangeRequests(sp.changedDays, sp.working.overrides);
+      sp.changedDays = {};
+      showFeatureToast("Schedule change request sent - awaiting approval");
+      calendarState.rightPanel = "changes";
+    } else {
+      saveCustodySchedule(sp.working);
+      _resetSchedPanelState();
+      showFeatureToast("Parenting schedule saved");
+    }
+    renderCalendarFeature(data);
+  });
+
+  // ── Vacations panel ───────────────────────────────────────────────────────
+  const vp = _panelVacState;
+
+  featureModule.querySelector("#vpCalPrev")?.addEventListener("click", () => {
+    vp.viewMonth--;
+    if (vp.viewMonth < 0) { vp.viewMonth = 11; vp.viewYear--; }
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelector("#vpCalNext")?.addEventListener("click", () => {
+    vp.viewMonth++;
+    if (vp.viewMonth > 11) { vp.viewMonth = 0; vp.viewYear++; }
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelectorAll("[data-vp-date]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const d = btn.dataset.vpDate;
+      if (!vp.rangeStart || (vp.rangeStart && vp.rangeEnd)) {
+        vp.rangeStart = d; vp.rangeEnd = null;
+      } else if (d < vp.rangeStart) {
+        vp.rangeEnd = vp.rangeStart; vp.rangeStart = d;
+      } else if (d === vp.rangeStart) {
+        vp.rangeStart = null;
+      } else {
+        vp.rangeEnd = d;
+      }
+      renderCalendarFeature(data);
+    });
+  });
+
+  featureModule.querySelector("#vpRangeClear")?.addEventListener("click", () => {
+    vp.rangeStart = null; vp.rangeEnd = null;
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelector("#vpVacOwner")?.addEventListener("change", (e) => {
+    featureModule.querySelector("#vpAlternatingRows")?.classList.toggle("hidden", e.target.value !== "alternating");
+  });
+
+  featureModule.querySelector("#vpWeekStartDay")?.addEventListener("change", (e) => {
+    vp.weekStart = parseInt(e.target.value);
+    localStorage.setItem("do-do-week-start", e.target.value);
+  });
+
+  featureModule.querySelectorAll("[data-vp-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      vp.editingId = vp.editingId === btn.dataset.vpEdit ? null : btn.dataset.vpEdit;
+      vp._editLoaded = false;
+      if (!vp.editingId) { vp.rangeStart = null; vp.rangeEnd = null; }
+      renderCalendarFeature(data);
+    });
+  });
+
+  featureModule.querySelectorAll("[data-vp-delete]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      saveVacations(loadVacations().filter((v) => v.id !== btn.dataset.vpDelete));
+      if (vp.editingId === btn.dataset.vpDelete) {
+        vp.editingId = null; vp.rangeStart = null; vp.rangeEnd = null; vp._editLoaded = false;
+      }
+      renderCalendarFeature(data);
+    });
+  });
+
+  featureModule.querySelector("#vpCancelVacEdit")?.addEventListener("click", () => {
+    vp.editingId = null; vp.rangeStart = null; vp.rangeEnd = null; vp._editLoaded = false;
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelector("#vpSaveVacBtn")?.addEventListener("click", () => {
+    if (!vp.rangeStart || !vp.rangeEnd) { showFeatureToast("Select a date range on the calendar"); return; }
+    const name = (featureModule.querySelector("#vpVacName")?.value.trim()) || "Vacation";
+    const owner = featureModule.querySelector("#vpVacOwner")?.value || "mine";
+    const alternatingStart = featureModule.querySelector("#vpAlternatingStart")?.value || "mine";
+    const existingVacs = loadVacations();
+    if (isDivorced()) {
+      const vacData = vp.editingId
+        ? { ...(existingVacs.find(v => v.id === vp.editingId) || {}), name, startDate: vp.rangeStart, endDate: vp.rangeEnd, owner, alternatingStart }
+        : { id: "vac-" + Date.now(), name, startDate: vp.rangeStart, endDate: vp.rangeEnd, owner, alternatingStart };
+      createVacationChangeRequest(vp.editingId ? "update" : "add", vacData);
+      vp.editingId = null; vp.rangeStart = null; vp.rangeEnd = null; vp._editLoaded = false;
+      showFeatureToast("Vacation request sent - awaiting approval");
+      calendarState.rightPanel = "changes";
+    } else {
+      if (vp.editingId) {
+        saveVacations(existingVacs.map(v => v.id === vp.editingId ? { ...v, name, startDate: vp.rangeStart, endDate: vp.rangeEnd, owner, alternatingStart } : v));
+        showFeatureToast("Vacation updated");
+      } else {
+        saveVacations([...existingVacs, { id: "vac-" + Date.now(), name, startDate: vp.rangeStart, endDate: vp.rangeEnd, owner, alternatingStart }]);
+        showFeatureToast("Vacation added");
+      }
+      vp.editingId = null; vp.rangeStart = null; vp.rangeEnd = null; vp._editLoaded = false;
+    }
+    renderCalendarFeature(data);
+  });
+
+  // ── Changes panel - New request button ────────────────────────────────────
+  featureModule.querySelector("#changesNewRequestBtn")?.addEventListener("click", () => {
+    openChangeRequestDialog(calendarState.selected, getCustodyOwner(selectedDate));
+  });
+
+  // ── "Manage" link in vacation banner (agenda tab) - switch to vacations tab ─
+  featureModule.querySelectorAll("#openVacationsBtn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      calendarState.rightPanel = "vacations";
+      renderCalendarFeature(data);
+    });
+  });
+
   window.bindUnifiedCardInteractions?.(featureModule);
+}
+
+// Helper: flush split time/morning inputs to schedule panel state
+function _flushSpSplitInputs() {
+  const sp = _getSchedPanelState();
+  if (sp.selectedDays.size !== 1) return;
+  const ds = [...sp.selectedDays][0];
+  const ov = sp.working.overrides[ds];
+  if (!ov || ov.type !== "split") return;
+  const timeEl = document.getElementById("spSplitTime");
+  const morningEl = document.getElementById("spSplitMorning");
+  if (timeEl) sp.working.overrides[ds] = { ...ov, time: timeEl.value, morning: morningEl?.value || ov.morning };
+}
+
+// Helper: apply form field values to schedule panel working state
+function _applySpFieldsToWorking() {
+  const sp = _getSchedPanelState();
+  const enabledEl = document.getElementById("spEnabled");
+  const typeEl = document.getElementById("spType");
+  const refEl = document.getElementById("spRefDate");
+  if (enabledEl) sp.working.enabled = enabledEl.checked;
+  if (typeEl) sp.working.type = typeEl.value;
+  if (refEl) sp.working.referenceDate = refEl.value;
+  // Color swatches
+  document.querySelectorAll(".custody-color-swatches[data-sp-color-target]").forEach((group) => {
+    const active = group.querySelector("[data-sp-color].active");
+    if (active) sp.working[group.dataset.spColorTarget] = active.dataset.spColor;
+  });
 }
 
 function renderCalendarBody() {
@@ -3869,7 +4752,20 @@ function openVacationsDialog(editId = null) {
     viewMonth: new Date().getMonth(),
     weekStart: parseInt(localStorage.getItem("do-do-week-start") || "1"),
     _editLoaded: false,
+    formMode: "vacation",  // "vacation" | "holiday"
   };
+
+  // Preset holiday templates for quick selection
+  const HOLIDAY_PRESETS = [
+    { label: "Easter (Ostern)", name: "Easter", daysFromRef: null },
+    { label: "Winter break (Winterferien)", name: "Winter break" },
+    { label: "Christmas (Weihnachten)", name: "Christmas" },
+    { label: "Easter break (Osterferien)", name: "Easter break" },
+    { label: "Summer break (Sommerferien)", name: "Summer break" },
+    { label: "Autumn break (Herbstferien)", name: "Autumn break" },
+    { label: "Spring break (Frühlingsferien)", name: "Spring break" },
+    { label: "Other holiday...", name: "" },
+  ];
 
   const dialog = document.createElement("dialog");
   dialog.id = "vacationsDialog";
@@ -3901,9 +4797,10 @@ function openVacationsDialog(editId = null) {
             : v.owner === "co" ? `${escapeHtml(coparentName)}'s days`
             : `Alternating (starts: ${v.alternatingStart === "mine" ? "you" : escapeHtml(coparentName)})`;
           const isEditing = vState.editingId === v.id;
+          const typeIcon = v.vacType === "holiday" ? "🎄" : "✈";
           return `<div class="vacation-list-item${isEditing ? " vac-editing" : ""}">
             <div class="vacation-list-info">
-              <strong>${escapeHtml(v.name || "Vacation")}</strong>
+              <strong>${typeIcon} ${escapeHtml(v.name || (v.vacType === "holiday" ? "Holiday" : "Vacation"))}</strong>
               <span>${v.startDate} — ${v.endDate}</span>
               <span class="vacation-list-owner">${ownerLabel}</span>
             </div>
@@ -3931,16 +4828,28 @@ function openVacationsDialog(editId = null) {
     dialog.innerHTML = `
       <div class="custody-dialog-body vac-dialog-body">
         <div class="vac-dialog-header">
-          <h3>✈ Vacation schedules</h3>
+          <h3>✈ Vacations &amp; Holidays</h3>
           <button class="ghost-button" type="button" id="closeVacationsDialog" style="font-size:20px;line-height:1;padding:4px 10px;">✕</button>
         </div>
-        <p class="vac-dialog-desc">Vacation periods override custody without erasing the regular schedule. It resumes automatically after the vacation ends.</p>
-        ${isDivorced() ? `<div class="sched-divorced-notice">Separated/divorced mode - vacation changes are sent to ${escapeHtml(coparentName)} for approval.</div>` : ""}
+        <p class="vac-dialog-desc">Vacation and holiday periods override custody without erasing the regular schedule. It resumes automatically after the period ends.</p>
+        ${isDivorced() ? `<div class="sched-divorced-notice">Separated/divorced mode - changes are sent to ${escapeHtml(coparentName)} for approval.</div>` : ""}
 
         <div id="vacationsList">${vacListHtml}</div>
 
+        <div class="vac-mode-tabs" style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="custody-chip${vState.formMode === "vacation" ? " active" : ""}" type="button" id="vacTabVacation">+ Add vacation</button>
+          <button class="custody-chip${vState.formMode === "holiday" ? " active" : ""}" type="button" id="vacTabHoliday">+ Add holiday</button>
+        </div>
+
         <div class="vac-form-section">
-          <div class="vac-form-heading">${vState.editingId ? "Edit vacation" : "Add vacation"}</div>
+          <div class="vac-form-heading">${vState.editingId ? (vState.formMode === "holiday" ? "Edit holiday" : "Edit vacation") : (vState.formMode === "holiday" ? "Add holiday" : "Add vacation")}</div>
+          ${vState.formMode === "holiday" ? `
+          <label class="clean-field" style="margin-bottom:10px;">
+            <span>Holiday type</span>
+            <select id="vacHolidayPreset">
+              ${HOLIDAY_PRESETS.map((p) => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.label)}</option>`).join("")}
+            </select>
+          </label>` : ""}
           ${rangeCalHtml}
           ${rangeDisplay}
           <label class="clean-field" style="margin-top:10px;">
@@ -3971,7 +4880,11 @@ function openVacationsDialog(editId = null) {
             </label>
           </div>
           <div class="vac-form-btns">
-            <button class="primary-button" type="button" id="saveVacationBtn">${isDivorced() ? (vState.editingId ? "Request update" : "Request vacation") : (vState.editingId ? "Update vacation" : "Add vacation")}</button>
+            <button class="primary-button" type="button" id="saveVacationBtn">${
+              isDivorced()
+                ? (vState.editingId ? "Request update" : (vState.formMode === "holiday" ? "Request holiday" : "Request vacation"))
+                : (vState.editingId ? (vState.formMode === "holiday" ? "Update holiday" : "Update vacation") : (vState.formMode === "holiday" ? "Add holiday" : "Add vacation"))
+            }</button>
             ${vState.editingId ? `<button class="custody-chip custody-chip-reset" type="button" id="cancelVacEdit">Cancel edit</button>` : ""}
           </div>
         </div>
@@ -3980,6 +4893,24 @@ function openVacationsDialog(editId = null) {
 
     // ---- bind events ----
     dialog.querySelector("#closeVacationsDialog").addEventListener("click", () => dialog.close());
+
+    // Tab switching: vacation / holiday
+    dialog.querySelector("#vacTabVacation")?.addEventListener("click", () => {
+      vState.formMode = "vacation";
+      vState.editingId = null; vState.rangeStart = null; vState.rangeEnd = null; vState._editLoaded = false;
+      refreshVacDialog();
+    });
+    dialog.querySelector("#vacTabHoliday")?.addEventListener("click", () => {
+      vState.formMode = "holiday";
+      vState.editingId = null; vState.rangeStart = null; vState.rangeEnd = null; vState._editLoaded = false;
+      refreshVacDialog();
+    });
+
+    // Pre-fill name when holiday preset changes
+    dialog.querySelector("#vacHolidayPreset")?.addEventListener("change", (e) => {
+      const nameField = dialog.querySelector("#vacName");
+      if (nameField && e.target.value) nameField.value = e.target.value;
+    });
     dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
     dialog.querySelector("#vacCalPrev")?.addEventListener("click", () => {
@@ -4049,32 +4980,41 @@ function openVacationsDialog(editId = null) {
 
     dialog.querySelector("#saveVacationBtn")?.addEventListener("click", () => {
       if (!vState.rangeStart || !vState.rangeEnd) { showFeatureToast("Select a date range on the calendar"); return; }
-      const name = (dialog.querySelector("#vacName")?.value.trim()) || "Vacation";
+      const rawName = dialog.querySelector("#vacName")?.value.trim();
+      const name = rawName || (vState.formMode === "holiday" ? "Holiday" : "Vacation");
       const owner = dialog.querySelector("#vacOwner")?.value || "mine";
       const alternatingStart = dialog.querySelector("#vacAlternatingStart")?.value || "mine";
       const existingVacs = loadVacations();
+      const isHoliday = vState.formMode === "holiday";
 
       if (isDivorced()) {
         // Divorced mode: create a change request instead of saving directly
         const vacData = vState.editingId
-          ? { ...(existingVacs.find(v => v.id === vState.editingId) || {}), name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart }
-          : { id: "vac-" + Date.now(), name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart };
-        createVacationChangeRequest(vState.editingId ? "update" : "add", vacData);
+          ? { ...(existingVacs.find(v => v.id === vState.editingId) || {}), name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart, vacType: isHoliday ? "holiday" : "vacation" }
+          : { id: (isHoliday ? "hol-" : "vac-") + Date.now(), name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart, vacType: isHoliday ? "holiday" : "vacation" };
+        if (isHoliday) {
+          createHolidayChangeRequest(vState.editingId ? "update" : "add", vacData);
+          showFeatureToast("Holiday request sent - awaiting approval");
+        } else {
+          createVacationChangeRequest(vState.editingId ? "update" : "add", vacData);
+          showFeatureToast("Vacation request sent - awaiting approval");
+        }
         vState.editingId = null; vState.rangeStart = null; vState.rangeEnd = null; vState._editLoaded = false;
         refreshVacDialog();
-        showFeatureToast("Vacation request sent - awaiting approval");
         if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
         return;
       }
 
+      // Non-divorced: save directly
+      const newEntry = { id: (isHoliday ? "hol-" : "vac-") + Date.now(), name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart, vacType: isHoliday ? "holiday" : "vacation" };
       if (vState.editingId) {
         saveVacations(existingVacs.map((v) => v.id === vState.editingId
-          ? { ...v, name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart }
+          ? { ...v, name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart, vacType: isHoliday ? "holiday" : "vacation" }
           : v));
-        showFeatureToast("Vacation updated");
+        showFeatureToast(isHoliday ? "Holiday updated" : "Vacation updated");
       } else {
-        saveVacations([...existingVacs, { id: "vac-" + Date.now(), name, startDate: vState.rangeStart, endDate: vState.rangeEnd, owner, alternatingStart }]);
-        showFeatureToast("Vacation added");
+        saveVacations([...existingVacs, newEntry]);
+        showFeatureToast(isHoliday ? "Holiday added" : "Vacation added");
       }
       vState.editingId = null; vState.rangeStart = null; vState.rangeEnd = null; vState._editLoaded = false;
       refreshVacDialog();
@@ -4172,27 +5112,49 @@ function openChangeRequestDialog(selectedDateKey, currentOwner) {
   dialog.id = "changeRequestDialog";
   dialog.className = "custody-schedule-dialog";
   dialog.innerHTML = `
-    <div class="custody-dialog-body" style="max-width:380px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h3 style="margin:0;font-size:16px;">↔ Request schedule change</h3>
+    <div class="custody-dialog-body" style="max-width:400px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <h3 style="margin:0;font-size:16px;">Request Change</h3>
         <button class="ghost-button" type="button" id="closeCrDialog" style="font-size:20px;line-height:1;padding:4px 10px;">✕</button>
       </div>
+      <p style="font-size:13px;color:var(--text-secondary);margin:0 0 14px;">${escapeHtml(coparentName)} will receive this request and must approve it.</p>
       <label class="clean-field" style="margin-bottom:10px;">
         <span>Date</span>
         <input type="date" id="crDate" value="${selectedDateKey}" />
       </label>
       <label class="clean-field" style="margin-bottom:10px;">
-        <span>Propose new owner</span>
-        <select id="crRequestedOwner">
-          <option value="mine"${currentOwner !== "mine" ? " selected" : ""}>You take this day</option>
-          <option value="co"${currentOwner === "mine" ? " selected" : ""}>${escapeHtml(coparentName)} takes this day</option>
+        <span>What are you changing?</span>
+        <select id="crChangeType">
+          <option value="day">Whole day - change who has the child</option>
+          <option value="hours">Hours only - change pickup/dropoff time</option>
         </select>
       </label>
+      <div id="crDayOwnerRow">
+        <label class="clean-field" style="margin-bottom:10px;">
+          <span>Proposed day owner</span>
+          <select id="crRequestedOwner">
+            <option value="mine"${currentOwner !== "mine" ? " selected" : ""}>You take this day</option>
+            <option value="co"${currentOwner === "mine" ? " selected" : ""}>${escapeHtml(coparentName)} takes this day</option>
+          </select>
+        </label>
+      </div>
+      <div id="crHoursRow" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <label class="clean-field">
+            <span>Pickup time</span>
+            <input type="time" id="crPickupTime" value="15:00" />
+          </label>
+          <label class="clean-field">
+            <span>Dropoff time</span>
+            <input type="time" id="crDropoffTime" value="18:00" />
+          </label>
+        </div>
+      </div>
       <label class="clean-field" style="margin-bottom:16px;">
         <span>Reason (optional)</span>
         <input type="text" id="crReason" placeholder="e.g. Doctor appointment, work travel..." />
       </label>
-      <button class="primary-button" type="button" id="saveCrBtn" style="width:100%;">Save request</button>
+      <button class="primary-button" type="button" id="saveCrBtn" style="width:100%;">Send request to ${escapeHtml(coparentName)}</button>
     </div>
   `;
   document.body.appendChild(dialog);
@@ -4201,27 +5163,52 @@ function openChangeRequestDialog(selectedDateKey, currentOwner) {
   dialog.querySelector("#closeCrDialog").addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
+  // Toggle day-owner vs hours rows
+  dialog.querySelector("#crChangeType")?.addEventListener("change", (e) => {
+    const isHours = e.target.value === "hours";
+    dialog.querySelector("#crDayOwnerRow").style.display = isHours ? "none" : "";
+    dialog.querySelector("#crHoursRow").style.display = isHours ? "" : "none";
+  });
+
   dialog.querySelector("#saveCrBtn").addEventListener("click", async () => {
     const requestedDate = dialog.querySelector("#crDate").value;
-    const requestedOwner = dialog.querySelector("#crRequestedOwner").value;
+    const changeType = dialog.querySelector("#crChangeType").value;
+    const requestedOwner = changeType === "day" ? dialog.querySelector("#crRequestedOwner").value : null;
+    const pickupTime = changeType === "hours" ? dialog.querySelector("#crPickupTime").value : null;
+    const dropoffTime = changeType === "hours" ? dialog.querySelector("#crDropoffTime").value : null;
     const reason = dialog.querySelector("#crReason").value.trim();
     if (!requestedDate) { showFeatureToast("Please select a date"); return; }
     const cardId = "scr-day-" + Date.now();
-    const cr = { id: "cr-" + Date.now(), createdAt: new Date().toISOString(), requestedDate, currentOwner: currentOwner || "", requestedOwner, reason, status: "pending", supabaseCardId: cardId };
+    const cr = {
+      id: "cr-" + Date.now(),
+      createdAt: new Date().toISOString(),
+      type: "schedule",
+      changeType,   // "day" | "hours"
+      requestedDate,
+      currentOwner: currentOwner || "",
+      requestedOwner,
+      pickupTime,
+      dropoffTime,
+      reason,
+      status: "pending",
+      supabaseCardId: cardId,
+    };
     saveChangeRequests([...loadChangeRequests(), cr]);
     dialog.close();
     if (typeof calendarState !== "undefined") calendarState.selected = requestedDate;
     if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
-    showFeatureToast("Change request saved");
+    showFeatureToast("Request sent - awaiting approval from " + coparentName);
     // Supabase card so co-parent sees it via Realtime
+    const titleSuffix = changeType === "hours"
+      ? `hours: ${pickupTime || "?"} - ${dropoffTime || "?"}`
+      : `owner: ${requestedOwner === "mine" ? (window.getOnboardingState?.()?.parents?.primary || "ja") : coparentName}`;
     await _saveScheduleRequestCard({
       cardId,
-      title: `Wniosek o zmiane: ${requestedDate}`,
+      title: `Request Change: ${requestedDate} (${titleSuffix})`,
       detailsTag: "__SCR_DAY__",
-      payload: { crId: cr.id, requestedDate, currentOwner: currentOwner || "", requestedOwner, reason },
+      payload: { crId: cr.id, requestedDate, changeType, currentOwner: currentOwner || "", requestedOwner, pickupTime, dropoffTime, reason },
     });
-    const ownerLabel = requestedOwner === "mine" ? (window.getOnboardingState?.()?.parents?.primary || "ja") : coparentName;
-    _notifyPartner("Do-Do: wniosek o zmiane dnia", `${requestedDate} - propozycja: ${ownerLabel}`);
+    _notifyPartner("Do-Do: Request Change", `${requestedDate} - ${titleSuffix}`);
   });
 }
 
@@ -4623,10 +5610,6 @@ function renderSpecialPanel(moduleName, part = "all") {
               </span>
               <input type="checkbox" id="divorcedToggle" ${isDivorced() ? "checked" : ""} />
             </label>
-            <div class="settings-select-row sched-settings-buttons">
-              <span><strong>Parenting schedule</strong><em>Set pattern, colours, and day-by-day overrides.</em></span>
-              <button class="ghost-button sched-settings-open-btn" type="button" id="openSchedEditorFromSettings">Edit schedule</button>
-            </div>
             <div class="settings-select-row sched-settings-buttons">
               <span><strong>Vacation schedules</strong><em>Add periods with a different custody split.</em></span>
               <button class="ghost-button sched-settings-open-btn" type="button" id="openVacationsFromSettings">Manage vacations</button>
@@ -5125,7 +6108,7 @@ function renderSettingsFeature() {
               <div class="cg-person-row">
                 <div class="mini-avatar parent-b-mini" aria-hidden="true">${coInitial}</div>
                 <div class="cg-person-info">
-                  <div class="cg-person-name-row" id="invitePanelContent">
+                  <div id="invitePanelContent">
                     <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_st("settings.checking")}</p>
                   </div>
                   ${swatchRow("coColor", cs.coColor)}
