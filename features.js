@@ -5227,6 +5227,22 @@ function _buildCrSingleDateCalHTML(state) {
   const startDow = (firstDay.getDay() - weekStart + 7) % 7;
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const todayStr = toCalendarKey(new Date());
+  // Custody coloring - same logic as vacation calendar
+  const cs = getCustodySchedule();
+  function _crGetOwner(dateStr) {
+    const ov = (cs.overrides || {})[dateStr];
+    if (ov === "mine" || ov === "co") return ov;
+    if (ov && ov.type === "split") return "split";
+    if (!cs.referenceDate || !cs.enabled) return null;
+    const d = parseCalendarKey(dateStr);
+    const ref = new Date(cs.referenceDate + "T00:00:00");
+    const diff = Math.round((d - ref) / 86400000);
+    const t = cs.type || "7-7";
+    if (t === "7-7") return ((Math.floor(diff / 7) % 2) + 2) % 2 === 0 ? "mine" : "co";
+    if (t === "2-2-3") { const p = ((diff % 14) + 14) % 14; return p <= 1 ? "mine" : p <= 3 ? "co" : "mine"; }
+    if (t === "5-2") { const dow = d.getDay(); return (dow === 0 || dow === 6) ? "co" : "mine"; }
+    return null;
+  }
   let cells = ""; let dayNum = 1;
   for (let row = 0; row < 6; row++) {
     cells += "<tr>";
@@ -5236,7 +5252,11 @@ function _buildCrSingleDateCalHTML(state) {
       else {
         const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
         const isSelected = dateStr === selectedDate;
+        const owner = _crGetOwner(dateStr);
         let cls = "sched-day-btn";
+        if (owner === "mine") cls += " sched-mine";
+        else if (owner === "co") cls += " sched-co";
+        else if (owner === "split") cls += " sched-split";
         if (dateStr === todayStr) cls += " sched-today";
         if (isSelected) cls += " sched-selected vac-range-start";
         cells += `<td><button class="${cls}" type="button" data-cr-date="${dateStr}">${dayNum}</button></td>`;
