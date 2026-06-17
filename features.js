@@ -1303,11 +1303,15 @@ function propagateMonthSchedule(sourceYear, sourceMonth, numMonths, schedule) {
   saveCustodySchedule({ ...schedule });
 }
 
-// Create change-request records for each day change (divorced mode)
-function createScheduleChangeRequests(changedDays, workingOverrides) {
+// Create change-request records for a BATCH of day changes (divorced mode).
+// ONE local CR per day for the schedule editor's pending-indicator logic,
+// but only ONE Supabase card for the whole batch so the co-parent sees a single item.
+async function createScheduleChangeRequests(changedDays, workingOverrides) {
   const existing = loadChangeRequests();
   const now = new Date().toISOString();
-  const newCrs = Object.entries(changedDays).map(([dateStr, change]) => ({
+  const batchCardId = "scr-batch-" + Date.now();
+  const dayEntries = Object.entries(changedDays);
+  const newCrs = dayEntries.map(([dateStr, change]) => ({
     id: "cr-sched-" + Date.now() + "-" + dateStr.replace(/-/g, ""),
     createdAt: now,
     type: "schedule",
@@ -1317,13 +1321,41 @@ function createScheduleChangeRequests(changedDays, workingOverrides) {
     prevOverride: change.prevOverride || null,
     reason: "",
     status: "pending",
+    supabaseCardId: batchCardId,  // link back to the Supabase card
   }));
   saveChangeRequests([...existing, ...newCrs]);
+
+  // ONE Supabase card for the whole batch - co-parent sees this via Realtime
+  const earliestDate = dayEntries.map(([d]) => d).sort()[0];
+  await _saveScheduleRequestCard({
+    cardId: batchCardId,
+    title: `Zmiana harmonogramu (${dayEntries.length} ${dayEntries.length === 1 ? "dzien" : "dni"})`,
+    detailsTag: "__SCR_BATCH__",
+    payload: {
+      crIds: newCrs.map((c) => c.id),
+      days: Object.fromEntries(
+        dayEntries.map(([dateStr, change]) => [
+          dateStr,
+          {
+            owner: change.owner,
+            override: workingOverrides[dateStr] || null,
+            prev: change.prevOverride || null,
+          },
+        ])
+      ),
+    },
+  });
+  _notifyPartner(
+    "Do-Do: wniosek o zmiane harmonogramu",
+    `${dayEntries.length} ${dayEntries.length === 1 ? "dzien" : "dni"} do zatwierdzenia`
+  );
 }
 
-// Create a vacation change-request record (divorced mode)
-function createVacationChangeRequest(vacAction, vacData) {
+// Create a vacation change-request record (divorced mode).
+// ONE local CR + ONE Supabase card per vacation action.
+async function createVacationChangeRequest(vacAction, vacData) {
   const existing = loadChangeRequests();
+  const cardId = "scr-vac-" + Date.now();
   const cr = {
     id: "cr-vac-" + Date.now(),
     createdAt: new Date().toISOString(),
@@ -1333,8 +1365,18 @@ function createVacationChangeRequest(vacAction, vacData) {
     requestedDate: vacData.startDate,
     reason: "",
     status: "pending",
+    supabaseCardId: cardId,
   };
   saveChangeRequests([...existing, cr]);
+
+  const actionLabel = vacAction === "add" ? "nowe wakacje" : vacAction === "update" ? "zmiana wakacji" : "usuniecie wakacji";
+  await _saveScheduleRequestCard({
+    cardId,
+    title: `Wniosek urlopowy: ${vacData.startDate || ""} - ${vacData.endDate || ""}`,
+    detailsTag: "__SCR_VAC__",
+    payload: { crId: cr.id, vacAction, vacData },
+  });
+  _notifyPartner("Do-Do: wniosek urlopowy", `Propozycja: ${actionLabel} (${vacData.startDate || ""} - ${vacData.endDate || ""})`);
 }
 
 window.openCustodyScheduleDialog = openCustodyScheduleDialog;
@@ -3267,6 +3309,51 @@ function renderCalendarFeature(data) {
     });
   });
 
+  // Supabase SCR card approve (co-parent approves, applies change, updates card in Supabase, notifies requester)
+  featureModule.querySelectorAll("[data-scr-approve]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const cardId = btn.dataset.scrApprove;
+      const card = (typeof state !== "undefined" ? state.cards : []).find((c) => c.id === cardId);
+      if (!card) return;
+      try {
+        if (card.details?.startsWith("__SCR_BATCH__")) {
+          const { days } = JSON.parse(card.details.slice("__SCR_BATCH__".length));
+          for (const [dateStr, { override, owner }] of Object.entries(days || {})) {
+            setCustodyDayOverride(dateStr, override || owner);
+          }
+        } else if (card.details?.startsWith("__SCR_VAC__")) {
+          const { vacAction, vacData } = JSON.parse(card.details.slice("__SCR_VAC__".length));
+          const vacs = loadVacations();
+          if (vacAction === "add") saveVacations([...vacs, vacData]);
+          else if (vacAction === "update") saveVacations(vacs.map((v) => (v.id === vacData.id ? vacData : v)));
+          else if (vacAction === "delete") saveVacations(vacs.filter((v) => v.id !== vacData.id));
+        } else if (card.details?.startsWith("__SCR_DAY__")) {
+          const { requestedDate, requestedOverride, requestedOwner } = JSON.parse(card.details.slice("__SCR_DAY__".length));
+          setCustodyDayOverride(requestedDate, requestedOverride || requestedOwner);
+        }
+      } catch { /* parse error - still update status */ }
+      if (window.saveCardToSupabase) await window.saveCardToSupabase({ ...card, status: "Done" });
+      _notifyPartner("Do-Do: wniosek zatwierdzony", card.title);
+      renderCalendarFeature(data);
+      showFeatureToast("Zmiana zatwierdzona i zastosowana");
+    });
+  });
+
+  // Supabase SCR card decline
+  featureModule.querySelectorAll("[data-scr-decline]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const cardId = btn.dataset.scrDecline;
+      const card = (typeof state !== "undefined" ? state.cards : []).find((c) => c.id === cardId);
+      if (!card) return;
+      if (window.saveCardToSupabase) await window.saveCardToSupabase({ ...card, status: "Disputed" });
+      _notifyPartner("Do-Do: wniosek odrzucony", card.title);
+      renderCalendarFeature(data);
+      showFeatureToast("Wniosek odrzucony");
+    });
+  });
+
   window.bindUnifiedCardInteractions?.(featureModule);
 }
 
@@ -3637,8 +3724,52 @@ function renderChangeRequestAgendaItem(cr) {
   `;
 }
 
+// Render a Supabase SCR card in the day agenda (shown to the co-parent via Realtime)
+function renderScrCardAgendaItem(card) {
+  const setup = window.getOnboardingState?.() || {};
+  const coparentName = setup.parents?.coparent || "Co-parent";
+  const myName = setup.parents?.primary || "Parent A";
+  const statusColors = { "To Do": "#f59e0b", Done: "#22c55e", Disputed: "#ef4444" };
+  const statusLabel = card.status === "To Do" ? "Oczekuje" : card.status === "Done" ? "Zatwierdzone" : card.status === "Disputed" ? "Odrzucone" : card.status;
+  const statusColor = statusColors[card.status] || "#999";
+
+  let bodyHtml = `<strong>${escapeHtml(card.title)}</strong>`;
+  try {
+    if (card.details?.startsWith("__SCR_BATCH__")) {
+      const { days } = JSON.parse(card.details.slice("__SCR_BATCH__".length));
+      const dayKeys = Object.keys(days || {}).sort();
+      bodyHtml = `<strong>Zmiana harmonogramu</strong><span class="change-request-reason">${dayKeys.join(", ")}</span>`;
+    } else if (card.details?.startsWith("__SCR_VAC__")) {
+      const { vacAction, vacData } = JSON.parse(card.details.slice("__SCR_VAC__".length));
+      const actionLabel = vacAction === "add" ? "Nowe wakacje" : vacAction === "update" ? "Zmiana wakacji" : "Usuniecie wakacji";
+      bodyHtml = `<strong>${actionLabel}: ${escapeHtml(vacData?.name || "Wakacje")}</strong><span class="change-request-reason">${escapeHtml(vacData?.startDate || "")} - ${escapeHtml(vacData?.endDate || "")}</span>`;
+    } else if (card.details?.startsWith("__SCR_DAY__")) {
+      const { requestedDate, requestedOwner, reason } = JSON.parse(card.details.slice("__SCR_DAY__".length));
+      const ownerLabel = requestedOwner === "mine" ? myName : requestedOwner === "co" ? coparentName : "Zmiana";
+      bodyHtml = `<strong>Wniosek o zmiane: ${escapeHtml(requestedDate)}</strong><span class="change-request-reason">Propozycja: ${escapeHtml(ownerLabel)}${reason ? " | " + escapeHtml(reason) : ""}</span>`;
+    }
+  } catch { /* use default bodyHtml */ }
+
+  return `
+    <article class="change-request-card" data-scr-card-id="${escapeHtml(card.id)}">
+      <div class="change-request-header">
+        <span class="change-request-label">&#8596; Wniosek harmonogramu</span>
+        <span class="change-request-status" style="color:${statusColor};">${statusLabel}</span>
+      </div>
+      <div class="change-request-body">${bodyHtml}</div>
+      ${card.status === "To Do" ? `
+        <div class="change-request-actions">
+          <button class="custody-chip active" type="button" data-scr-approve="${escapeHtml(card.id)}">Zatwierdz</button>
+          <button class="custody-chip custody-chip-reset" type="button" data-scr-decline="${escapeHtml(card.id)}">Odrzuc</button>
+        </div>
+      ` : ""}
+    </article>
+  `;
+}
+
 function renderAgendaCard(item) {
   if (item.kind === "change-request") return renderChangeRequestAgendaItem(item.changeRequest);
+  if (item.kind === "scr-card") return renderScrCardAgendaItem(item.scrCard);
   if (item.privateBlock || item.kind === "busy") {
     const personClass = item.person
       ? (item.person === "Parent B" ? "busy-parent-b" : "busy-parent-a")
@@ -4070,17 +4201,27 @@ function openChangeRequestDialog(selectedDateKey, currentOwner) {
   dialog.querySelector("#closeCrDialog").addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
-  dialog.querySelector("#saveCrBtn").addEventListener("click", () => {
+  dialog.querySelector("#saveCrBtn").addEventListener("click", async () => {
     const requestedDate = dialog.querySelector("#crDate").value;
     const requestedOwner = dialog.querySelector("#crRequestedOwner").value;
     const reason = dialog.querySelector("#crReason").value.trim();
     if (!requestedDate) { showFeatureToast("Please select a date"); return; }
-    const cr = { id: "cr-" + Date.now(), createdAt: new Date().toISOString(), requestedDate, currentOwner: currentOwner || "", requestedOwner, reason, status: "pending" };
+    const cardId = "scr-day-" + Date.now();
+    const cr = { id: "cr-" + Date.now(), createdAt: new Date().toISOString(), requestedDate, currentOwner: currentOwner || "", requestedOwner, reason, status: "pending", supabaseCardId: cardId };
     saveChangeRequests([...loadChangeRequests(), cr]);
     dialog.close();
     if (typeof calendarState !== "undefined") calendarState.selected = requestedDate;
     if (typeof renderCalendarFeature === "function" && typeof data !== "undefined") renderCalendarFeature(data);
     showFeatureToast("Change request saved");
+    // Supabase card so co-parent sees it via Realtime
+    await _saveScheduleRequestCard({
+      cardId,
+      title: `Wniosek o zmiane: ${requestedDate}`,
+      detailsTag: "__SCR_DAY__",
+      payload: { crId: cr.id, requestedDate, currentOwner: currentOwner || "", requestedOwner, reason },
+    });
+    const ownerLabel = requestedOwner === "mine" ? (window.getOnboardingState?.()?.parents?.primary || "ja") : coparentName;
+    _notifyPartner("Do-Do: wniosek o zmiane dnia", `${requestedDate} - propozycja: ${ownerLabel}`);
   });
 }
 
@@ -4103,12 +4244,37 @@ function moveCalendar(direction) {
   calendarState.cursor = new Date(selected.getFullYear(), selected.getMonth(), 1);
 }
 
+// Returns the relevant date key for a Supabase SCR card (used to show it on the right day)
+function _scrCardDate(card) {
+  try {
+    if (card.details?.startsWith("__SCR_BATCH__")) {
+      const { days } = JSON.parse(card.details.slice("__SCR_BATCH__".length));
+      return Object.keys(days || {}).sort()[0] || "";
+    }
+    if (card.details?.startsWith("__SCR_VAC__")) {
+      const { vacData } = JSON.parse(card.details.slice("__SCR_VAC__".length));
+      return vacData?.startDate || "";
+    }
+    if (card.details?.startsWith("__SCR_DAY__")) {
+      const { requestedDate } = JSON.parse(card.details.slice("__SCR_DAY__".length));
+      return requestedDate || "";
+    }
+  } catch { return ""; }
+  return "";
+}
+
 function eventsForDate(key) {
   const regular = calendarState.events.filter((item) => item.date === key).sort((a, b) => a.time.localeCompare(b.time));
+  // Local change requests (visible to the requester on their own device)
   const crItems = loadChangeRequests()
     .filter((cr) => cr.requestedDate === key)
     .map((cr) => ({ kind: "change-request", date: key, time: "All day", cardId: cr.id, changeRequest: cr }));
-  return [...crItems, ...regular];
+  // Supabase SCR cards (visible to the co-parent via Realtime, de-duped against local CRs)
+  const localLinkedCardIds = new Set(loadChangeRequests().map((c) => c.supabaseCardId).filter(Boolean));
+  const scrItems = (typeof state !== "undefined" ? state.cards : [])
+    .filter((card) => card.details?.startsWith("__SCR_") && _scrCardDate(card) === key && !localLinkedCardIds.has(card.id))
+    .map((card) => ({ kind: "scr-card", date: key, time: "All day", cardId: card.id, scrCard: card }));
+  return [...crItems, ...scrItems, ...regular];
 }
 
 function syncCalendarEventsFromCards() {
@@ -4926,34 +5092,61 @@ function renderSettingsFeature() {
     <div class="feature-layout settings-layout">
       ${renderSpecialPanel("settings", "automation")}
 
-      <section class="feature-panel">
-        <h3>${_st("settings.your_profile")}</h3>
-        <div class="feature-items">
-          <article class="feature-item feature-item-editable">
-            <div class="feature-item-main">
-              <strong>${escapeHtml(myName || _st("settings.your_profile"))}</strong>
-              <span style="color:var(--muted);font-size:12px;">${_st("settings.display_name")}</span>
-            </div>
-            <button class="icon-button icon-button-sm" id="editMyNameBtn" aria-label="Edit your name">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/>
-              </svg>
-            </button>
-          </article>
-        </div>
-      </section>
-
-      <section class="feature-panel" id="invitePanel">
-        <h3>${_st("settings.coparent")}</h3>
-        <div class="feature-items" id="invitePanelContent">
-          <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_st("settings.checking")}</p>
-        </div>
-      </section>
-
       <section class="feature-panel" id="caregiversPanel">
         <div class="feature-panel-header">
-          <h3>${_st("settings.caregivers")}</h3>
+          <h3>Caregivers</h3>
           <button class="secondary-button" id="addCaregiverBtn">${_st("settings.add_caregiver")}</button>
+        </div>
+
+        <!-- Parents -->
+        <div class="cg-people-list">
+          ${(() => {
+            const cs = getCustodySchedule();
+            const myInitial = (myName || "A").charAt(0).toUpperCase();
+            const coInitial = (coparentName || "B").charAt(0).toUpperCase();
+            const swatchRow = (target, currentColor) =>
+              `<div class="cg-swatches" data-cg-color-target="${target}">
+                ${CUSTODY_COLORS.map(c => `<button type="button" class="custody-swatch cg-swatch${currentColor === c.value ? " active" : ""}" data-custody-color="${c.value}" style="background:${c.value};" title="${c.label}" aria-label="${c.label}"></button>`).join("")}
+              </div>`;
+            return `
+              <div class="cg-person-row">
+                <div class="mini-avatar parent-a-mini" aria-hidden="true">${myInitial}</div>
+                <div class="cg-person-info">
+                  <div class="cg-person-name-row">
+                    <strong>${escapeHtml(myName || "Parent A")}</strong>
+                    <span class="cg-role-tag">You</span>
+                    <button class="icon-button icon-button-sm" id="editMyNameBtn" aria-label="Edit your name">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/></svg>
+                    </button>
+                  </div>
+                  ${swatchRow("myColor", cs.myColor)}
+                </div>
+              </div>
+              <div class="cg-person-row">
+                <div class="mini-avatar parent-b-mini" aria-hidden="true">${coInitial}</div>
+                <div class="cg-person-info">
+                  <div class="cg-person-name-row" id="invitePanelContent">
+                    <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_st("settings.checking")}</p>
+                  </div>
+                  ${swatchRow("coColor", cs.coColor)}
+                </div>
+              </div>
+            `;
+          })()}
+        </div>
+
+        <!-- Schedule button -->
+        <div class="cg-schedule-row">
+          <div class="cg-schedule-info">
+            <strong>Parenting schedule</strong>
+            <em>Set custody pattern and day-by-day overrides</em>
+          </div>
+          <button class="ghost-button sched-settings-open-btn" type="button" id="openSchedEditorFromSettings">Edit schedule</button>
+        </div>
+
+        <!-- Additional caregivers -->
+        <div class="cg-extra-header">
+          <span style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;">Additional</span>
         </div>
         <div class="feature-items" id="caregiversList">
           ${caregivers.length

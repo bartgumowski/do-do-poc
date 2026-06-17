@@ -2,6 +2,15 @@
 
 ---
 
+## v0.23.5 - 2026-06-17 - Parent icon colors follow schedule colors
+
+- Parent A and parent B avatar icons (mini initials circles) now use the same colors the user picks for their custody schedule
+- Calendar busy cards for each parent also update to match
+- Previously the icons had hardcoded colors that never changed regardless of schedule color settings
+- Technical: `.parent-a-mini`, `.parent-b-mini`, `.both-mini`, and `.calendar-busy-card.busy-parent-*` now use CSS variables `--custody-mine-color` and `--custody-co-color` set by `applyCustodyColors()`
+
+---
+
 ## v0.23.0 - 2026-06-15 - SEG-11 Moat Features
 
 ### Legal export (11.1)
