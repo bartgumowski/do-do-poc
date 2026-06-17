@@ -113,7 +113,8 @@
       "topic.general":  "General",
 
       // Shopping
-      "shopping.groceries":    "Groceries",
+      "shopping.groceries":    "Child's Needs",
+      "shopping.child_needs":  "Child's Needs",
       "shopping.other":        "Other",
       "shopping.items_left":   "{{n}} left",
       "shopping.add_ph":       "Add or dictate an item",
@@ -572,7 +573,8 @@
       "topic.expenses": "Ausgaben",
       "topic.general":  "Allgemein",
 
-      "shopping.groceries":    "Lebensmittel",
+      "shopping.groceries":    "Bedürfnisse des Kindes",
+      "shopping.child_needs":  "Bedürfnisse des Kindes",
       "shopping.other":        "Sonstiges",
       "shopping.items_left":   "{{n}} übrig",
       "shopping.add_ph":       "Artikel hinzufügen oder diktieren",
@@ -1037,7 +1039,8 @@
       "topic.expenses": "Wydatki",
       "topic.general":  "Ogólne",
 
-      "shopping.groceries":    "Artykuły spożywcze",
+      "shopping.groceries":    "Potrzeby dziecka",
+      "shopping.child_needs":  "Potrzeby dziecka",
       "shopping.other":        "Inne",
       "shopping.items_left":   "{{n}} pozostało",
       "shopping.add_ph":       "Dodaj lub podyktuj produkt",

@@ -176,13 +176,13 @@ async function _fetchConflictSuggestion(idA, idB) {
 }
 const defaultShoppingLists = {
   groceries: [
-    { id: "grocery-milk", label: "Milk", bought: false },
-    { id: "grocery-fruit", label: "Ava's lunchbox fruit", bought: false },
-    { id: "grocery-tabs", label: "Dishwasher tabs", bought: true, boughtBy: "Parent A" },
+    { id: "grocery-shoes", label: "Sports shoes (size 34)", bought: false },
+    { id: "grocery-pencils", label: "School pencils and ruler", bought: false },
+    { id: "grocery-medicine", label: "Allergy medicine refill", bought: false },
   ],
   other: [
-    { id: "other-socks", label: "Leo's football socks", bought: false },
-    { id: "other-medicine", label: "Allergy medicine refill", bought: false },
+    { id: "other-socks", label: "Football socks", bought: false },
+    { id: "other-book", label: "Reading book for school", bought: false },
   ],
 };
 const calendarState = {
@@ -1300,8 +1300,6 @@ function bindCustodySettings() {
   // Divorced toggle
   featureModule.querySelector("#divorcedToggle")?.addEventListener("change", (e) => {
     setDivorced(e.target.checked);
-    const legalSection = featureModule.querySelector("#legalExportSection");
-    if (legalSection) legalSection.style.display = e.target.checked ? "block" : "none";
     showFeatureToast(e.target.checked ? "Divorced mode enabled" : "Divorced mode disabled");
   });
 
@@ -1617,11 +1615,22 @@ async function renderShoppingFeature() {
   });
 }
 
+function _getChildListLabel() {
+  const setup = window.getOnboardingState?.() || {};
+  const children = setup.children || [];
+  if (children.length > 0) {
+    const firstName = children[0].name || children[0];
+    return `${firstName}'s Needs`;
+  }
+  return window.t?.("shopping.child_needs") ?? "Child's Needs";
+}
+
 function _renderShoppingBoard(lists) {
   const board = featureModule.querySelector("#shoppingBoard") || featureModule;
   const customLists = loadCustomShoppingLists();
+  const childListLabel = _getChildListLabel();
   board.innerHTML = `
-    ${renderShoppingGroup("groceries", window.t ? window.t("shopping.groceries") : "Groceries", lists.groceries)}
+    ${renderShoppingGroup("groceries", childListLabel, lists.groceries)}
     ${renderShoppingGroup("other", window.t ? window.t("shopping.other") : "Other", lists.other)}
     ${customLists.map((cl) => renderShoppingGroup(cl.key, cl.name, cl.items)).join("")}
     <div class="shopping-add-list-row">
@@ -1857,7 +1866,7 @@ function _renderShoppingBoard(lists) {
       saveShoppingLists(nextLists);
       _renderShoppingBoard(nextLists);
       refocusInput();
-      const groupName = listKey === "groceries" ? (window.t?.("shopping.groceries") ?? "Groceries") : (window.t?.("shopping.other") ?? "Other");
+      const groupName = listKey === "groceries" ? _getChildListLabel() : (window.t?.("shopping.other") ?? "Other");
       showFeatureToast(`${window.t?.("toast.added") ?? "Added"} – ${groupName}`);
     });
 
@@ -4371,7 +4380,7 @@ function renderSpecialPanel(moduleName, part = "all") {
               <span><strong>Vacation schedules</strong><em>Add periods with a different custody split.</em></span>
               <button class="ghost-button sched-settings-open-btn" type="button" id="openVacationsFromSettings">Manage vacations</button>
             </div>
-            <div id="legalExportSection" style="display:${isDivorced() ? "block" : "none"};border-top:1px solid var(--border-color,#eee);margin-top:8px;padding-top:12px;">
+            <div id="legalExportSection" style="display:block;border-top:1px solid var(--border-color,#eee);margin-top:8px;padding-top:12px;">
               <div class="settings-select-row sched-settings-buttons">
                 <span>
                   <strong data-i18n="settings.legal_record">${window.t?.("settings.legal_record") ?? "Legal record"}</strong>
