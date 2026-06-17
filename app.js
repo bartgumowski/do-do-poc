@@ -1,4 +1,4 @@
-const APP_VERSION = "0.25.3";
+const APP_VERSION = "0.26.1";
 const APP_VERSION_DATE = "2026-06-17";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1069,6 +1069,28 @@ async function signInWithGoogle() {
   }
   clearAuthError();
   try {
+    // Basic sign-in: email + profile only - no calendar scope here.
+    // Calendar permission is requested separately when the user enables
+    // calendar sync in Settings (incremental authorization).
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin + "/",
+        scopes: "openid profile email",
+      },
+    });
+    if (error) showAuthError(error.message);
+  } catch (error) {
+    showAuthError(error?.message || "Google sign in could not start. Try again.");
+  }
+}
+
+// Called when the user explicitly enables Google Calendar sync in Settings.
+// Triggers a focused OAuth re-authorisation that adds the calendar scope
+// without going through the full sign-in flow again.
+async function requestGoogleCalendarAccess() {
+  if (!supabaseClient) return;
+  try {
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -1079,11 +1101,12 @@ async function signInWithGoogle() {
         queryParams: { access_type: "offline", prompt: "consent" },
       },
     });
-    if (error) showAuthError(error.message);
-  } catch (error) {
-    showAuthError(error?.message || "Google sign in could not start. Try again.");
+    if (error) showToast?.("Could not start Google Calendar connection. Try again.");
+  } catch (err) {
+    showToast?.("Could not connect Google Calendar. Try again.");
   }
 }
+window.requestGoogleCalendarAccess = requestGoogleCalendarAccess;
 
 async function signInWithPassword(email, password) {
   if (!supabaseClient || !validateAuthCredentials(email, password)) return;

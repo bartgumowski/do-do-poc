@@ -752,6 +752,8 @@ function renderFeature(moduleName, data) {
       button.addEventListener("click", () => promptAddChild());
     } else if (action === "Add pet") {
       button.addEventListener("click", () => promptAddPet());
+    } else if (action === "Connect Shared Calendar") {
+      button.addEventListener("click", () => window.requestGoogleCalendarAccess?.());
     } else {
       button.addEventListener("click", () => {
         window.appStorage?.setItem(`kinship-${moduleName}-${action}`, "clicked");
@@ -1662,16 +1664,28 @@ function bindAutomationSettings() {
     window.switchModule("settings");
   };
   autoRemindersToggle?.addEventListener("change", save);
-  familyCalendarToggle?.addEventListener("change", (e) => {
+  familyCalendarToggle?.addEventListener("change", async (e) => {
     if (e.target.checked && !window.isPaidUser?.()) {
       e.target.checked = false; // revert
       window.showUpgradePrompt?.("Calendar sync is available on the paid plan.");
       return;
     }
     save();
+    // When enabling Google Calendar sync, verify the user has granted
+    // calendar access. If not (e.g. they signed up after we moved to
+    // incremental auth), trigger the calendar permission popup now.
+    if (e.target.checked && (familyCalendarProvider?.value || "google") === "google") {
+      await _ensureGoogleCalendarAccess();
+    }
   });
   familyCalendarProvider?.addEventListener("change", save);
-  workCalendarToggle?.addEventListener("change", save);
+  workCalendarToggle?.addEventListener("change", async (e) => {
+    save();
+    // Same check for work calendar when Google is the provider
+    if (e.target.checked && (workCalendarProvider?.value || "google") === "google") {
+      await _ensureGoogleCalendarAccess();
+    }
+  });
   workCalendarProvider?.addEventListener("change", save);
   globalReminderPreset?.addEventListener("change", save);
   reminderDelivery?.addEventListener("change", save);
@@ -1694,6 +1708,23 @@ function bindAutomationSettings() {
     });
   });
 
+  // Checks if the user has granted calendar access. If not, triggers the
+  // Google Calendar permission popup (incremental OAuth authorization).
+  async function _ensureGoogleCalendarAccess() {
+    const header = await window.getAuthHeader?.().catch(() => null);
+    if (!header) return;
+    try {
+      const res = await fetch("/api/refresh-token", { method: "POST", headers: header });
+      if (res.status === 404 || res.status === 401) {
+        // No calendar access or token revoked - request it now
+        window.requestGoogleCalendarAccess?.();
+      }
+      // 200 = already connected, 500 = server error - don't block the user
+    } catch {
+      // Network error - don't block
+    }
+  }
+
   // Google Calendar token health indicator
   // Updates the badge in the Family calendar row based on token refresh result
   const _updateGCalBadge = (status) => {
@@ -1703,13 +1734,18 @@ function bindAutomationSettings() {
     if (!automation.syncFamilyCalendar) return; // only show status when sync is enabled
     const map = {
       connected:      { text: "Connected", cls: "status-connected" },
-      no_token:       { text: "Reconnect needed", cls: "status-pending" },
-      token_revoked:  { text: "Re-authorise Google", cls: "status-error" },
+      no_token:       { text: "Connect Google Calendar", cls: "status-pending" },
+      token_revoked:  { text: "Connect Google Calendar", cls: "status-error" },
       error:          { text: "Sync error", cls: "status-error" },
     };
     const ui = map[status] || { text: "On", cls: "" };
     badge.textContent = ui.text;
     badge.className = ui.cls;
+    // Make the badge clickable when reconnect is needed
+    const needsReconnect = ["no_token", "token_revoked"].includes(status);
+    badge.style.cursor = needsReconnect ? "pointer" : "";
+    badge.title = needsReconnect ? "Click to reconnect Google Calendar" : "";
+    badge.onclick = needsReconnect ? () => window.requestGoogleCalendarAccess?.() : null;
   };
   window.addEventListener("googleCalTokenStatus", (e) => _updateGCalBadge(e.detail?.status));
 
@@ -5727,7 +5763,7 @@ function renderSpecialPanel(moduleName, part = "all") {
       <section class="feature-panel google-calendar-connection">
         <div class="feature-panel-header">
           <h3>${_at("auto.cal_connections")}</h3>
-          <button class="secondary-button feature-action" data-action="Connect family calendar">${_at("auto.connect_btn")}</button>
+          <button class="secondary-button feature-action" data-action="Connect Shared Calendar">${_at("auto.connect_btn")}</button>
         </div>
         <div class="settings-connection-list">
           <div class="settings-connection-row">
