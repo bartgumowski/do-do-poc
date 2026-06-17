@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
         .maybeSingle();
 
       const pairId = profile?.pair_id;
-      if (!pairId) return res.status(400).json({ error: "No pair found" });
+      if (!pairId) return res.status(400).json({ error: "No second custodian / parent yet" });
 
       // Fetch co-parent profile
       const { data: pairRow } = await supabaseAdmin
