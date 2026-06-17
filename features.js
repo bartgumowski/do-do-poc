@@ -5922,22 +5922,58 @@ function renderSpecialPanel(moduleName, part = "all") {
 
 function renderVaccinePanel() {
   const _vt = window.t || ((k, fb) => fb || k);
-  // Pull live vaccine cards from state
   const allCards = typeof window.getCards === "function" ? window.getCards() : [];
   const vaccineCards = allCards
     .filter((c) => c.type === "Vaccine" && c.status !== "Done" && !c.deleted_at)
     .sort((a, b) => (a.due || "9999") < (b.due || "9999") ? -1 : 1);
+
+  // Build the list of people (kids + pets) for filter chips + add buttons
+  const family = typeof getFamilyPeople === "function" ? getFamilyPeople() : { children: [], pets: [] };
+  const kids = family.children.map((c) => c.name).filter(Boolean);
+  const pets = family.pets.map((p) => p.name).filter(Boolean);
+  const allPeople = [
+    ...kids.map((n) => ({ name: n, emoji: "👶", type: "child" })),
+    ...pets.map((n) => ({ name: n, emoji: "🐾", type: "pet" })),
+  ];
+
+  // Person filter chips (shown only when there are people)
+  const filterChips = allPeople.length > 1
+    ? `<div class="vaccine-filter-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+        <button class="vaccine-chip vaccine-chip-active" data-vaccine-filter="" style="padding:4px 10px;border-radius:20px;font-size:12px;border:1px solid var(--line);background:var(--surface-raised);cursor:pointer;">All</button>
+        ${allPeople.map((p) => `<button class="vaccine-chip" data-vaccine-filter="${escapeHtml(p.name)}" style="padding:4px 10px;border-radius:20px;font-size:12px;border:1px solid var(--line);background:var(--surface-page);cursor:pointer;">${p.emoji} ${escapeHtml(p.name)}</button>`).join("")}
+      </div>`
+    : "";
+
+  // Add buttons: one per person if people exist, else generic
+  const addButtons = allPeople.length
+    ? allPeople.map((p) => `<button class="secondary-button" type="button" data-add-vaccine-for="${escapeHtml(p.name)}" style="font-size:12px;padding:4px 10px;min-height:28px;">${p.emoji} ${escapeHtml(p.name)}</button>`).join("")
+    : `<button class="secondary-button" type="button" id="addVaccineBtn">${_vt("vaccine.add", "+ Add vaccine")}</button>`;
+
+  const addSection = allPeople.length
+    ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap;">+ Add for:</span>
+        ${addButtons}
+      </div>`
+    : addButtons;
 
   const rows = vaccineCards.length
     ? vaccineCards.map((c) => {
         const dueStr = c.due
           ? new Date(c.due).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
           : "No date";
+        // Show who this vaccine is for
+        const forName = c.child || "";
+        const forPerson = allPeople.find((p) => p.name === forName);
+        const forTag = forName
+          ? `<span style="font-size:11px;color:var(--muted);background:var(--surface-raised);padding:1px 7px;border-radius:10px;margin-left:4px;">${forPerson ? forPerson.emoji + " " : ""}${escapeHtml(forName)}</span>`
+          : "";
         return `
-          <div class="budget-row vaccine-row" data-vaccine-card="${c.id}" role="button" tabindex="0" style="cursor:pointer;">
-            <span>
-              <strong>${escapeHtml(c.title)}</strong>
-              <em>Due ${dueStr}${c.details ? " · " + escapeHtml(c.details.substring(0, 40)) : ""}</em>
+          <div class="budget-row vaccine-row" data-vaccine-card="${c.id}" data-vaccine-for="${escapeHtml(forName)}" role="button" tabindex="0" style="cursor:pointer;">
+            <span style="display:flex;flex-direction:column;gap:2px;">
+              <span style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                <strong>${escapeHtml(c.title)}</strong>${forTag}
+              </span>
+              <em style="font-size:12px;color:var(--muted);">Due ${dueStr}${c.details ? " · " + escapeHtml(c.details.substring(0, 40)) : ""}</em>
             </span>
             <button class="secondary-button" type="button" data-open-vaccine="${c.id}" style="flex-shrink:0;">${_vt("vaccine.open", "Open")}</button>
           </div>
@@ -5949,10 +5985,13 @@ function renderVaccinePanel() {
     <section class="feature-panel" id="vaccinePanelSection">
       <div class="feature-panel-header">
         <h3>${_vt("vaccine.heading", "Vaccine schedule")}</h3>
-        <button class="secondary-button" type="button" id="addVaccineBtn">${_vt("vaccine.add", "+ Add vaccine")}</button>
       </div>
+      ${filterChips}
       <div class="budget-list" id="vaccineCardList">
         ${rows}
+      </div>
+      <div style="margin-top:10px;">
+        ${addSection}
       </div>
     </section>
   `;
@@ -5962,11 +6001,41 @@ function bindVaccinePanel() {
   const section = document.getElementById("vaccinePanelSection");
   if (!section) return;
 
-  // Add vaccine - open card dialog with Vaccine type + Medical topic prefilled
+  // Generic add (no people configured)
   section.querySelector("#addVaccineBtn")?.addEventListener("click", () => {
     if (typeof openCardDialog === "function") {
       openCardDialog("", "info", { type: "Vaccine", topic: "Medical" });
     }
+  });
+
+  // Add vaccine for a specific person (child or pet)
+  section.querySelectorAll("[data-add-vaccine-for]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const forName = btn.dataset.addVaccineFor;
+      if (typeof openCardDialog === "function") {
+        openCardDialog("", "info", { type: "Vaccine", topic: "Medical", child: forName });
+      }
+    });
+  });
+
+  // Filter chips
+  section.querySelectorAll(".vaccine-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      section.querySelectorAll(".vaccine-chip").forEach((c) => {
+        c.classList.remove("vaccine-chip-active");
+        c.style.background = "var(--surface-page)";
+      });
+      chip.classList.add("vaccine-chip-active");
+      chip.style.background = "var(--surface-raised)";
+      const filterName = chip.dataset.vaccineFilter;
+      section.querySelectorAll("[data-vaccine-card]").forEach((row) => {
+        if (!filterName || row.dataset.vaccineFor === filterName) {
+          row.style.display = "";
+        } else {
+          row.style.display = "none";
+        }
+      });
+    });
   });
 
   // Open existing vaccine card

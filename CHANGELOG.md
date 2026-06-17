@@ -15,6 +15,13 @@ The calendar's right panel now has four tabs replacing the old "Selected day" la
 - The old "Parenting schedule" and "Vacations" buttons in the toolbar row are removed - replaced by the tabs
 - The "Manage" link in the vacation banner (agenda tab) now switches to the Vacations tab instead of opening a dialog
 
+**Docs updated:**
+- `UX-AUDIT-feature-map-journeys.html` - Journey 8 steps rewritten to reflect tab-based flow; old friction items (no visible edit button, vacation UI not prominent) marked resolved
+- `UX-AUDIT-user-flows.html` - Flows F24 (set up custody schedule) and F26 (add vacation) updated to describe inline panel instead of dialogs
+- `do-do-user-guide.html` - Parenting schedule section rewritten to describe the 4-tab panel
+- `UX-AUDIT-2026-06-13.md` - v0.25.1 audit notes appended
+- `README.md` - version bumped to v0.25.1, feature table updated
+
 ---
 
 ## v0.24.1 - 2026-06-17 - Caregivers section in Settings

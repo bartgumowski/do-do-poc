@@ -1,4 +1,4 @@
-const APP_VERSION = "0.25.2";
+const APP_VERSION = "0.25.3";
 const APP_VERSION_DATE = "2026-06-17";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -2051,7 +2051,7 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
     elements.typeInput.value = prefill.type || "Task";
     elements.statusInput.value = "To Do";
     setSelectValue(elements.assigneeInput, "");
-    setSelectValue(elements.childInput, "");
+    setSelectValue(elements.childInput, prefill.child || "");
     elements.amountInput.value = "";
     // Pre-fill due date from calendar selection or passed-in prefill
     elements.dueInput.value = prefill.due ? prefill.due.slice(0, 16) : "";
@@ -2070,6 +2070,7 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
 
   updateReminderCustomVisibility();
   _bindRecurrenceDaysToggle();
+  refreshChildPetSelect();
   const canEdit = !card || state.automationSettings.everyoneCanEdit;
   setCardDialogEditMode(canEdit);
   elements.cardDialog.showModal();
@@ -3405,6 +3406,24 @@ function setSelectValue(select, value) {
   select.value = stringValue;
 }
 
+// Rebuild childInput options from live setup - includes both kids and pets
+function refreshChildPetSelect() {
+  const sel = elements.childInput;
+  if (!sel) return;
+  const currentValue = sel.value;
+  const family = getFamilyPeople();
+  const kids = family.children.map((c) => c.name).filter(Boolean);
+  const pets = family.pets.map((p) => p.name).filter(Boolean);
+  sel.innerHTML = '<option value=""></option>';
+  kids.forEach((name) => sel.add(new Option(name, name)));
+  pets.forEach((name) => sel.add(new Option(`${name} (pet)`, name)));
+  if (kids.length > 1) {
+    const combo = kids.join(" + ");
+    sel.add(new Option(combo, combo));
+  }
+  if (currentValue) setSelectValue(sel, currentValue);
+}
+
 const SYSTEM_COMMENT_TEXTS = new Set([
   "Acknowledged", "Please do it", "Can't do this", "I'll do it",
   "Marked done", "Marked paid", "Done", "Paid",
@@ -4727,6 +4746,7 @@ window.quickCompleteCard = quickCompleteCard;
 window.quickRespondCard = quickRespondCard;
 window.openCardDialog = openCardDialog;
 window.getCards = () => state.cards;
+window.getFamilyPeople = getFamilyPeople;
 // Patch a card's due date from features.js (week-grid drag-drop)
 window.patchCardDue = (cardId, newDue) => {
   const idx = state.cards.findIndex((c) => c.id === cardId);
