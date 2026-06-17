@@ -3840,10 +3840,7 @@ function renderCalendarFeature(data) {
     });
   });
 
-  // Open vacations dialog (toolbar button + "Manage" link inside vacation banner)
-  featureModule.querySelectorAll("#openVacationsBtn").forEach((btn) => {
-    btn.addEventListener("click", () => openVacationsDialog());
-  });
+  // "Manage" vacation link inside vacation banner - switch to Vacations tab (handled below with panel handlers)
 
   // Request custody day change
   featureModule.querySelector("#requestChangeBtn")?.addEventListener("click", () => {
