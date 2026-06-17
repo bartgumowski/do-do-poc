@@ -2441,6 +2441,32 @@ html[data-theme="dark"] .card-cal-import {
   color: var(--ink);
 }
 
+.shopping-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  color: var(--muted);
+  transition: background 0.12s, color 0.12s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.shopping-icon-btn:hover {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+.shopping-icon-btn--danger:hover {
+  background: color-mix(in srgb, var(--error, #e53e3e) 12%, transparent);
+  color: var(--error, #e53e3e);
+}
+
 /* Row wrapper to hold label + delete button side by side */
 .shopping-row-wrap {
   display: flex;

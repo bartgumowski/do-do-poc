@@ -1,6 +1,19 @@
 const today = new Date();
 const shoppingStorageKey = "do-do-shopping-lists-v1";
 const shoppingCustomListsKey = "do-do-shopping-custom-lists-v1";
+const shoppingListMetaKey = "do-do-shopping-list-meta-v1";
+
+// Meta stores name overrides and hidden state for default lists: { groceries: { name: "...", hidden: true }, other: { ... } }
+function loadShoppingListMeta() {
+  try {
+    const raw = window.appStorage?.getItem(shoppingListMetaKey);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveShoppingListMeta(meta) {
+  window.appStorage?.setItem(shoppingListMetaKey, JSON.stringify(meta));
+}
 
 function loadCustomShoppingLists() {
   try {
@@ -1628,10 +1641,12 @@ function _getChildListLabel() {
 function _renderShoppingBoard(lists) {
   const board = featureModule.querySelector("#shoppingBoard") || featureModule;
   const customLists = loadCustomShoppingLists();
-  const childListLabel = _getChildListLabel();
+  const meta = loadShoppingListMeta();
+  const childListLabel = meta.groceries?.name || _getChildListLabel();
+  const otherLabel = meta.other?.name || (window.t ? window.t("shopping.other") : "Other");
   board.innerHTML = `
-    ${renderShoppingGroup("groceries", childListLabel, lists.groceries)}
-    ${renderShoppingGroup("other", window.t ? window.t("shopping.other") : "Other", lists.other)}
+    ${meta.groceries?.hidden ? "" : renderShoppingGroup("groceries", childListLabel, lists.groceries)}
+    ${meta.other?.hidden ? "" : renderShoppingGroup("other", otherLabel, lists.other)}
     ${customLists.map((cl) => renderShoppingGroup(cl.key, cl.name, cl.items)).join("")}
     <div class="shopping-add-list-row">
       <button class="ghost-button" type="button" id="addAnotherListBtn">${window.t?.("shopping.add_list") ?? "Add new list"}</button>
@@ -1670,14 +1685,43 @@ function _renderShoppingBoard(lists) {
     });
   });
 
-  // Remove custom list
+  // Rename list
+  board.querySelectorAll("[data-shopping-rename-list]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const listKey = btn.dataset.shoppingRenameList;
+      const currentName = btn.closest(".shopping-group")?.querySelector("h3")?.textContent?.trim() || "";
+      const newName = prompt("Rename list:", currentName);
+      if (!newName || !newName.trim() || newName.trim() === currentName) return;
+      if (listKey.startsWith("custom-")) {
+        const cls = loadCustomShoppingLists();
+        const cl = cls.find((l) => l.key === listKey);
+        if (cl) { cl.name = newName.trim(); saveCustomShoppingLists(cls); }
+      } else {
+        const meta = loadShoppingListMeta();
+        meta[listKey] = { ...(meta[listKey] || {}), name: newName.trim() };
+        saveShoppingListMeta(meta);
+      }
+      window.loadShoppingItems?.().then((refreshed) => _renderShoppingBoard(refreshed || loadShoppingLists()));
+    });
+  });
+
+  // Remove / delete list
   board.querySelectorAll("[data-shopping-remove-list]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const listKey = btn.dataset.shoppingRemoveList;
-      if (!confirm("Remove this list and all its items?")) return;
-      const cls = loadCustomShoppingLists();
-      saveCustomShoppingLists(cls.filter((l) => l.key !== listKey));
+      const listName = btn.closest(".shopping-group")?.querySelector("h3")?.textContent?.trim() || "this list";
+      if (!confirm(`Delete "${listName}" and all its items?`)) return;
+      if (listKey.startsWith("custom-")) {
+        const cls = loadCustomShoppingLists();
+        saveCustomShoppingLists(cls.filter((l) => l.key !== listKey));
+      } else {
+        // For default lists, hide them (keeps Supabase data intact)
+        const meta = loadShoppingListMeta();
+        meta[listKey] = { ...(meta[listKey] || {}), hidden: true };
+        saveShoppingListMeta(meta);
+      }
       window.loadShoppingItems?.().then((refreshed) => _renderShoppingBoard(refreshed || loadShoppingLists()));
     });
   });
@@ -1968,7 +2012,8 @@ function renderShoppingGroup(key, title, items) {
   const markAllLabel = window.t ? window.t("shopping.mark_all") : "Mark all";
   const unmarkLabel = window.t ? window.t("shopping.unmark_marked") : "Unmark marked";
   const totalCount = items.length;
-  const isCustom = key.startsWith("custom-");
+  const renameSvg = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="13" height="13"><path d="M11.5 2.5a1.414 1.414 0 0 1 2 2L5 13H3v-2L11.5 2.5Z"/></svg>`;
+  const trashSvg = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" width="13" height="13"><path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 9h8l1-9"/></svg>`;
   return `
     <section class="feature-panel shopping-group">
       <div class="shopping-group-header">
@@ -1978,7 +2023,8 @@ function renderShoppingGroup(key, title, items) {
           ${totalCount > 0 && remaining > 0 ? `<button class="shopping-bulk-btn" type="button" data-shopping-mark-all="${key}">${markAllLabel}</button>` : ""}
           ${boughtCount > 0 ? `<button class="shopping-bulk-btn" type="button" data-shopping-unmark="${key}">${unmarkLabel}</button>` : ""}
           <span>${leftLabel}</span>
-          ${isCustom ? `<button class="shopping-remove-list-btn ghost-button" type="button" data-shopping-remove-list="${key}" title="Remove list" style="font-size:11px;padding:2px 8px;color:var(--muted);">Remove list</button>` : ""}
+          <button class="shopping-icon-btn" type="button" data-shopping-rename-list="${key}" title="Rename list" aria-label="Rename list">${renameSvg}</button>
+          <button class="shopping-icon-btn shopping-icon-btn--danger" type="button" data-shopping-remove-list="${key}" title="Delete list" aria-label="Delete list">${trashSvg}</button>
         </div>
       </div>
       <form class="shopping-capture" data-shopping-add-form="${key}">
