@@ -2,6 +2,31 @@
 
 ---
 
+## v0.23.0 - 2026-06-15 - SEG-11 Moat Features
+
+### Legal export (11.1)
+- "Legal record" and "Export my data" buttons now visible to ALL users in Settings, not just divorced mode
+- PDF generation includes all cards with edit history, messages, and receipts
+
+### Shared history view (11.2)
+- Settings shows "Your shared record" panel after 30 days of activity with card count, expenses, and receipt count
+- Milestone toasts at 10, 50, and 100 shared items
+
+### Mediator dashboard (11.3)
+- Mediator link generator in Settings - share with a mediator to get a bookmarkable stats page
+- Mediator stats page at /mediator/[code] shows referred families, both-active count, avg days active (no login required)
+- Referral code captured from ?ref=MED-xxx URL and stored on profile and pair
+
+### Schedule cascade (11.4)
+- Custody week templates in Settings with named recurring patterns
+- Cascade update: shift a custody week and all linked cards move automatically
+- "Just this week" or "all future" cascade options
+
+### DB migration required
+- Run seg11-moat.sql in Supabase SQL editor to add: edit_history, schedule_id, schedule_day_offset on unified_cards; referred_by on profiles; mediator_code on pairs
+
+---
+
 ## v0.22.0 - 2026-06-15 - SEG-01 and SEG-02 QA complete
 
 ### SEG-01 - Security and Data Foundation (QA verified)

@@ -4963,15 +4963,15 @@ html[data-theme="dark"] .expense-status-badge.expense-status-disputed { backgrou
 }
 
 .parent-a-mini {
-  background: #1e1d22;
+  background: var(--custody-mine-color, #65d6c6);
 }
 
 .parent-b-mini {
-  background: #d99c22;
+  background: var(--custody-co-color, #76808a);
 }
 
 .both-mini {
-  background: linear-gradient(135deg, #1e1d22 0 50%, #d99c22 50% 100%);
+  background: linear-gradient(135deg, var(--custody-mine-color, #65d6c6) 0 50%, var(--custody-co-color, #76808a) 50% 100%);
 }
 
 .child-assignee-mini,
@@ -5355,7 +5355,7 @@ textarea {
 }
 
 .calendar-busy-card.busy-parent-a {
-  background: #1e1d22;
+  background: var(--custody-mine-color, #65d6c6);
   color: #fff;
 }
 
@@ -5365,7 +5365,7 @@ textarea {
 }
 
 .calendar-busy-card.busy-parent-b {
-  background: #d99c22;
+  background: var(--custody-co-color, #76808a);
   color: #fff;
 }
 

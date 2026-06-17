@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wszystkie funkcje - Do-Do</title>
+<meta name="description" content="Pełna lista funkcji Do-Do: wspólna tablica, harmonogram opieki, wydatki, asystent AI, rejestr prawny i więcej. Wszystko, czego rodzice po rozstaniu potrzebują w jednym miejscu.">
+<meta property="og:title" content="Wszystkie funkcje - Do-Do">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#65d6c6">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Lora:ital,wght@1,400;1,500&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" defer></script>
+<style>
+
+:root {
+  --teal: #65d6c6;
+  --teal-d: #0ea58f;
+  --teal-a: rgba(101,214,198,0.12);
+  --ink: #111111;
+  --muted: #909090;
+  --muted2: #c0c0c0;
+  --muted-hd: #bebebe;
+  --bg: #ffffff;
+  --warm: #ede5d5;
+  --warm2: #e8dece;
+  --faq-bg: #f5f3ee;
+  --hero-bg: #eceae6;
+  --border: rgba(0,0,0,0.08);
+  --r: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --font: 'Manrope', system-ui, -apple-system, sans-serif;
+  --serif: 'Lora', Georgia, serif;
+  --script: 'Dancing Script', cursive;
+  --max: 1080px;
+  --sh: 0 1px 3px rgba(0,0,0,0.04), 0 8px 28px rgba(0,0,0,0.07);
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--font);
+  font-size:13.5px;
+  line-height:1.5;
+  color:var(--ink);
+  background:#fff;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+a{text-decoration:none;color:inherit}
+img{display:block;max-width:100%}
+
+.wrap{max-width:var(--max);margin:0 auto;padding:0 48px}
+@media(max-width:560px){.wrap{padding:0 24px}}
+
+/* ── BUTTONS ─────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:13px 26px;border-radius:999px;
+  font-family:var(--font);font-weight:700;font-size:14px;
+  letter-spacing:-0.01em;border:none;cursor:pointer;
+  white-space:nowrap;
+  transition:opacity .15s,transform .12s,box-shadow .15s;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--teal);color:var(--ink);box-shadow:0 8px 28px rgba(101,214,198,0.30)}
+.btn-primary:hover{box-shadow:0 12px 36px rgba(101,214,198,0.40)}
+.btn-glass{background:rgba(255,255,255,0.09);color:#fff;border:1px solid rgba(255,255,255,0.13);backdrop-filter:blur(10px)}
+.btn-glass:hover{background:rgba(255,255,255,0.15)}
+.btn-outline{background:transparent;color:var(--ink);border:1.5px solid var(--border)}
+.btn-outline:hover{border-color:rgba(0,0,0,0.20)}
+.btn-dark{background:var(--ink);color:#fff}
+.btn-sm{padding:10px 20px;font-size:13px}
+.btn-block{width:100%;justify-content:center}
+
+/* ── NAV ─────────────────────────────── */
+nav{
+  position:sticky;top:0;z-index:100;
+  height:62px;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(20px) saturate(160%);
+  border-bottom:1px solid var(--border);
+}
+.nav-in{display:flex;align-items:center;justify-content:space-between;height:100%}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-sq{
+  width:32px;height:32px;background:var(--teal);
+  border-radius:9px;display:grid;place-items:center;
+  font-size:11px;font-weight:800;color:var(--ink);letter-spacing:-0.03em;
+}
+.logo-txt{font-size:18px;font-weight:800;letter-spacing:-0.04em}
+.logo-txt span{color:var(--teal-d)}
+.nav-r{display:flex;align-items:center;gap:24px}
+.nav-r a{font-size:13.5px;font-weight:600;color:var(--muted);transition:color .12s}
+.nav-r a:hover{color:var(--ink)}
+.nav-r a.active{color:var(--ink)}
+@media(max-width:800px){.nav-r a:not(.btn){display:none}}
+
+/* ── SECTION SHELL ─────────────────────── */
+.s{padding:96px 0;background:#fff}
+.s-hd{margin-bottom:60px}
+
+/* label */
+.lbl{
+  display:inline-block;
+  font-size:11px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;
+  color:var(--teal-d);margin-bottom:14px;
+}
+.lbl::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--teal);vertical-align:middle;margin-right:7px;margin-top:-2px}
+
+/* heading */
+.h2{
+  font-size:clamp(28px,3.8vw,46px);
+  font-weight:700;line-height:1.08;letter-spacing:-0.035em;
+  color:var(--ink);
+}
+.h2 em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.01em}
+.h2 span.g{color:var(--muted);font-weight:400}
+.h2 span.c{color:var(--teal-d)}
+
+.sub{
+  font-size:15px;line-height:1.58;color:var(--muted);
+  font-weight:400;letter-spacing:-0.01em;
+  margin-top:16px;max-width:480px;
+}
+
+/* ── PAGE HERO (inner page - no phone) ── */
+.page-hero{
+  background:var(--hero-bg);
+  padding:72px 0 64px;
+  border-bottom:1px solid var(--border);
+}
+.page-hero .lbl{margin-bottom:12px}
+.page-hero h1{
+  font-size:clamp(32px,5vw,60px);
+  font-weight:700;line-height:1.05;letter-spacing:-0.045em;
+  color:var(--ink);
+  max-width:640px;
+  margin-bottom:16px;
+}
+.page-hero h1 em{
+  font-family:var(--serif);font-style:italic;font-weight:400;
+  letter-spacing:-0.01em;color:var(--muted-hd);
+}
+.page-hero p{
+  font-size:15px;line-height:1.55;color:var(--muted);
+  font-weight:400;max-width:440px;
+  margin-bottom:28px;
+}
+.breadcrumb{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;color:var(--muted2);font-weight:500;
+  margin-bottom:28px;
+}
+.breadcrumb a{color:var(--teal-d);font-weight:600}
+.breadcrumb span{opacity:.5}
+
+/* ── MODULE GRID ──────────────────────── */
+.mod-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+@media(max-width:680px){.mod-grid{grid-template-columns:1fr}}
+
+.mod{
+  background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);
+  border-radius:var(--r-xl);
+  padding:28px 30px;
+  display:flex;
+  flex-direction:column;
+}
+.mod.full{grid-column:span 2}
+@media(max-width:680px){.mod.full{grid-column:span 1}}
+
+.mod-ico{
+  width:42px;height:42px;
+  background:rgba(0,0,0,0.07);
+  border-radius:12px;
+  display:grid;place-items:center;
+  color:#777;font-size:18px;
+  margin-bottom:16px;
+  flex-shrink:0;
+}
+.mod h3{
+  font-size:16px;font-weight:700;
+  letter-spacing:-0.03em;line-height:1.2;
+  color:var(--ink);margin-bottom:16px;
+}
+.mod-list{
+  list-style:none;
+  display:flex;flex-direction:column;gap:7px;
+  flex:1;
+}
+.mod-list li{
+  font-size:13px;color:var(--muted);
+  font-weight:500;line-height:1.45;
+  letter-spacing:-0.005em;
+  padding-left:16px;
+  position:relative;
+}
+.mod-list li::before{
+  content:"–";
+  position:absolute;left:0;
+  color:var(--muted2);
+}
+.mod-child{
+  margin-top:18px;
+  padding-top:14px;
+  border-top:1px solid rgba(0,0,0,0.07);
+  font-size:12px;font-weight:700;
+  color:var(--teal-d);letter-spacing:-0.01em;
+}
+
+/* full-width trust bar */
+.trust-bar{
+  background:linear-gradient(145deg,#a09082 0%,#c8b9a8 100%);
+  border-radius:var(--r-xl);
+  padding:28px 32px;
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+  margin-top:12px;
+}
+.trust-bar-ico{
+  width:42px;height:42px;background:rgba(255,255,255,0.18);
+  border-radius:12px;display:grid;place-items:center;
+  color:#fff;font-size:18px;flex-shrink:0;
+}
+.trust-bar-body{flex:1;min-width:180px}
+.trust-bar-body h3{font-size:15px;font-weight:700;color:#fff;letter-spacing:-0.025em;margin-bottom:6px}
+.trust-bar-body p{font-size:13px;color:rgba(255,255,255,0.70);line-height:1.5;letter-spacing:-0.005em}
+.trust-bar .btn{flex-shrink:0}
+
+/* ── CTA (dark) ───────────────────────── */
+.cta{background:#0d0d0d;padding:112px 0;text-align:center;position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:560px;height:320px;background:radial-gradient(ellipse at center,rgba(101,214,198,0.09) 0%,transparent 65%);pointer-events:none}
+.cta-in{position:relative;z-index:2;max-width:600px;margin:0 auto}
+.cta-h{font-size:clamp(32px,5vw,54px);font-weight:700;line-height:1.06;letter-spacing:-0.04em;color:#fff;margin-bottom:18px}
+.cta-h em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--teal)}
+.cta-sub{font-size:15px;line-height:1.58;color:rgba(255,255,255,0.36);font-weight:400;letter-spacing:-0.01em;margin-bottom:36px;max-width:400px;margin-left:auto;margin-right:auto}
+.cta-form{display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+.cta-form input{padding:13px 22px;border-radius:999px;border:1px solid rgba(255,255,255,0.11);background:rgba(255,255,255,0.07);backdrop-filter:blur(8px);color:#fff;font-size:14px;font-family:var(--font);font-weight:500;min-width:250px;outline:none;transition:background .15s}
+.cta-form input::placeholder{color:rgba(255,255,255,0.22)}
+.cta-form input:focus{background:rgba(255,255,255,0.11);border-color:rgba(255,255,255,0.22)}
+@media(max-width:520px){.cta-form{flex-direction:column;align-items:center}.cta-form input{min-width:0;width:100%}}
+.cta-note{font-size:11px;color:rgba(255,255,255,0.18);margin-top:14px}
+
+/* ── FOOTER (white) ─────── */
+footer{background:#fff;border-top:1px solid var(--border);padding:52px 0}
+.foot{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:40px}
+@media(max-width:800px){.foot{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.foot{grid-template-columns:1fr}}
+.fb{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.fb-sq{width:26px;height:26px;background:var(--teal);border-radius:7px;display:grid;place-items:center;font-size:9px;font-weight:800;color:#111}
+.fb-t{font-size:15px;font-weight:800;letter-spacing:-0.04em;color:var(--ink)}
+.fb-t span{color:var(--teal-d)}
+.fp{font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:4px}
+.fc2{font-size:11px;color:var(--muted2)}
+.fl h4{font-size:10px;font-weight:800;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted2);margin-bottom:13px}
+.fl ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+.fl a{font-size:13px;color:var(--muted);font-weight:500;transition:color .15s;letter-spacing:-0.005em}
+.fl a:hover{color:var(--ink)}
+
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="wrap nav-in">
+    <a class="logo" href="landing-v4.html">
+      <div class="logo-sq">Do</div>
+      <span class="logo-txt">Do<span>-Do</span></span>
+    </a>
+    <div class="nav-r">
+      <a href="landing-v4.html#codzienne">Codziennosc</a>
+      <a href="funkcje.html" class="active">Funkcje</a>
+      <a href="landing-v4.html#mediatorzy">Mediatorzy</a>
+      <a href="landing-v4.html#cennik">Cennik</a>
+      <a href="landing-v4.html#faq">FAQ</a>
+      <a href="#start" class="btn btn-dark btn-sm">Otworz konto</a>
+    </div>
+  </div>
+</nav>
+
+<!-- PAGE HERO -->
+<div class="page-hero">
+  <div class="wrap">
+    <div class="breadcrumb">
+      <a href="landing-v4.html">Do-Do</a>
+      <span>/</span>
+      <span>Wszystkie funkcje</span>
+    </div>
+    <span class="lbl">Funkcje</span>
+    <h1>Wszystko, co Do-Do<br>robi dziś - <em>dla dziecka</em></h1>
+    <p>Pelna lista funkcji dostepnych teraz w aplikacji. Zadnych obietnic na pozniej.</p>
+    <a href="#start" class="btn btn-primary">Wyprobuj 14 dni za darmo</a>
+  </div>
+</div>
+
+<!-- FEATURES BY MODULE -->
+<section class="s">
+  <div class="wrap">
+
+    <!-- TABLICA -->
+    <div class="s-hd" style="margin-bottom:20px">
+      <span class="lbl">Wspolna tablica</span>
+      <h2 class="h2">Jedno miejsce.<br><em>Wszystkie sprawy.</em></h2>
+      <p class="sub">Koniec z wiadomosciami, screenshotami i "mowialam ci". Oboje widzicie ten sam stan.</p>
+    </div>
+    <div class="mod-grid" style="margin-bottom:64px">
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-kanban"></i></div>
+        <h3>Tablica spraw</h3>
+        <ul class="mod-list">
+          <li>Trzy kolumny: Do ustalenia / Moje / Gotowe</li>
+          <li>Karty z data, przypisaniem i przypomnieniami</li>
+          <li>Komentarze i wiadomosci bezposrednio przy sprawie</li>
+          <li>Obecnosc drugiego rodzica widoczna na karcie w czasie rzeczywistym</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: nic nie ginie miedzy domami.</div>
+      </div>
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-magic-wand"></i></div>
+        <h3>Asystent AI</h3>
+        <ul class="mod-list">
+          <li>Wpisz naturalnym jezykiem - "wizyta u dentysty dla Kasi w srode o 15:00"</li>
+          <li>Asystent wyciaga date, typ, przypomnienie i przypisanie automatycznie</li>
+          <li>Zaden formularz - zadnego podwojnego wpisywania</li>
+          <li>Drugi rodzic dostaje powiadomienie po dodaniu sprawy</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: mniej chaosu organizacyjnego = wiecej zwyklego czasu z rodzicem.</div>
+      </div>
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-chat-centered-text"></i></div>
+        <h3>Wiadomosci</h3>
+        <ul class="mod-list">
+          <li>Wiadomosci przypisane do konkretnej sprawy - o wycieczce przy wycieczce</li>
+          <li>Feed kart z wiadomosciami, sortowany od najnowszej aktywnosci</li>
+          <li>Synchronizacja w czasie rzeczywistym</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: rzeczowe ustalenia, bez odgrzebywania starych watkow.</div>
+      </div>
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-shopping-cart"></i></div>
+        <h3>Lista zakupow</h3>
+        <ul class="mod-list">
+          <li>Wspolna lista w czasie rzeczywistym - widoczna u obojga</li>
+          <li>Wklejanie wielu pozycji naraz</li>
+          <li>Wyczyszczenie kupionych jednym tapnieciem</li>
+          <li>Podzial na kategorie: Spozywcze / Inne</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: syrop na kaszel jest - w obydwu domach.</div>
+      </div>
+    </div>
+
+    <!-- KALENDARZ -->
+    <div class="s-hd" style="margin-bottom:20px">
+      <span class="lbl">Kalendarz</span>
+      <h2 class="h2">Jeden grafik.<br><em>Oboje widzicie to samo.</em></h2>
+      <p class="sub">Synchronizacja z Google Calendar i Apple iCloud. Wpisz raz - pojawia sie wszedziee.</p>
+    </div>
+    <div class="mod-grid" style="margin-bottom:64px">
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-calendar-dots"></i></div>
+        <h3>Wspolny kalendarz</h3>
+        <ul class="mod-list">
+          <li>Dwukierunkowa synchronizacja z Google Calendar</li>
+          <li>Synchronizacja z Apple iCloud (CalDAV)</li>
+          <li>Zdarzenia cykliczne z oznaczeniem (↻) na kalendarzu</li>
+          <li>Wolne terminy drugiego rodzica widoczne w innym kolorze</li>
+          <li>Kolorowanie dni wedlug harmonogramu opieki</li>
+          <li>Przeciagnij i upusc - zmien termin bez otwierania karty</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: wie, gdzie bedzie jutro. Przewidywalnosc obniza lek.</div>
+      </div>
+    </div>
+
+    <!-- HARMONOGRAM OPIEKI -->
+    <div class="s-hd" style="margin-bottom:20px">
+      <span class="lbl">Harmonogram opieki</span>
+      <h2 class="h2">Wasze wzorce.<br><em>Wasze zasady.</em></h2>
+      <p class="sub">Gotowe schematy lub wlasny uklad. Wakacje osobno. Zmiany przez wniosek.</p>
+    </div>
+    <div class="mod-grid" style="margin-bottom:64px">
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-calendar-check"></i></div>
+        <h3>Harmonogram opieki naprzemiennej</h3>
+        <ul class="mod-list">
+          <li>Gotowe wzorce: 7-7, 2-2-3, 5-2</li>
+          <li>Lub wlasny uklad dzien po dniu</li>
+          <li>Widok miesięczny z kolorami dni (moje / drugiego rodzica / podzielone)</li>
+          <li>Zaznaczanie wielu dni naraz i ustawianie jednym tapnieciem</li>
+          <li>Kolory widoku osobiste - widoczne tylko dla mnie</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: zna swoj rytm. Wie, ze mama i tata to ustalili razem.</div>
+      </div>
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-airplane"></i></div>
+        <h3>Wakacje i ferie</h3>
+        <ul class="mod-list">
+          <li>Wakacje zyja w osobnym kalendarzu - nalozone na harmonogram, nie zamiast niego</li>
+          <li>Zaznaczanie zakresu dat z kolorami opieki</li>
+          <li>Widoczne u obojga rodzicow</li>
+          <li>Tryb rozstania: dodanie wakacji tworzy wniosek do zatwierdzenia</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: zadnych niespodzianek przed wyjazdem.</div>
+      </div>
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-git-pull-request"></i></div>
+        <h3>Wnioski o zmiane harmonogramu</h3>
+        <ul class="mod-list">
+          <li>Tryb rozstania: zmiany harmonogramu wymagaja zatwierdzenia przez drugiego rodzica</li>
+          <li>Zmienione dni oznaczone jako "oczekujace" - widoczne dla obojga</li>
+          <li>Historia wnioskow i decyzji zapisana trwale</li>
+          <li>Powiadomienie do drugiego rodzica o wniosku</li>
+          <li>Akceptacja lub odrzucenie jednym tapnieciem</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: nie slyszy klotni "kto mial to zmienic".</div>
+      </div>
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-arrows-clockwise"></i></div>
+        <h3>Kaskada harmonogramu</h3>
+        <ul class="mod-list">
+          <li>Nazwane szablony tygodni opieki (Tydzien A / Tydzien B)</li>
+          <li>Przesuniecie tygodnia przesuwa wszystkie powiazane sprawy automatycznie</li>
+          <li>Google Calendar aktualizuje sie razem ze zmiana</li>
+          <li>"Tylko ten tydzien" lub "wszystkie przyszle" - wybor przy zmianie</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: nie slyszy klotni "kto mial to poprawic".</div>
+      </div>
+    </div>
+
+    <!-- WYDATKI -->
+    <div class="s-hd" style="margin-bottom:20px">
+      <span class="lbl">Wydatki</span>
+      <h2 class="h2">Karta wydatku<br><em>zamiast pretensji w drzwiach.</em></h2>
+      <p class="sub">Paragon, podział, platnosc. Bez rozmow przy dziecku.</p>
+    </div>
+    <div class="mod-grid" style="margin-bottom:64px">
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-receipt"></i></div>
+        <h3>Sledzenie wydatkow</h3>
+        <ul class="mod-list">
+          <li>Dodanie wydatku ze zdjeciem paragonu</li>
+          <li>Kwota, kategoria, podział procentowy miedzy rodzicow</li>
+          <li>Biezace saldo widoczne dla obojga</li>
+          <li>Historia wydatkow zawsze dostepna</li>
+          <li>Eksport wydatkow do rejestru prawnego (PDF)</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: pieniadze przestaja byc tematem rozmow przy nim.</div>
+      </div>
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-credit-card"></i></div>
+        <h3>Platnosci</h3>
+        <ul class="mod-list">
+          <li>Wniosek o platnosc do drugiego rodzica</li>
+          <li>Platnosc jednym tapnieciem: Apple Pay, Google Pay, karta</li>
+          <li>Strona platnosci dostepna bez logowania do aplikacji</li>
+          <li>Potwierdzenie platnosci widoczne dla obojga</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: rozliczone, zapomniane, nie jego sprawa.</div>
+      </div>
+    </div>
+
+    <!-- POWIADOMIENIA -->
+    <div class="s-hd" style="margin-bottom:20px">
+      <span class="lbl">Powiadomienia i przypomnienia</span>
+      <h2 class="h2">Wlasciwa osoba.<br><em>Wlasciwa godzina.</em></h2>
+      <p class="sub">Push, e-mail i cisza nocna. Dwa telefony, jeden wspolny rytm.</p>
+    </div>
+    <div class="mod-grid" style="margin-bottom:64px">
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-bell-ringing"></i></div>
+        <h3>Przypomnienia</h3>
+        <ul class="mod-list">
+          <li>Powiadomienia push na telefon</li>
+          <li>Przypomnienia e-mail (harmonogram cron)</li>
+          <li>Przypomnienia z polaczonego kalendarza lub tylko w aplikacji - do wyboru</li>
+          <li>Cisza nocna - godziny ustawiane w ustawieniach</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: oboje rodzice zawsze wiedza, co ich czeka.</div>
+      </div>
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-device-mobile"></i></div>
+        <h3>Dostepnosc i sync</h3>
+        <ul class="mod-list">
+          <li>Synchronizacja w czasie rzeczywistym - zmiana widoczna natychmiast u obojga</li>
+          <li>Obecnosc drugiego rodzica widoczna na tej samej karcie</li>
+          <li>Praca offline - przegladasz harmonogram bez internetu</li>
+          <li>Aplikacja PWA - instalacja z przegladarki, bez App Store</li>
+          <li>Zapamietuje ostatni widok po zamknieciu i ponownym otwarciu</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: informacje docieraja na czas, do wlasciwej osoby.</div>
+      </div>
+    </div>
+
+    <!-- BEZPIECZENSTWO I PRAWO -->
+    <div class="s-hd" style="margin-bottom:20px">
+      <span class="lbl">Bezpieczenstwo i dane</span>
+      <h2 class="h2">Zapisane. Niezmieniane.<br><em>Gotowe do sadu.</em></h2>
+      <p class="sub">Historia jest nieusuwalna. Zadna ze stron nie zmieni cudzego wpisu.</p>
+    </div>
+    <div class="mod-grid" style="margin-bottom:64px">
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-file-text"></i></div>
+        <h3>Rejestr prawny</h3>
+        <ul class="mod-list">
+          <li>Eksport PDF: wszystkie karty z historia zmian, wiadomosci i paragony</li>
+          <li>Datowany rejestr ustalenien i wydatkow</li>
+          <li>Odrebny od eksportu RODO - to jest rejestr prawny, nie portabilnosc danych</li>
+          <li>Format opracowany z udzialem polskiego prawnika rodzinnego</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: spokoj, ze dorosle sprawy sa pod kontrola.</div>
+      </div>
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-shield-check"></i></div>
+        <h3>Ochrona danych</h3>
+        <ul class="mod-list">
+          <li>Serwery w Irlandii (AWS EU-West-1) - dane nie opuszczaja Unii Europejskiej</li>
+          <li>Zgodnosc z RODO</li>
+          <li>Kazda tablica to izolowana przestrzen - drugi rodzic widzi tylko Wasza sprawy</li>
+          <li>Eksport danych w formacie JSON (portabilnosc RODO)</li>
+          <li>Usuniecie konta z anonimizacja danych</li>
+          <li>Zero reklam, zero sprzedazy danych</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: jego dane nie wychodza poza Europe.</div>
+      </div>
+    </div>
+
+    <!-- SUBSKRYPCJA -->
+    <div class="s-hd" style="margin-bottom:20px">
+      <span class="lbl">Subskrypcja i dostep</span>
+      <h2 class="h2">Jedna cena.<br><em>Dwoje rodzicow.</em></h2>
+      <p class="sub">Bo dziecko ma dwoje rodzicow, a nie dwoch klientow.</p>
+    </div>
+    <div class="mod-grid" style="margin-bottom:12px">
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-tag"></i></div>
+        <h3>Cennik</h3>
+        <ul class="mod-list">
+          <li>14 dni bezplatnego okresu probnego, bez podawania karty</li>
+          <li>Jedna subskrypcja obejmuje oboje rodzicow</li>
+          <li>19 zl/mies. lub 169 zl/rok (Polska)</li>
+          <li>Dostepna tez w EUR (7,90/mies.) i CHF (9,90/mies.)</li>
+          <li>Drugi rodzic dolacza bezplatnie na zaproszenie</li>
+        </ul>
+        <div class="mod-child">Bo dziecko ma dwoje rodzicow, a nie dwoch klientow.</div>
+      </div>
+      <div class="mod">
+        <div class="mod-ico"><i class="ph ph-globe"></i></div>
+        <h3>Dostepnosc</h3>
+        <ul class="mod-list">
+          <li>Aplikacja PWA - dziala w przegladarce bez instalacji z App Store</li>
+          <li>Pelny widok na komputerze i tablecie</li>
+          <li>Polska aplikacja, po polsku, z polska obsluga platnosci</li>
+        </ul>
+        <div class="mod-child">Dla dziecka: rodzice maja narzedzie, z ktorego korzystaja - bo jest proste.</div>
+      </div>
+    </div>
+
+    <!-- TRUST BAR -->
+    <div class="trust-bar">
+      <div class="trust-bar-ico"><i class="ph ph-check-circle"></i></div>
+      <div class="trust-bar-body">
+        <h3>Wszystkie powyzsze funkcje sa dostepne teraz - bez czekania.</h3>
+        <p>Zaden punkt tej listy nie jest obietnica. Kazda funkcja dziala w aplikacji na do-do.app dzis.</p>
+      </div>
+      <a href="#start" class="btn btn-primary">Wyprobuj za darmo</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="start" class="cta">
+  <div class="wrap">
+    <div class="cta-in">
+      <div class="cta-h">Rozstanie to fakt.<br><em>Spokojne dziecinstwo</em><br>to Wasza decyzja.</div>
+      <p class="cta-sub">Skonfiguruj tablice w 3 minuty i wyslij jedno zaproszenie. Dziecko zyskuje od pierwszego dnia.</p>
+      <form class="cta-form" onsubmit="alert('Tu podlacz zapis.');return false">
+        <input type="email" required placeholder="Twoj adres e-mail">
+        <button class="btn btn-primary" type="submit">Zacznij dla dziecka</button>
+      </form>
+      <p class="cta-note">Bez karty. Drugi rodzic dolacza bezplatnie.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div><div class="fb"><div class="fb-sq">D</div><span class="fb-t">Do<span>-Do</span></span></div><p class="fp">Dobro dziecka. Zawsze na pierwszym miejscu.</p><p class="fc2">© 2026 Do-Do · Dane w UE · RODO</p></div>
+      <div class="fl"><h4>Aplikacja</h4><ul><li><a href="funkcje.html">Wszystkie funkcje</a></li><li><a href="landing-v4.html#cennik">Cennik</a></li><li><a href="prywatnosc.html">Polityka prywatnosci</a></li><li><a href="#">Regulamin</a></li></ul></div>
+      <div class="fl"><h4>Wsparcie</h4><ul><li><a href="http://standardyrozstania.pl/" target="_blank" rel="noopener">Standardy pomocy dziecku</a></li><li><a href="https://fundacja.sama-mama.pl/" target="_blank" rel="noopener">Fundacja Sama Mama</a></li><li><a href="https://dzielnytata.pl/" target="_blank" rel="noopener">Stowarzyszenie Dzielny Tata</a></li></ul></div>
+      <div class="fl"><h4>Kontakt</h4><ul><li><a href="landing-v4.html#mediatorzy">Dla mediatorow</a></li><li><a href="mailto:hello@do-do.app">hello@do-do.app</a></li></ul></div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

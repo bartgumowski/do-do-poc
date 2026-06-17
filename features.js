@@ -1211,6 +1211,45 @@ function saveChangeRequests(crs) {
   window.appStorage?.setItem(changeRequestsStorageKey, JSON.stringify(crs));
 }
 
+// Send an immediate push notification to the co-parent (non-blocking).
+async function _notifyPartner(title, body) {
+  try {
+    const session = (await window.supabaseClient?.auth?.getSession())?.data?.session;
+    if (!session?.access_token) return;
+    await fetch("/api/push-subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ action: "notify-partner", title, body, url: "/#calendar" }),
+    });
+  } catch { /* non-blocking */ }
+}
+
+// Save a unified_card to Supabase representing a schedule change request (non-blocking).
+// Returns the card ID so callers can link local CRs to it.
+async function _saveScheduleRequestCard({ cardId, title, detailsTag, payload }) {
+  if (!window.saveCardToSupabase) return null;
+  try {
+    const card = {
+      id: cardId,
+      title,
+      type: "Request",
+      topic: "Schedule",
+      status: "To Do",
+      assignee: "",
+      child: "",
+      due: "",
+      details: detailsTag + JSON.stringify(payload),
+      comments: [],
+      createdAt: Date.now(),
+    };
+    await window.saveCardToSupabase(card);
+    return cardId;
+  } catch (e) {
+    console.warn("_saveScheduleRequestCard failed:", e);
+    return null;
+  }
+}
+
 // Propagate the current week's per-day overrides to all other weeks in a ~6-year window.
 // Maps each day-of-week (0=Sun..6=Sat) to its override from the reference week, then
 // applies those overrides to every matching weekday across -156..+156 weeks.

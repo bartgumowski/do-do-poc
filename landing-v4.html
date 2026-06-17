@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do-Do - dobro dziecka na pierwszym miejscu</title>
+<meta name="description" content="Zadbaj o dobro dziecka po rozstaniu: wspólna tablica spraw, harmonogram opieki, rozliczone wydatki i mniej konfliktów, których dziecko jest świadkiem.">
+<meta property="og:title" content="Do-Do - dobro dziecka zawsze na pierwszym miejscu">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#65d6c6">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Lora:ital,wght@1,400;1,500&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" defer></script>
+<style>
+
+:root {
+  --teal: #65d6c6;
+  --teal-d: #0ea58f;
+  --teal-a: rgba(101,214,198,0.12);
+  --ink: #111111;
+  --muted: #909090;      /* neutral mid-gray, matches reference body text */
+  --muted2: #c0c0c0;
+  --muted-hd: #bebebe;   /* for muted words inside headings */
+  --bg: #ffffff;
+  --warm: #ede5d5;       /* inside cards only - warmer beige */
+  --warm2: #e8dece;
+  --faq-bg: #f5f3ee;     /* very subtle warm off-white for FAQ and alt cards */
+  --hero-bg: #eceae6;
+  --border: rgba(0,0,0,0.08);
+  --r: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --font: 'Manrope', system-ui, -apple-system, sans-serif;
+  --serif: 'Lora', Georgia, serif;
+  --script: 'Dancing Script', cursive;
+  --max: 1080px;
+  --sh: 0 1px 3px rgba(0,0,0,0.04), 0 8px 28px rgba(0,0,0,0.07);
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--font);
+  font-size:13.5px;
+  line-height:1.5;
+  color:var(--ink);
+  background:#fff;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+a{text-decoration:none;color:inherit}
+img{display:block;max-width:100%}
+
+.wrap{max-width:var(--max);margin:0 auto;padding:0 48px}
+@media(max-width:560px){.wrap{padding:0 24px}}
+
+/* ── BUTTONS ─────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:13px 26px;border-radius:999px;
+  font-family:var(--font);font-weight:700;font-size:14px;
+  letter-spacing:-0.01em;border:none;cursor:pointer;
+  white-space:nowrap;
+  transition:opacity .15s,transform .12s,box-shadow .15s;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--teal);color:var(--ink);box-shadow:0 8px 28px rgba(101,214,198,0.30)}
+.btn-primary:hover{box-shadow:0 12px 36px rgba(101,214,198,0.40)}
+.btn-glass{background:rgba(255,255,255,0.09);color:#fff;border:1px solid rgba(255,255,255,0.13);backdrop-filter:blur(10px)}
+.btn-glass:hover{background:rgba(255,255,255,0.15)}
+.btn-outline{background:transparent;color:var(--ink);border:1.5px solid var(--border)}
+.btn-outline:hover{border-color:rgba(0,0,0,0.20)}
+.btn-dark{background:var(--ink);color:#fff}
+.btn-sm{padding:10px 20px;font-size:13px}
+.btn-block{width:100%;justify-content:center}
+
+/* ── NAV ─────────────────────────────── */
+nav{
+  position:sticky;top:0;z-index:100;
+  height:62px;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(20px) saturate(160%);
+  border-bottom:1px solid var(--border);
+}
+.nav-in{display:flex;align-items:center;justify-content:space-between;height:100%}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-sq{
+  width:32px;height:32px;background:var(--teal);
+  border-radius:9px;display:grid;place-items:center;
+  font-size:11px;font-weight:800;color:var(--ink);letter-spacing:-0.03em;
+}
+.logo-txt{font-size:18px;font-weight:800;letter-spacing:-0.04em}
+.logo-txt span{color:var(--teal-d)}
+.nav-r{display:flex;align-items:center;gap:24px}
+.nav-r a{font-size:13.5px;font-weight:600;color:var(--muted);transition:color .12s}
+.nav-r a:hover{color:var(--ink)}
+@media(max-width:800px){.nav-r a:not(.btn){display:none}}
+
+/* ── HERO (light misty) ───────────────── */
+.hero{
+  background:var(--hero-bg);
+  padding:96px 0 0;
+  text-align:center;
+  position:relative;overflow:hidden;
+}
+/* blurred cloud shapes left and right of phone */
+.hero::before{
+  content:'';position:absolute;
+  left:4%;top:25%;
+  width:360px;height:240px;
+  background:radial-gradient(ellipse,rgba(30,25,20,0.26) 0%,transparent 70%);
+  filter:blur(64px);
+  pointer-events:none;z-index:1;
+}
+.hero::after{
+  content:'';position:absolute;
+  right:4%;top:35%;
+  width:300px;height:200px;
+  background:radial-gradient(ellipse,rgba(30,25,20,0.20) 0%,transparent 70%);
+  filter:blur(52px);
+  pointer-events:none;z-index:1;
+}
+.hero-inner{position:relative;z-index:2}
+
+.hero-pill{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.09);
+  border-radius:999px;padding:6px 16px 6px 8px;
+  font-size:12px;font-weight:600;color:var(--muted);
+  margin-bottom:32px;
+}
+.hero-dot{width:6px;height:6px;border-radius:50%;background:var(--teal-d)}
+
+.hero-h1{
+  font-size:clamp(38px,6vw,68px);
+  font-weight:800;
+  line-height:1.03;
+  letter-spacing:-0.045em;
+  color:var(--ink);
+  max-width:720px;margin:0 auto 20px;
+}
+.hero-h1 em{
+  font-family:var(--serif);font-style:italic;font-weight:400;
+  letter-spacing:-0.01em;color:var(--muted-hd);
+}
+.hero-sub{
+  font-size:15px;line-height:1.55;
+  color:var(--muted);
+  font-weight:400;letter-spacing:0;
+  max-width:400px;margin:0 auto 36px;
+}
+.hero-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
+.hero-trust{
+  font-size:11.5px;color:var(--muted2);font-weight:500;
+  display:flex;gap:20px;justify-content:center;flex-wrap:wrap;
+  margin-bottom:60px;
+}
+.hero-trust span+span::before{content:'·';margin-right:20px;opacity:.5}
+
+/* phone */
+.hero-phone-wrap{position:relative;display:inline-block}
+.hero-phone-glow{
+  position:absolute;bottom:-30px;left:50%;transform:translateX(-50%);
+  width:320px;height:160px;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,0.12) 0%,rgba(0,0,0,0.06) 40%,transparent 70%);
+  filter:blur(22px);pointer-events:none;
+}
+.pf{width:234px;margin:0 auto;position:relative}
+.pf-frame{
+  background:#111;border-radius:44px;padding:10px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 28px 64px rgba(0,0,0,0.28),
+    0 56px 100px rgba(0,0,0,0.16),
+    inset 0 1px 0 rgba(255,255,255,0.07);
+}
+.pf-screen{background:#fff;border-radius:36px;overflow:hidden;min-height:460px;position:relative}
+.pf-isl{position:absolute;top:13px;left:50%;transform:translateX(-50%);width:84px;height:22px;background:#111;border-radius:11px;z-index:3}
+.pf-st{height:44px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 17px 7px;font-size:10px;font-weight:700;color:#111}
+.pf-hd{background:#f8f6f2;border-bottom:1px solid rgba(0,0,0,0.06);padding:9px 13px}
+.pf-hd-t{font-size:11.5px;font-weight:800;color:#111;letter-spacing:-0.02em}
+.pf-hd-s{font-size:8.5px;color:#aaa;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;margin-top:1px}
+.pf-body{padding:9px 11px;display:flex;flex-direction:column;gap:6px}
+.pf-card{background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:10px;padding:8px 10px}
+.pf-cat{font-size:8px;font-weight:800;letter-spacing:0.07em;text-transform:uppercase;color:#bbb;margin-bottom:3px}
+.pf-t{font-size:11px;font-weight:700;color:#111;margin-bottom:5px;letter-spacing:-0.015em;line-height:1.25}
+.pf-b{display:inline-block;font-size:8px;font-weight:700;padding:2px 6px;border-radius:999px;background:rgba(101,214,198,0.14);color:#0ea58f}
+.pf-b.w{background:rgba(232,163,61,0.14);color:#b87200}
+
+/* ── LOGOS ────────────────────────────── */
+.logos{background:#fff;border-bottom:1px solid var(--border);padding:20px 0}
+.logos-in{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0}
+.logos-sep{font-size:10.5px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted2);padding-right:24px;border-right:1px solid var(--border);margin-right:24px;flex-shrink:0}
+.logo-co{font-size:13px;font-weight:800;color:#ccc;letter-spacing:-0.02em;padding:4px 16px}
+
+/* ── STATS ────────────────────────────── */
+.stats{padding:80px 0;border-bottom:1px solid var(--border)}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr)}
+@media(max-width:680px){.stats-row{grid-template-columns:1fr 1fr}}
+.stat{text-align:center;padding:0 24px;position:relative}
+.stat+.stat::before{content:'';position:absolute;left:0;top:0;bottom:0;width:1px;background:var(--border)}
+@media(max-width:680px){.stat:nth-child(2)::before{display:none}}
+.stat-n{display:block;font-size:clamp(48px,7vw,88px);font-weight:300;letter-spacing:-0.06em;line-height:1;color:var(--teal-d);margin-bottom:12px}
+.stat-l{font-size:12.5px;color:var(--muted);font-weight:500;line-height:1.45;letter-spacing:-0.005em;max-width:140px;margin:0 auto}
+
+/* ── SECTION SHELL ─────────────────────── */
+/* ALL sections are white - no alternating background */
+.s{padding:96px 0;background:#fff}
+.s-hd{margin-bottom:60px}
+
+/* label */
+.lbl{
+  display:inline-block;
+  font-size:11px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;
+  color:var(--teal-d);margin-bottom:14px;
+}
+.lbl::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--teal);vertical-align:middle;margin-right:7px;margin-top:-2px}
+
+/* heading */
+.h2{
+  font-size:clamp(28px,3.8vw,46px);
+  font-weight:700;line-height:1.08;letter-spacing:-0.035em;
+  color:var(--ink);
+}
+.h2 em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.01em}
+/* muted first word style (like reference: "Journal Anytime, Anywhere") */
+.h2 span.g{color:var(--muted);font-weight:400}
+
+/* accent-colored word (like "Journey Inward") */
+.h2 span.c{color:var(--teal-d)}
+
+.sub{
+  font-size:15px;line-height:1.58;color:var(--muted);
+  font-weight:400;letter-spacing:-0.01em;
+  margin-top:16px;max-width:480px;
+}
+
+/* ── SCENES / PROBLEM ──────────────────── */
+.scenes-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.scenes-grid{grid-template-columns:1fr}}
+.sc{
+  background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);
+  border-radius:var(--r-xl);
+  padding:28px 30px;
+}
+.sc h4{font-size:15px;font-weight:700;letter-spacing:-0.025em;line-height:1.25;margin-bottom:9px}
+.sc p{font-size:13.5px;color:var(--muted);font-weight:400;line-height:1.52;letter-spacing:-0.005em}
+.sc-out{margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.07);font-size:12.5px;font-weight:700;color:var(--teal-d);letter-spacing:-0.01em}
+.qb{
+  background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);
+  border-radius:var(--r-xl);padding:30px 34px;margin-top:12px;
+}
+.qb.c{background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%)}
+.qb blockquote{font-family:var(--serif);font-style:italic;font-size:17px;line-height:1.5;color:var(--ink);margin-bottom:10px;font-weight:400;letter-spacing:-0.01em}
+.qb cite{font-size:12px;color:var(--muted);font-weight:600}
+.qb cite a{color:var(--teal-d);font-weight:700}
+
+/* ── CONVICTION ─────────────────────── */
+.conviction{max-width:600px;margin:0 auto;text-align:center}
+.conviction .sub{margin-left:auto;margin-right:auto}
+
+/* ── FEATURES - white cards like "Replay Anytime" ref ── */
+.feat4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding-top:0}
+@media(max-width:860px){.feat4{grid-template-columns:1fr 1fr;gap:16px}}
+@media(max-width:500px){.feat4{grid-template-columns:1fr}}
+.fi{
+  background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);
+  border-radius:20px;
+  padding:24px 22px;
+}
+.fi-ico{
+  width:44px;height:44px;
+  background:rgba(0,0,0,0.07);
+  border-radius:12px;
+  display:grid;place-items:center;
+  color:#777;font-size:18px;
+  margin-bottom:18px;
+}
+.fi h3{font-size:15px;font-weight:700;letter-spacing:-0.025em;line-height:1.25;margin-bottom:8px;color:var(--ink)}
+.fi p{font-size:13.5px;color:#777;font-weight:400;line-height:1.52;letter-spacing:-0.005em}
+
+/* Bento center block */
+.bento-wrap{display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:12px;align-items:stretch;margin-bottom:12px}
+@media(max-width:860px){.bento-wrap{grid-template-columns:1fr}}
+.bc{display:flex;flex-direction:column;gap:12px}
+.fc{
+  background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);
+  border-radius:20px;padding:26px 24px;flex:1;
+}
+.fc-ico{width:44px;height:44px;background:rgba(0,0,0,0.07);border-radius:12px;display:grid;place-items:center;color:#777;font-size:18px;margin-bottom:18px}
+.fc h3{font-size:15px;font-weight:700;letter-spacing:-0.025em;line-height:1.25;margin-bottom:8px}
+.fc p{font-size:13.5px;color:#777;font-weight:400;line-height:1.52;letter-spacing:-0.005em}
+.fc-center{
+  background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);
+  border-radius:var(--r-xl);
+  display:flex;align-items:center;justify-content:center;padding:24px 14px;
+}
+/* mini phone */
+.mp{width:160px}
+.mp-frame{background:#111;border-radius:26px;padding:7px;box-shadow:0 16px 40px rgba(0,0,0,0.18),0 0 0 1px rgba(255,255,255,0.04)}
+.mp-screen{background:#fff;border-radius:21px;overflow:hidden;min-height:280px}
+.mp-isl{background:#111;width:58px;height:16px;border-radius:8px;margin:8px auto 7px}
+.mphd{background:#f8f6f2;border-bottom:1px solid rgba(0,0,0,0.06);padding:6px 10px}
+.mphd-t{font-size:8px;font-weight:800;color:#111;letter-spacing:-0.01em}
+.mphd-s{font-size:6.5px;color:#aaa;font-weight:700;letter-spacing:0.06em;text-transform:uppercase}
+.mpc{margin:6px 8px;border:1px solid rgba(0,0,0,0.07);border-radius:7px;padding:6px 8px}
+.mpc-c{font-size:6.5px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#bbb;margin-bottom:2px}
+.mpc-t{font-size:9px;font-weight:700;color:#111;margin-bottom:3px;letter-spacing:-0.01em;line-height:1.2}
+.mpc-b{display:inline-block;font-size:6.5px;font-weight:700;padding:1.5px 5px;border-radius:999px;background:rgba(101,214,198,0.14);color:#0ea58f}
+
+.feat-row{display:flex;align-items:flex-start;gap:16px;background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);border-radius:20px;padding:26px 24px}
+.fr-ico{width:44px;height:44px;background:rgba(0,0,0,0.07);border-radius:12px;display:grid;place-items:center;color:#777;font-size:18px;flex-shrink:0}
+.fr-ico+div h3{font-size:15px;font-weight:700;letter-spacing:-0.025em;margin-bottom:8px}
+.fr-ico+div p{font-size:13.5px;color:#777;line-height:1.52;letter-spacing:-0.005em}
+.feat-soon{background:linear-gradient(145deg,#a09082 0%,#c8b9a8 100%);border-radius:20px;padding:26px 24px}
+.feat-soon p{font-size:13px;color:rgba(255,255,255,0.72);line-height:1.5;letter-spacing:-0.005em}
+.feat-soon b{color:#fff}
+.wide2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.wide2{grid-template-columns:1fr}}
+
+/* ── HOW ──────────────────────────────── */
+.how3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:680px){.how3{grid-template-columns:1fr}}
+.hw{background:linear-gradient(145deg,#a09082 0%,#c8b9a8 100%);border-radius:var(--r-xl);padding:32px 28px}
+.hw-n{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.18);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;letter-spacing:-0.02em;margin-bottom:22px}
+.hw h3{font-size:16px;font-weight:700;letter-spacing:-0.03em;line-height:1.15;margin-bottom:10px;color:#fff}
+.hw p{font-size:13px;color:rgba(255,255,255,0.72);font-weight:400;line-height:1.5;letter-spacing:-0.005em}
+
+/* ── TESTIMONIALS ─────────────────────── */
+/* reference: GIANT left-aligned heading */
+.testi-hd-row{display:grid;grid-template-columns:1fr auto;gap:48px;align-items:start;margin-bottom:52px}
+@media(max-width:760px){.testi-hd-row{grid-template-columns:1fr;gap:20px}}
+.testi-big-h{
+  font-size:clamp(34px,5vw,60px);
+  font-weight:700;line-height:1.05;letter-spacing:-0.04em;
+  color:var(--ink);
+}
+.testi-big-h em{font-family:var(--serif);font-style:italic;font-weight:400}
+.testi-big-h span.g{color:var(--muted);font-weight:400}
+.testi-hd-side{max-width:220px}
+.testi-hd-side p{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px}
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:860px){.testi-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.testi-grid{grid-template-columns:1fr}}
+.tc{
+  border-radius:var(--r-lg);
+  padding:24px 22px;
+  display:flex;flex-direction:column;
+}
+/* gradient 1 - warm dark card */
+.tc.warm{
+  background:linear-gradient(145deg,#a09082 0%,#c8b9a8 100%);
+}
+.tc.warm .tc-q-icon,.tc.warm .tc-q,.tc.warm .tc-nm{color:#fff}
+.tc.warm .tc-ci{color:rgba(255,255,255,0.68)}
+.tc.warm .tc-av{background:rgba(255,255,255,0.20);border:none;color:#fff}
+/* gradient 2 - light subtle card */
+.tc.white{
+  background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);
+}
+.tc-q-icon{font-size:28px;line-height:1;color:var(--muted2);margin-bottom:10px;font-family:Georgia,serif;font-style:normal}
+.tc-q{font-size:13.5px;color:var(--ink);font-weight:400;line-height:1.5;letter-spacing:-0.005em;flex:1;margin-bottom:18px}
+.tc-who{display:flex;align-items:center;gap:10px}
+.tc-av{width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,0.08);display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0}
+.tc-nm{font-size:13px;font-weight:700;letter-spacing:-0.01em}
+.tc-ci{font-size:12px;color:var(--muted2);font-weight:500}
+
+/* ── PLATFORMS ────────────────────────── */
+.plat2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:680px){.plat2{grid-template-columns:1fr}}
+.pl{background:linear-gradient(145deg,#a09082 0%,#c8b9a8 100%);border-radius:var(--r-xl);overflow:hidden}
+.pl-hd{display:flex;align-items:center;gap:13px;padding:22px 26px 20px;border-bottom:1px solid rgba(255,255,255,0.12)}
+.pl-ico{font-size:20px;color:rgba(255,255,255,0.70);display:flex}
+.pl-hd-t h3{font-size:14.5px;font-weight:700;letter-spacing:-0.02em;color:#fff}
+.pl-hd-t p{font-size:11px;color:rgba(255,255,255,0.58);font-weight:500;margin-top:1px}
+.pl-tag{margin-left:auto;font-size:9px;font-weight:800;letter-spacing:0.07em;text-transform:uppercase;background:rgba(255,255,255,0.18);color:#fff;padding:3px 11px;border-radius:999px;flex-shrink:0}
+.pl-tag.t{background:var(--teal-d)}
+.pl-mock{margin:18px 22px;background:rgba(255,255,255,0.92);border-radius:10px;overflow:hidden;padding:8px;min-height:100px}
+.pm-bar{height:10px;background:rgba(0,0,0,0.06);border-radius:2px;display:flex;align-items:center;padding:0 5px;gap:3px;margin-bottom:6px}
+.pm-d{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,0.12)}
+.pm-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+.pm-col{background:rgba(0,0,0,0.05);border-radius:4px;padding:5px;display:flex;flex-direction:column;gap:3px}
+.pm-bl{background:#fff;border-radius:2px;height:14px}
+.pm-bl.t{background:var(--teal-a)}
+.pl-feats{padding:0 26px 22px;list-style:none;display:flex;flex-direction:column;gap:6px}
+.pl-feats li{font-size:13px;color:rgba(255,255,255,0.80);font-weight:500;padding-left:16px;position:relative;line-height:1.45;letter-spacing:-0.005em}
+.pl-feats li::before{content:"✓";position:absolute;left:0;color:rgba(255,255,255,0.55);font-weight:800}
+
+/* ── MEDIATORS ────────────────────────── */
+.med2{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:760px}
+@media(max-width:580px){.med2{grid-template-columns:1fr}}
+.md{background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);border-radius:var(--r-lg);padding:26px}
+.md-ico{font-size:22px;color:var(--muted);display:flex;margin-bottom:13px}
+.md h3{font-size:14.5px;font-weight:700;letter-spacing:-0.02em;margin-bottom:7px}
+.md p{font-size:13px;color:var(--muted);line-height:1.5;letter-spacing:-0.005em}
+.md-cta{max-width:760px;margin-top:12px;background:var(--ink);color:#fff;border-radius:var(--r-lg);padding:24px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.md-cta-t{flex:1;min-width:160px}
+.md-cta-t b{display:block;font-size:14.5px;font-weight:700;margin-bottom:2px}
+.md-cta-t p{font-size:12.5px;color:rgba(255,255,255,0.40);margin:0;line-height:1.45}
+
+/* ── PRICING ──────────────────────────── */
+/* Cards with warm beige background - like reference */
+.plans2{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:760px}
+@media(max-width:580px){.plans2{grid-template-columns:1fr}}
+.pln{
+  background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);
+  border-radius:20px;
+  padding:32px 28px 34px;
+  display:flex;flex-direction:column;
+  position:relative;
+}
+.pln.f{
+  background:linear-gradient(145deg,#a09082 0%,#c8b9a8 100%);
+  box-shadow:none;
+}
+/* text overrides for warm dark featured card */
+.pln.f .pln-nm{color:#fff}
+.pln.f .pln-price{color:#fff}
+.pln.f .pln-per{color:rgba(255,255,255,0.60)}
+.pln.f .pln-feats li{color:rgba(255,255,255,0.82)}
+.pln.f .pln-feats li::before{color:rgba(255,255,255,0.55)}
+.pln.f .pln-badge{background:rgba(0,0,0,0.22);color:#fff}
+.pln-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:9px;font-weight:800;letter-spacing:0.09em;text-transform:uppercase;padding:4px 14px;border-radius:999px;white-space:nowrap}
+.pln-nm{font-size:15px;font-weight:700;letter-spacing:-0.02em;margin-bottom:2px}
+.pln-price{font-size:clamp(52px,7vw,72px);font-weight:800;color:#111111;letter-spacing:-0.06em;line-height:1;margin:14px 0 3px}
+.pln-price small{font-size:14px;color:var(--muted);font-weight:400}
+.pln-per{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:22px}
+.pln-feats{list-style:none;flex:1;display:flex;flex-direction:column;gap:7px;margin-bottom:24px}
+.pln-feats li{font-size:13px;color:var(--muted);font-weight:500;padding-left:18px;position:relative;line-height:1.45;letter-spacing:-0.005em}
+.pln-feats li::before{content:"✓";position:absolute;left:0;color:var(--ink);font-weight:800}
+.pricing-note{max-width:680px;margin-top:20px;font-size:12.5px;color:var(--muted);line-height:1.55;letter-spacing:-0.005em}
+
+/* ── DATA ─────────────────────────────── */
+.data3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:680px){.data3{grid-template-columns:1fr}}
+.dc{background:linear-gradient(145deg,#eceae6 0%,#fafaf8 100%);border-radius:var(--r-lg);padding:26px}
+.dc-ico{font-size:22px;color:var(--muted);display:flex;margin-bottom:13px}
+.dc h3{font-size:14.5px;font-weight:700;letter-spacing:-0.02em;margin-bottom:7px}
+.dc p{font-size:13px;color:var(--muted);font-weight:400;line-height:1.5;letter-spacing:-0.005em}
+
+/* ── FEAT9 - feature cards grid ──────── */
+.feat9{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:860px){.feat9{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.feat9{grid-template-columns:1fr}}
+.feat9 .sc{display:flex;flex-direction:column}
+.feat9 .sc-ico{width:40px;height:40px;background:rgba(0,0,0,0.07);border-radius:11px;display:grid;place-items:center;color:#777;font-size:17px;margin-bottom:14px;flex-shrink:0}
+.feat9 .sc .sc-out{margin-top:auto;padding-top:14px}
+.fg-wide{grid-column:span 2}
+.fg-full{grid-column:span 3}
+@media(max-width:860px){.fg-wide{grid-column:span 2}.fg-full{grid-column:span 2}}
+@media(max-width:500px){.fg-wide,.fg-full{grid-column:span 1}}
+
+/* ── FAQ ──────────────────────────────── */
+/* reference: "Still wondering..." (sans) + "We've got you covered." (script) */
+.faq-wrap{background:var(--faq-bg);padding:96px 0}
+.faq-title-line1{
+  font-size:clamp(26px,3.5vw,42px);
+  font-weight:700;line-height:1.1;letter-spacing:-0.035em;
+  color:var(--ink);margin-bottom:4px;
+}
+.faq-title-line2{
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:clamp(30px,4vw,50px);
+  line-height:1.2;
+  color:var(--ink);
+  font-weight:400;
+  margin-bottom:52px;
+}
+.faq-list{max-width:700px}
+.faq-item{
+  border-top:1px solid var(--border);
+  padding:0;
+}
+.faq-item:last-child{border-bottom:1px solid var(--border)}
+details{background:transparent;border:none;padding:0}
+details[open]{background:transparent;box-shadow:none}
+summary{
+  font-size:14.5px;font-weight:600;letter-spacing:-0.02em;
+  cursor:pointer;list-style:none;
+  display:flex;justify-content:space-between;align-items:center;
+  gap:10px;color:var(--ink);user-select:none;
+  line-height:1.35;padding:18px 0;
+}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:20px;font-weight:300;color:var(--muted);flex-shrink:0;line-height:1;transition:transform .18s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{padding:0 0 18px;font-size:13.5px;color:var(--muted);font-weight:400;line-height:1.55;letter-spacing:-0.005em}
+
+/* ── CTA (dark) ───────────────────────── */
+.cta{background:#0d0d0d;padding:112px 0;text-align:center;position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:560px;height:320px;background:radial-gradient(ellipse at center,rgba(101,214,198,0.09) 0%,transparent 65%);pointer-events:none}
+.cta-in{position:relative;z-index:2;max-width:600px;margin:0 auto}
+.cta-h{font-size:clamp(32px,5vw,54px);font-weight:700;line-height:1.06;letter-spacing:-0.04em;color:#fff;margin-bottom:18px}
+.cta-h em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--teal)}
+.cta-sub{font-size:15px;line-height:1.58;color:rgba(255,255,255,0.36);font-weight:400;letter-spacing:-0.01em;margin-bottom:36px;max-width:400px;margin-left:auto;margin-right:auto}
+.cta-form{display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+.cta-form input{padding:13px 22px;border-radius:999px;border:1px solid rgba(255,255,255,0.11);background:rgba(255,255,255,0.07);backdrop-filter:blur(8px);color:#fff;font-size:14px;font-family:var(--font);font-weight:500;min-width:250px;outline:none;transition:background .15s}
+.cta-form input::placeholder{color:rgba(255,255,255,0.22)}
+.cta-form input:focus{background:rgba(255,255,255,0.11);border-color:rgba(255,255,255,0.22)}
+@media(max-width:520px){.cta-form{flex-direction:column;align-items:center}.cta-form input{min-width:0;width:100%}}
+.cta-note{font-size:11px;color:rgba(255,255,255,0.18);margin-top:14px}
+
+/* ── FOOTER (white) ─────── */
+footer{background:#fff;border-top:1px solid var(--border);padding:52px 0}
+.foot{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:40px}
+@media(max-width:800px){.foot{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.foot{grid-direction:column;grid-template-columns:1fr}}
+.fb{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.fb-sq{width:26px;height:26px;background:var(--teal);border-radius:7px;display:grid;place-items:center;font-size:9px;font-weight:800;color:#111}
+.fb-t{font-size:15px;font-weight:800;letter-spacing:-0.04em;color:var(--ink)}
+.fb-t span{color:var(--teal-d)}
+.fp{font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:4px}
+.fc2{font-size:11px;color:var(--muted2)}
+.fl h4{font-size:10px;font-weight:800;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted2);margin-bottom:13px}
+.fl ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+.fl a{font-size:13px;color:var(--muted);font-weight:500;transition:color .15s;letter-spacing:-0.005em}
+.fl a:hover{color:var(--ink)}
+
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="wrap nav-in">
+    <a class="logo" href="#">
+      <div class="logo-sq">Do</div>
+      <span class="logo-txt">Do<span>-Do</span></span>
+    </a>
+    <div class="nav-r">
+      <a href="#codzienne">Codzienność</a>
+      <a href="funkcje.html">Funkcje</a>
+      <a href="#jak">Jak zacząć</a>
+      <a href="#mediatorzy">Mediatorzy</a>
+      <a href="#cennik">Cennik</a>
+      <a href="#faq">FAQ</a>
+      <a href="#start" class="btn btn-dark btn-sm">Otwórz konto</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-inner">
+      <div class="hero-h1">Dwa domy.<br><em>Jedno dzieciństwo.</em></div>
+      <p class="hero-sub">Rozstaliście się ze sobą, nie z dzieckiem. Do-Do porządkuje to, co między domami.</p>
+    </div>
+  </div>
+</header>
+
+<!-- LOGOS -->
+<div class="logos">
+  <div class="wrap"><div class="logos-in"><span class="logos-sep">Rekomendują</span><span class="logo-co">Sama Mama</span><span class="logo-co">Dzielny Tata</span><span class="logo-co">standardyrozstania.pl</span><span class="logo-co">kopd.pl</span></div></div>
+</div>
+
+<!-- SCENES -->
+<section id="codzienne" class="s">
+  <div class="wrap">
+    <div class="s-hd">
+      <span class="lbl">Codzienność</span>
+      <h2 class="h2">Sytuacje, które zna<br>każdy rodzic <em>po rozstaniu</em></h2>
+      <p class="sub">To nie wielkie sprawy sądowe - to setki drobiazgów, które co tydzień spadają między dwa domy.</p>
+    </div>
+    <div class="scenes-grid">
+      <div class="sc"><h4>„Powiedz mamie, że w piątek mam wycieczkę"</h4><p>Dziecko zostaje kurierem między domami. Nosi informacje, prośby o pieniądze, czasem pretensje. To niewidzialny ciężar, który dorośli mogą z niego zdjąć.</p><div class="sc-out">→ Dziecko przestaje być posłańcem dorosłych spraw.</div></div>
+      <div class="sc"><h4>„Myślałam, że ty go dziś odbierasz"</h4><p>Sobota, 13:00, trening się skończył. Każde z Was miało w głowie inny grafik. Dziecko czeka przy bramce i uczy się, że na dorosłych nie można liczyć.</p><div class="sc-out">→ Dziecko wie, kto przyjedzie - i ma pewność, że ktoś przyjedzie.</div></div>
+      <div class="sc"><h4>„Czy zapłaciłeś w końcu za te buty?"</h4><p>Niedopowiedziane rozliczenia wracają w najgorszych momentach - przy przekazaniu, w drzwiach, przy podniesionym głosie. Dziecko słyszy więcej, niż myślicie.</p><div class="sc-out">→ Pieniądze znikają z rozmów, przy których dziecko jest obecne.</div></div>
+      <div class="sc"><h4>„Nikt mi nie powiedział o wizycie u dentysty"</h4><p>Informacje trafiają do jednego rodzica, drugi dowiaduje się po fakcie. Z poczucia pominięcia rodzi się konflikt, którego nikt nie planował.</p><div class="sc-out">→ Oboje rodziców jest na bieżąco - i oboje może reagować.</div></div>
+    </div>
+    <div class="qb" style="margin-top:12px"><blockquote>„Tata nie jest gorszym rodzicem, a dziecko nie jest towarem."</blockquote><cite>Marcin Nowak, <a href="https://dzielnytata.pl/" target="_blank" rel="noopener">Stowarzyszenie Dzielny Tata</a></cite></div>
+    <div class="qb c" style="margin-top:10px"><blockquote>Potrzeby dziecka powinny znaleźć się w centrum uwagi rozstających się rodziców.</blockquote><cite>Bezpłatny poradnik: <a href="http://standardyrozstania.pl/" target="_blank" rel="noopener">standardyrozstania.pl</a> · <a href="https://kopd.pl/" target="_blank" rel="noopener">kopd.pl</a></cite></div>
+  </div>
+</section>
+
+<!-- CONVICTION -->
+<section class="s" style="padding-top:0">
+  <div class="wrap">
+    <div class="conviction">
+      <span class="lbl">Zgoda co do jednego</span>
+      <h2 class="h2">Dobro dziecka<br><em>na pierwszym miejscu</em></h2>
+      <p class="sub">Możecie się różnić we wszystkim - ale chcecie, żeby Wasze dziecko było bezpieczne i spokojne. Badania pokazują, że dzieci znające swój harmonogram z wyprzedzeniem odczuwają niższy poziom lęku. Do-Do porządkuje to, co najczęściej psuje spokój: ustalenia, terminy i pieniądze.</p>
+      <div class="hero-pill" style="margin-top:24px"><div class="hero-dot"></div>Dla rodziców po rozstaniu · po polsku · dane w UE</div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS — giant left-aligned heading -->
+<section class="s" style="border-top:1px solid var(--border);background:linear-gradient(180deg,#f3eeea 0%,#ffffff 100%)">
+  <div class="wrap">
+    <div class="testi-hd-row">
+      <div class="testi-big-h">
+        Prawdziwe historie<br>spokoju i <em>porządku</em><br><span class="g">w dwóch domach</span>
+      </div>
+      <div class="testi-hd-side">
+        <p>Odkryj, jak Do-Do pomogło setkom rodziców po rozstaniu zorganizować opiekę - jeden mniej stresujący dzień na raz.</p>
+        <a href="#start" class="btn btn-dark btn-sm">Wypróbuj</a>
+      </div>
+    </div>
+    <div class="testi-grid">
+      <div class="tc warm">
+        <div class="tc-q-icon">"</div>
+        <p class="tc-q">„Nareszcie nie musiałam tłumaczyć synowi, dlaczego tata nie wiedział o wycieczce. Oboje mamy te same informacje i dziecko to po prostu czuje."</p>
+        <div class="tc-who"><div class="tc-av">AN</div><div><div class="tc-nm">Anna N.</div><div class="tc-ci">Warszawa</div></div></div>
+      </div>
+      <div class="tc white">
+        <div class="tc-q-icon">"</div>
+        <p class="tc-q">„Polecił nam mediator. Po dwóch tygodniach działa lepiej niż rok negocjacji przez SMS-a. Zaproszenie wysłałem z odrobiną stresu - była dołączyła w 5 minut."</p>
+        <div class="tc-who"><div class="tc-av">MK</div><div><div class="tc-nm">Marek K.</div><div class="tc-ci">Kraków</div></div></div>
+      </div>
+      <div class="tc white">
+        <div class="tc-q-icon">"</div>
+        <p class="tc-q">„Wydatki na Zosię mieliśmy rozrzucone po wiadomościach i paragonach. Teraz jedno miejsce i zero rozmów o pieniądzach przy dziecku."</p>
+        <div class="tc-who"><div class="tc-av">KW</div><div><div class="tc-nm">Katarzyna W.</div><div class="tc-ci">Gdańsk</div></div></div>
+      </div>
+      <div class="tc white">
+        <div class="tc-q-icon">"</div>
+        <p class="tc-q">„Mój syn przestał pytać 'a mówiłeś mamie?'. Małe dziecko, ale wyraźnie spokojniejsze odkąd korzystamy z aplikacji."</p>
+        <div class="tc-who"><div class="tc-av">PT</div><div><div class="tc-nm">Piotr T.</div><div class="tc-ci">Wrocław</div></div></div>
+      </div>
+      <div class="tc white">
+        <div class="tc-q-icon">"</div>
+        <p class="tc-q">„Harmonogram opieki w jednym miejscu zatrzymał te wszystkie 'myślałem, że dziś twoja kolej'. Teraz po prostu sprawdzamy aplikację."</p>
+        <div class="tc-who"><div class="tc-av">IZ</div><div><div class="tc-nm">Iwona Z.</div><div class="tc-ci">Poznań</div></div></div>
+      </div>
+      <div class="tc white">
+        <div class="tc-q-icon">"</div>
+        <p class="tc-q">„Nasz syn jeździ teraz między dwoma domami z dziecięcym spokojem. Nie musi nic 'przekazywać'. Aplikacja robi to za niego."</p>
+        <div class="tc-who"><div class="tc-av">RS</div><div><div class="tc-nm">Robert S.</div><div class="tc-ci">Łódź</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES — 4 naked columns (no card boxes) -->
+<section id="funkcje" class="s" style="border-top:1px solid var(--border)">
+  <div class="wrap">
+    <div class="s-hd" style="margin-bottom:52px">
+      <span class="lbl">Jak pomagamy - dziś, w aplikacji</span>
+      <h2 class="h2">Wszystko, czego potrzebujecie.<br><span class="g">Nic</span> <em>więcej.</em></h2>
+      <p class="sub">Funkcje, które działają teraz.</p>
+    </div>
+
+    <!-- Feature cards 9 -->
+    <div class="feat9">
+
+      <!-- 1. Wspólna tablica -->
+      <div class="sc">
+        <div class="sc-ico"><i class="ph ph-kanban"></i></div>
+        <h4>Jedna wspólna tablica</h4>
+        <p>Jedno zadanie, jeden termin, jeden wydatek, jedna rozmowa - w jednym miejscu. Koniec z wiadomościami, screenshotami i „mówiłam ci". Oboje widzicie ten sam stan, nic nie ginie w SMS-ach.</p>
+        <div class="sc-out">Dla dziecka: nic nie ginie między domami.</div>
+      </div>
+
+      <!-- 2. Kalendarz -->
+      <div class="sc">
+        <div class="sc-ico"><i class="ph ph-calendar-dots"></i></div>
+        <h4>Kalendarz zsynchronizowany z Google i Apple</h4>
+        <p>Dwukierunkowa synchronizacja z Google Calendar i Apple iCloud. Wpisz raz - pojawia się wszędzie. Zmiana widoczna natychmiast u obojga. Konflikty terminów wykrywane automatycznie.</p>
+        <div class="sc-out">Dla dziecka: wie, gdzie będzie jutro. Przewidywalność obniża lęk.</div>
+      </div>
+
+      <!-- 3. Wydatki -->
+      <div class="sc">
+        <div class="sc-ico"><i class="ph ph-receipt"></i></div>
+        <h4>Wydatki z paragonem i płatnością</h4>
+        <p>Zdjęcie paragonu, kwota, podział. Drugi rodzic widzi, zatwierdza i płaci jednym tapnięciem - Apple Pay, Google Pay lub kartą. Saldo na bieżąco, historia zawsze dostępna dla obojga.</p>
+        <div class="sc-out">Dla dziecka: pieniądze przestają być tematem rozmów przy nim.</div>
+      </div>
+
+      <!-- 4. AI -->
+      <div class="sc">
+        <div class="sc-ico"><i class="ph ph-magic-wand"></i></div>
+        <h4>Asystent AI, który zna Waszą rodzinę</h4>
+        <p>„Wizyta u dentysty dla Kasi w środę o 15:00" - asystent wyciąga datę, typ, przypomnienie i powiadamia drugiego rodzica. Żadnych formularzy. Żadnego podwójnego wpisywania.</p>
+        <div class="sc-out">Dla dziecka: mniej chaosu organizacyjnego = więcej zwykłego czasu z rodzicem.</div>
+      </div>
+
+      <!-- 5. Harmonogram - WIDE (2 cols) -->
+      <div class="sc fg-wide">
+        <div class="sc-ico"><i class="ph ph-calendar-check"></i></div>
+        <h4>Harmonogram opieki</h4>
+        <p>Gotowe wzorce naprzemiennej opieki - 7-7, 2-2-3, 5-2 - albo ułóż własny układ dzień po dniu. Oboje widzicie ten sam harmonogram, w swoich kolorach. Wakacje i ferie żyją w osobnym kalendarzu - widoczne na wierzchu harmonogramu, nie zamiast niego. Zmiana planu? Wyślij wniosek do zatwierdzenia przez drugiego rodzica. Bez SMS-ów, bez nieporozumień, z historią decyzji zapisaną po obu stronach.</p>
+        <div class="sc-out">Dla dziecka: zna swój rytm. Wie, że mama i tata to ustalili razem.</div>
+      </div>
+
+      <!-- 6. Kaskada -->
+      <div class="sc">
+        <div class="sc-ico"><i class="ph ph-arrows-clockwise"></i></div>
+        <h4>Kaskada harmonogramu</h4>
+        <p>Tydzień się zmienia - nie musisz poprawiać każdej sprawy osobno. Przesuń tydzień opieki jednym tapnięciem. Wszystkie powiązane sprawy przesuwają się automatycznie. Google Calendar też. Drugi rodzic dostaje powiadomienie.</p>
+        <div class="sc-out">Dla dziecka: nie słyszy kłótni „kto miał to zmienić".</div>
+      </div>
+
+      <!-- 7. Rejestr prawny -->
+      <div class="sc">
+        <div class="sc-ico"><i class="ph ph-file-text"></i></div>
+        <h4>Rejestr prawny - eksport PDF</h4>
+        <p>Datowany rejestr ustaleń, wydatków i wiadomości w jednym PDF - gotowym do sądu lub mediacji. Żadna ze stron nie może zmienić cudzego wpisu. Historia jest nieusuwalna.</p>
+        <div class="sc-out">Dla dziecka: spokój, że dorosłe sprawy są pod kontrolą.</div>
+      </div>
+
+      <!-- 8. Powiadomienia -->
+      <div class="sc">
+        <div class="sc-ico"><i class="ph ph-bell-ringing"></i></div>
+        <h4>Powiadomienia z ciszą nocną</h4>
+        <p>Przypomnienia trafiają do rodzica, który ma tego dnia opiekę. Cisza nocna przestrzegana automatycznie. Synchronizacja w czasie rzeczywistym - zmiana widoczna natychmiast u obojga rodziców.</p>
+        <div class="sc-out">Dla dziecka: oboje rodzice zawsze wiedzą, co ich czeka.</div>
+      </div>
+
+      <!-- 9. Dane + Cena - FULL WIDTH -->
+      <div class="sc fg-full" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
+        <div class="sc-ico" style="margin-bottom:0;flex-shrink:0"><i class="ph ph-shield-check"></i></div>
+        <div style="flex:1;min-width:200px">
+          <h4>Jedna cena dla obojga. Dane w UE. Po polsku.</h4>
+          <p style="margin-bottom:0">Jedna subskrypcja obejmuje oboje rodziców - 19 zł miesięcznie, tyle co Librus. Dane dzieci na serwerach w Unii Europejskiej, zgodnie z RODO. Polska aplikacja, polskie prawo.</p>
+        </div>
+        <div class="sc-out" style="margin-top:0;padding-top:0;white-space:nowrap;flex-shrink:0">Dla dziecka: jego dane nie wychodzą poza Europę.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section id="jak" class="s" style="border-top:1px solid var(--border)">
+  <div class="wrap">
+    <div class="s-hd">
+      <span class="lbl">Jak Zacząć</span>
+      <h2 class="h2">Start w 3 minuty -<br><em>drugi rodzic bez opłat</em></h2>
+      <p class="sub">Najtrudniejszy moment to zaproszenie drugiego rodzica. Dlatego zrobiliśmy go najprostszym.</p>
+    </div>
+    <div class="how3">
+      <div class="hw"><div class="hw-n">1</div><h3>Konfigurujesz Tablicę</h3><p>Dodajesz dziecko, harmonogram opieki i pierwsze sprawy. Mniej niż 3 minuty - od razu widać, co ogarnięte, a co do ustalenia.</p></div>
+      <div class="hw"><div class="hw-n">2</div><h3>Zapraszasz Drugiego Rodzica</h3><p>Jedno zaproszenie e-mail. Bez oskarżeń, bez negocjacji, bez karty płatniczej. Drugi rodzic dołącza bezpłatnie.</p></div>
+      <div class="hw"><div class="hw-n">3</div><h3>Patrzycie Na To Samo</h3><p>Tablica, harmonogram, wydatki - jedna wersja rzeczywistości. Dziecko przestaje być posłańcem.</p></div>
+    </div>
+    <div class="qb" style="margin-top:32px"><blockquote>„Jeśli chociaż jedna osoba skorzysta z naszej pomocy, to warto to robić."</blockquote><cite>Dominika Hapek, prezeska <a href="https://fundacja.sama-mama.pl/" target="_blank" rel="noopener">Fundacji Sama Mama</a></cite></div>
+  </div>
+</section>
+
+<!-- PLATFORMS -->
+<section class="s" style="border-top:1px solid var(--border)">
+  <div class="wrap">
+    <div class="s-hd">
+      <span class="lbl">Dostępność</span>
+      <h2 class="h2">Na telefonie<br><em>i komputerze</em></h2>
+      <p class="sub">Do-Do to aplikacja PWA - działa w przeglądarce na każdym urządzeniu. Zainstaluj jak natywną aplikację, korzystaj wszędzie.</p>
+    </div>
+    <div class="plat2">
+      <div class="pl">
+        <div class="pl-hd"><div class="pl-ico"><i class="ph ph-device-mobile"></i></div><div class="pl-hd-t"><h3>Telefon (iOS i Android)</h3><p>Zainstaluj jako aplikację z przeglądarki</p></div><div class="pl-tag">PWA</div></div>
+        <div class="pl-mock"><div class="pm-bar"><div class="pm-d"></div><div class="pm-d"></div><div class="pm-d"></div></div><div class="pm-cols"><div class="pm-col"><div class="pm-bl t"></div><div class="pm-bl"></div><div class="pm-bl"></div></div><div class="pm-col"><div class="pm-bl t"></div><div class="pm-bl t"></div></div><div class="pm-col"><div class="pm-bl t"></div><div class="pm-bl" style="opacity:.3"></div></div></div></div>
+        <ul class="pl-feats"><li>Powiadomienia push - przypomnienia w odpowiednim momencie</li><li>Działa offline - przeglądasz harmonogram bez internetu</li><li>Jeden dotyk do tablicy z ekranu głównego</li></ul>
+      </div>
+      <div class="pl">
+        <div class="pl-hd"><div class="pl-ico"><i class="ph ph-desktop"></i></div><div class="pl-hd-t"><h3>Komputer i Tablet</h3><p>Pełny widok w każdej przeglądarce</p></div><div class="pl-tag t">Web</div></div>
+        <div class="pl-mock"><div class="pm-bar"><div class="pm-d"></div><div class="pm-d"></div><div class="pm-d"></div><div style="flex:1;background:rgba(0,0,0,0.07);border-radius:2px;height:4px;margin-left:3px"></div></div><div class="pm-cols"><div class="pm-col"><div class="pm-bl t"></div><div class="pm-bl"></div><div class="pm-bl"></div><div class="pm-bl"></div></div><div class="pm-col"><div class="pm-bl t"></div><div class="pm-bl t"></div></div><div class="pm-col"><div class="pm-bl t"></div><div class="pm-bl" style="opacity:.3"></div><div class="pm-bl" style="opacity:.3"></div></div></div></div>
+        <ul class="pl-feats"><li>Pełny widok tablicy - wszystko widoczne od razu</li><li>Wygodna edycja z klawiatury - szybsze uzupełnianie</li><li>Synchronizacja w czasie rzeczywistym z telefonem</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MEDIATORS -->
+<section id="mediatorzy" class="s" style="border-top:1px solid var(--border)">
+  <div class="wrap">
+    <div class="s-hd">
+      <span class="lbl">Dla Profesjonalistów</span>
+      <h2 class="h2">Dla mediatorów<br><em>i prawników rodzinnych</em></h2>
+      <p class="sub">Plan wychowawczy, który działa też po wyjściu z Waszego gabinetu. Mniej telefonów kryzysowych. Mniej powrotów do sądu.</p>
+    </div>
+    <div class="med2">
+      <div class="md"><div class="md-ico"><i class="ph ph-scales"></i></div><h3>Konkretne Ustalenia, Nie Tylko Słowa</h3><p>Tablica spraw, harmonogram i rozliczenia - zapisane, widoczne dla obojga rodziców, bez kwestionowania „co kto powiedział".</p></div>
+      <div class="md"><div class="md-ico"><i class="ph ph-handshake"></i></div><h3>Neutralne Zaproszenie Dla Obojga</h3><p>„Mediator polecił, żebyśmy spróbowali" - to najskuteczniejsze zdanie otwierające współpracę. Aplikacja nie ma strony. Porządkuje.</p></div>
+    </div>
+    <div class="md-cta"><div class="md-cta-t"><b>Darmowe konto dla mediatorów</b><p>Napisz do nas - przygotujemy kody na 3 miesiące gratis dla Waszych klientów.</p></div><a href="mailto:hello@do-do.app" class="btn btn-primary">Napisz do nas</a></div>
+  </div>
+</section>
+
+<!-- PRICING — warm beige cards -->
+<section id="cennik" class="s" style="border-top:1px solid var(--border)">
+  <div class="wrap">
+    <div class="s-hd">
+      <span class="lbl">Cennik</span>
+      <h2 class="h2">Właściwy plan dla waszego dziecka</h2>
+      <p class="sub">Inaczej niż w aplikacjach zagranicznych - subskrypcja obejmuje oboje rodziców. Bo dziecko ma dwoje rodziców, a nie dwóch klientów.</p>
+    </div>
+    <div class="plans2">
+      <div class="pln">
+        <div class="pln-nm">7 dni za darmo</div>
+        <div class="pln-price">0 <small>zł</small></div>
+        <div class="pln-per">bez karty kredytowej</div>
+        <ul class="pln-feats">
+          <li>Pełny dostęp do wszystkich funkcji przez 7 dni</li>
+          <li>Wspólna tablica, harmonogram, wydatki, zakupy</li>
+          <li>Drugi rodzic dołącza razem - bezpłatnie</li>
+          <li>Po 7 dniach decydujecie, czy kontynuować</li>
+        </ul>
+        <a href="#start" class="btn btn-outline btn-block">Wypróbuj przez 7 dni</a>
+      </div>
+      <div class="pln f">
+        <div class="pln-badge">JEDNA CENA · DWOJE RODZICÓW</div>
+        <div class="pln-nm">Standard</div>
+        <div class="pln-price">35 <small>zł/mies.</small></div>
+        <div class="pln-per">dla obojga · 299 zł/rok (~29% taniej)</div>
+        <ul class="pln-feats">
+          <li>Wszystko bez limitów - dla obojga rodziców</li>
+          <li>Tablica: szkoła, zdrowie, wydatki, bieżące sprawy</li>
+          <li>Wydatki z rozliczeniami i lista zakupów</li>
+          <li>Przypomnienia i wiadomości przy sprawach</li>
+          <li>Aplikacja na telefon, dane w UE, RODO</li>
+        </ul>
+        <a href="#start" class="btn btn-primary btn-block">Wybieram Standard</a>
+      </div>
+    </div>
+    <p class="pricing-note">Dla porównania: Librus kosztuje ok. 35 zł/mies. i ogarnia tylko szkołę. Godzina u prawnika rodzinnego to 300-500 zł - jedna kłótnia, do której nie doszło, spłaca rok Do-Do. A spokój dziecka nie ma ceny.</p>
+  </div>
+</section>
+
+<!-- DATA -->
+<section id="dane" class="s" style="border-top:1px solid var(--border)">
+  <div class="wrap">
+    <div class="s-hd">
+      <span class="lbl">Bezpieczeństwo</span>
+      <h2 class="h2">Wasze dane -<br><em>co naprawdę znaczy RODO</em></h2>
+    </div>
+    <div class="data3">
+      <div class="dc"><div class="dc-ico"><i class="ph ph-shield-check"></i></div><h3>Dane W UE</h3><p>Serwery w Irlandii (Supabase). Dane nie opuszczają Unii Europejskiej. Podlegają RODO - macie prawo do wglądu, poprawy i usunięcia.</p></div>
+      <div class="dc"><div class="dc-ico"><i class="ph ph-prohibit"></i></div><h3>Zero Reklam, Zero Sprzedaży Danych</h3><p>Płacicie za produkt - a nie sobą. Do-Do nie wyświetla reklam i nie udostępnia żadnych danych stronom trzecim.</p></div>
+      <div class="dc"><div class="dc-ico"><i class="ph ph-lock-key"></i></div><h3>Izolacja Tablic</h3><p>Każda tablica to osobna, izolowana przestrzeń. Drugi rodzic widzi tylko to, co dotyczy Waszego dziecka - nic więcej.</p></div>
+    </div>
+    <p style="margin-top:18px;font-size:12px;color:var(--muted)"><a href="prywatnosc.html" style="color:var(--teal-d);font-weight:700">Pełna polityka prywatności →</a></p>
+  </div>
+</section>
+
+<!-- FAQ — script font second line -->
+<section id="faq" class="faq-wrap">
+  <div class="wrap">
+    <div class="faq-title-line1">Nadal masz pytania?</div>
+    <div class="faq-title-line2">Mamy odpowiedzi.</div>
+    <div class="faq-list">
+      <div class="faq-item"><details><summary>Co jeśli drugi rodzic nie będzie chciał używać aplikacji?</summary><p>To najczęstsza obawa. Dlatego zaproszenie jest maksymalnie proste i neutralne - drugi rodzic dostaje e-mail z gotową tablicą i nigdy nie musi nic płacić. Pomaga też neutralna rama: „mediator polecił, żebyśmy spróbowali". A jeśli zaczniecie w pojedynkę - tablica i tak porządkuje Twoją połowę spraw.</p></details></div>
+      <div class="faq-item"><details><summary>Czym Do-Do różni się od Messengera, kalendarza Google i Excela?</summary><p>Tamte narzędzia nie mają wspólnego kontekstu. Wasze kalendarze to dwa osobne światy, ustalenia toną w wątkach, a Excel nie przypomni o syropie. Do-Do to jedno miejsce, w którym oboje widzicie te same sprawy, terminy i rozliczenia - a dziecko nie musi niczego przekazywać.</p></details></div>
+      <div class="faq-item"><details><summary>Czy nadaje się dla rodziców, którzy nie mieli ślubu?</summary><p>Tak. Do-Do jest dla każdych dwojga rodziców prowadzących dziecko w dwóch domach - po rozwodzie, po rozstaniu, bez ślubu. Nie pytamy o status, pytamy o harmonogram.</p></details></div>
+      <div class="faq-item"><details><summary>Kto widzi dane mojej rodziny?</summary><p>Tylko Wy oboje. Dane są przechowywane w Unii Europejskiej zgodnie z RODO. Nie sprzedajemy danych i nie wyświetlamy reklam.</p></details></div>
+      <div class="faq-item"><details><summary>Gdzie szukać wsparcia poza aplikacją?</summary><p>Polecamy bezpłatny poradnik „Standardy pomocy dziecku w sytuacji rozstania rodziców" (standardyrozstania.pl), wsparcie Fundacji Sama Mama (fundacja.sama-mama.pl) i Stowarzyszenia Dzielny Tata (dzielnytata.pl).</p></details></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="start" class="cta">
+  <div class="wrap">
+    <div class="cta-in">
+      <div class="cta-h">Rozstanie to fakt.<br><em>Spokojne dzieciństwo</em><br>to Wasza decyzja.</div>
+      <p class="cta-sub">Skonfiguruj tablicę w 3 minuty i wyślij jedno zaproszenie. Dziecko zyskuje od pierwszego dnia.</p>
+      <form class="cta-form" onsubmit="alert('Tu podłącz zapis.');return false">
+        <input type="email" required placeholder="Twój adres e-mail">
+        <button class="btn btn-primary" type="submit">Zacznij dla dziecka</button>
+      </form>
+      <p class="cta-note">Bez karty. Drugi rodzic dołącza bezpłatnie.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div><div class="fb"><div class="fb-sq">D</div><span class="fb-t">Do<span>-Do</span></span></div><p class="fp">Dobro dziecka. Zawsze na pierwszym miejscu.</p><p class="fc2">© 2026 Do-Do · Dane w UE · RODO</p></div>
+      <div class="fl"><h4>Aplikacja</h4><ul><li><a href="funkcje.html">Wszystkie funkcje</a></li><li><a href="#cennik">Cennik</a></li><li><a href="prywatnosc.html">Polityka prywatności</a></li><li><a href="#">Regulamin</a></li></ul></div>
+      <div class="fl"><h4>Wsparcie</h4><ul><li><a href="http://standardyrozstania.pl/" target="_blank" rel="noopener">Standardy pomocy dziecku</a></li><li><a href="https://fundacja.sama-mama.pl/" target="_blank" rel="noopener">Fundacja Sama Mama</a></li><li><a href="https://dzielnytata.pl/" target="_blank" rel="noopener">Stowarzyszenie Dzielny Tata</a></li></ul></div>
+      <div class="fl"><h4>Kontakt</h4><ul><li><a href="#mediatorzy">Dla mediatorów</a></li><li><a href="mailto:hello@do-do.app">hello@do-do.app</a></li></ul></div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
