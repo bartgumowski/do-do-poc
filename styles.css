@@ -8859,9 +8859,16 @@ html[data-theme="dark"] .custody-week-ov-day.selected {
 /* ─── Custody schedule dialog body ──────────────────────────────────────────── */
 .custody-schedule-dialog {
   max-width: 440px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
 }
 .custody-dialog-body {
-  padding: 4px 0 8px;
+  padding: 20px 20px 16px;
+  background: var(--paper);
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
 }
 .custody-dialog-fields {
   display: grid;
@@ -9236,6 +9243,29 @@ td.vac-in-range-cell {
   margin-left: 4px;
 }
 .vac-range-clear-btn:hover { color: var(--danger, #ef4444); }
+/* Manual date inputs below vacation calendar */
+.vac-date-inputs-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.vac-date-inputs-row .clean-field {
+  flex: 1;
+  min-width: 0;
+}
+.vac-date-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+  padding: 0;
+}
+/* Change request dialog mini calendar */
+.cr-single-cal {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  padding: 8px;
+}
 .vac-form-btns {
   display: flex;
   gap: 8px;

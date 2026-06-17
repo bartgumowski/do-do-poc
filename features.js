@@ -3493,15 +3493,19 @@ function _renderVacationsPanelHTML() {
     .replace(/data-vac-date=/g, 'data-vp-date=')
     .replace(/id="vacRangeClear"/g, 'id="vpRangeClear"');
 
-  const rangeDisplay = `
-    <div class="vac-range-display">
-      <span class="vac-range-label">From</span>
-      <span class="vac-range-val${vp.rangeStart ? "" : " placeholder"}">${vp.rangeStart || "tap a date"}</span>
-      <span class="vac-range-arrow">&#8594;</span>
-      <span class="vac-range-label">To</span>
-      <span class="vac-range-val${vp.rangeEnd ? "" : " placeholder"}">${vp.rangeEnd || (vp.rangeStart ? "tap end date" : "-")}</span>
-      ${vp.rangeStart ? `<button class="vac-range-clear-btn" type="button" id="vpRangeClear">&#10005;</button>` : ""}
-    </div>`;
+  const rangeInputs = `
+    <div class="vac-date-inputs-row">
+      <label class="clean-field">
+        <span>Start date</span>
+        <input type="date" id="vpStartDateInput" value="${vp.rangeStart || ""}" />
+      </label>
+      <label class="clean-field">
+        <span>End date</span>
+        <input type="date" id="vpEndDateInput" value="${vp.rangeEnd || ""}" />
+      </label>
+      ${vp.rangeStart ? `<button class="vac-range-clear-btn" type="button" id="vpRangeClear" style="align-self:flex-end;margin-bottom:6px;" title="Clear dates">&#10005;</button>` : ""}
+    </div>
+    <p class="vac-date-hint">Leave end date empty for a single exchange day.</p>`;
 
   const saveLabel = isDivorced() ? (vp.editingId ? "Request update" : "Request vacation") : (vp.editingId ? "Update vacation" : "Add vacation");
 
@@ -3512,7 +3516,7 @@ function _renderVacationsPanelHTML() {
       <div class="vac-form-section">
         <div class="vac-form-heading">${vp.editingId ? "Edit vacation" : "Add vacation"}</div>
         ${rangeCalHtml}
-        ${rangeDisplay}
+        ${rangeInputs}
         <label class="clean-field" style="margin-top:10px;">
           <span>Name</span>
           <input type="text" id="vpVacName" placeholder='e.g. "Summer 2026"' value="${escapeHtml(editing?.name || "")}" />
@@ -4169,6 +4173,25 @@ function renderCalendarFeature(data) {
     renderCalendarFeature(data);
   });
 
+  featureModule.querySelector("#vpStartDateInput")?.addEventListener("change", (e) => {
+    const val = e.target.value;
+    vp.rangeStart = val || null;
+    if (val) { vp.viewYear = parseInt(val.slice(0, 4)); vp.viewMonth = parseInt(val.slice(5, 7)) - 1; }
+    if (vp.rangeEnd && vp.rangeStart && vp.rangeEnd < vp.rangeStart) vp.rangeEnd = null;
+    renderCalendarFeature(data);
+  });
+
+  featureModule.querySelector("#vpEndDateInput")?.addEventListener("change", (e) => {
+    const val = e.target.value;
+    if (val && vp.rangeStart && val < vp.rangeStart) {
+      vp.rangeEnd = vp.rangeStart; vp.rangeStart = val;
+      vp.viewYear = parseInt(val.slice(0, 4)); vp.viewMonth = parseInt(val.slice(5, 7)) - 1;
+    } else {
+      vp.rangeEnd = val || null;
+    }
+    renderCalendarFeature(data);
+  });
+
   featureModule.querySelector("#vpVacOwner")?.addEventListener("change", (e) => {
     featureModule.querySelector("#vpAlternatingRows")?.classList.toggle("hidden", e.target.value !== "alternating");
   });
@@ -4203,25 +4226,26 @@ function renderCalendarFeature(data) {
   });
 
   featureModule.querySelector("#vpSaveVacBtn")?.addEventListener("click", () => {
-    if (!vp.rangeStart || !vp.rangeEnd) { showFeatureToast("Select a date range on the calendar"); return; }
+    if (!vp.rangeStart) { showFeatureToast("Select a start date"); return; }
+    const effectiveEnd = vp.rangeEnd || vp.rangeStart;
     const name = (featureModule.querySelector("#vpVacName")?.value.trim()) || "Vacation";
     const owner = featureModule.querySelector("#vpVacOwner")?.value || "mine";
     const alternatingStart = featureModule.querySelector("#vpAlternatingStart")?.value || "mine";
     const existingVacs = loadVacations();
     if (isDivorced()) {
       const vacData = vp.editingId
-        ? { ...(existingVacs.find(v => v.id === vp.editingId) || {}), name, startDate: vp.rangeStart, endDate: vp.rangeEnd, owner, alternatingStart }
-        : { id: "vac-" + Date.now(), name, startDate: vp.rangeStart, endDate: vp.rangeEnd, owner, alternatingStart };
+        ? { ...(existingVacs.find(v => v.id === vp.editingId) || {}), name, startDate: vp.rangeStart, endDate: effectiveEnd, owner, alternatingStart }
+        : { id: "vac-" + Date.now(), name, startDate: vp.rangeStart, endDate: effectiveEnd, owner, alternatingStart };
       createVacationChangeRequest(vp.editingId ? "update" : "add", vacData);
       vp.editingId = null; vp.rangeStart = null; vp.rangeEnd = null; vp._editLoaded = false;
       showFeatureToast("Vacation request sent - awaiting approval");
       calendarState.rightPanel = "changes";
     } else {
       if (vp.editingId) {
-        saveVacations(existingVacs.map(v => v.id === vp.editingId ? { ...v, name, startDate: vp.rangeStart, endDate: vp.rangeEnd, owner, alternatingStart } : v));
+        saveVacations(existingVacs.map(v => v.id === vp.editingId ? { ...v, name, startDate: vp.rangeStart, endDate: effectiveEnd, owner, alternatingStart } : v));
         showFeatureToast("Vacation updated");
       } else {
-        saveVacations([...existingVacs, { id: "vac-" + Date.now(), name, startDate: vp.rangeStart, endDate: vp.rangeEnd, owner, alternatingStart }]);
+        saveVacations([...existingVacs, { id: "vac-" + Date.now(), name, startDate: vp.rangeStart, endDate: effectiveEnd, owner, alternatingStart }]);
         showFeatureToast("Vacation added");
       }
       vp.editingId = null; vp.rangeStart = null; vp.rangeEnd = null; vp._editLoaded = false;
@@ -5119,7 +5143,7 @@ function _buildVacRangeCalHTML(vState, vacations) {
     if (dayNum > daysInMonth) break;
   }
 
-  const rangeHint = rangeStart && !rangeEnd ? `<span class="sched-sel-count">Now tap the end date</span>` : rangeStart && rangeEnd ? `<span class="sched-sel-count">${rangeStart} to ${rangeEnd}</span>` : `<span class="sched-sel-count">Tap the first day of the vacation</span>`;
+  const rangeHint = rangeStart && !rangeEnd ? `<span class="sched-sel-count">Tap end date, or save as a single day</span>` : rangeStart && rangeEnd ? `<span class="sched-sel-count">${rangeStart} to ${rangeEnd}</span>` : `<span class="sched-sel-count">Tap start date or type below</span>`;
 
   return `
     <div class="sched-month-cal">
@@ -5136,6 +5160,77 @@ function _buildVacRangeCalHTML(vState, vacations) {
     </div>`;
 }
 
+const _crCalState = {
+  viewYear: new Date().getFullYear(),
+  viewMonth: new Date().getMonth(),
+  selectedDate: null,
+};
+
+function _buildCrSingleDateCalHTML(state) {
+  const { viewYear, viewMonth, selectedDate } = state;
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const weekStart = parseInt(localStorage.getItem("do-do-week-start") || "1");
+  const allDayLetters = ["S","M","T","W","T","F","S"];
+  const headerLetters = Array.from({ length: 7 }, (_, i) => allDayLetters[(i + weekStart) % 7]);
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const startDow = (firstDay.getDay() - weekStart + 7) % 7;
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const todayStr = toCalendarKey(new Date());
+  let cells = ""; let dayNum = 1;
+  for (let row = 0; row < 6; row++) {
+    cells += "<tr>";
+    for (let col = 0; col < 7; col++) {
+      const ci = row * 7 + col;
+      if (ci < startDow || dayNum > daysInMonth) { cells += "<td></td>"; }
+      else {
+        const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+        const isSelected = dateStr === selectedDate;
+        let cls = "sched-day-btn";
+        if (dateStr === todayStr) cls += " sched-today";
+        if (isSelected) cls += " sched-selected vac-range-start";
+        cells += `<td><button class="${cls}" type="button" data-cr-date="${dateStr}">${dayNum}</button></td>`;
+        dayNum++;
+      }
+    }
+    cells += "</tr>";
+    if (dayNum > daysInMonth) break;
+  }
+  return `
+    <div class="sched-month-cal cr-single-cal">
+      <div class="mc-header">
+        <button class="mc-nav" type="button" id="crCalPrev">&#8249;</button>
+        <span class="mc-month-label">${monthNames[viewMonth]} ${viewYear}</span>
+        <button class="mc-nav" type="button" id="crCalNext">&#8250;</button>
+      </div>
+      <table class="sched-cal-table">
+        <thead><tr>${headerLetters.map(d => `<th>${d}</th>`).join("")}</tr></thead>
+        <tbody>${cells}</tbody>
+      </table>
+    </div>`;
+}
+
+function _updateCrCal(dialog) {
+  const wrapper = dialog.querySelector("#crCalWrapper");
+  if (!wrapper) return;
+  wrapper.innerHTML = _buildCrSingleDateCalHTML(_crCalState);
+  wrapper.querySelector("#crCalPrev")?.addEventListener("click", () => {
+    _crCalState.viewMonth--; if (_crCalState.viewMonth < 0) { _crCalState.viewMonth = 11; _crCalState.viewYear--; }
+    _updateCrCal(dialog);
+  });
+  wrapper.querySelector("#crCalNext")?.addEventListener("click", () => {
+    _crCalState.viewMonth++; if (_crCalState.viewMonth > 11) { _crCalState.viewMonth = 0; _crCalState.viewYear++; }
+    _updateCrCal(dialog);
+  });
+  wrapper.querySelectorAll("[data-cr-date]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      _crCalState.selectedDate = btn.dataset.crDate;
+      const dateInput = dialog.querySelector("#crDate");
+      if (dateInput) dateInput.value = btn.dataset.crDate;
+      _updateCrCal(dialog);
+    });
+  });
+}
+
 function openChangeRequestDialog(selectedDateKey, currentOwner) {
   document.getElementById("changeRequestDialog")?.remove();
   const setup = window.getOnboardingState?.() || {};
@@ -5150,11 +5245,18 @@ function openChangeRequestDialog(selectedDateKey, currentOwner) {
         <h3 style="margin:0;font-size:16px;">Request Change</h3>
         <button class="ghost-button" type="button" id="closeCrDialog" style="font-size:20px;line-height:1;padding:4px 10px;">✕</button>
       </div>
-      <p style="font-size:13px;color:var(--text-secondary);margin:0 0 14px;">${escapeHtml(coparentName)} will receive this request and must approve it.</p>
-      <label class="clean-field" style="margin-bottom:10px;">
-        <span>Date</span>
-        <input type="date" id="crDate" value="${selectedDateKey}" />
-      </label>
+      <p style="font-size:13px;color:var(--text-secondary);margin:0 0 10px;">${escapeHtml(coparentName)} will receive this request and must approve it.</p>
+      <div id="crCalWrapper" style="margin-bottom:10px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <label class="clean-field">
+          <span>Date</span>
+          <input type="date" id="crDate" value="${selectedDateKey}" />
+        </label>
+        <label class="clean-field">
+          <span>Exchange time</span>
+          <input type="time" id="crExchangeTime" value="" />
+        </label>
+      </div>
       <label class="clean-field" style="margin-bottom:10px;">
         <span>What are you changing?</span>
         <select id="crChangeType">
@@ -5193,6 +5295,28 @@ function openChangeRequestDialog(selectedDateKey, currentOwner) {
   document.body.appendChild(dialog);
   dialog.showModal();
 
+  // Init calendar state for this dialog opening
+  _crCalState.selectedDate = selectedDateKey || null;
+  if (selectedDateKey) {
+    _crCalState.viewYear = parseInt(selectedDateKey.slice(0, 4));
+    _crCalState.viewMonth = parseInt(selectedDateKey.slice(5, 7)) - 1;
+  } else {
+    _crCalState.viewYear = new Date().getFullYear();
+    _crCalState.viewMonth = new Date().getMonth();
+  }
+  _updateCrCal(dialog);
+
+  // Wire date input -> update calendar
+  dialog.querySelector("#crDate")?.addEventListener("change", (e) => {
+    const val = e.target.value;
+    if (val) {
+      _crCalState.selectedDate = val;
+      _crCalState.viewYear = parseInt(val.slice(0, 4));
+      _crCalState.viewMonth = parseInt(val.slice(5, 7)) - 1;
+      _updateCrCal(dialog);
+    }
+  });
+
   dialog.querySelector("#closeCrDialog").addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
@@ -5204,13 +5328,14 @@ function openChangeRequestDialog(selectedDateKey, currentOwner) {
   });
 
   dialog.querySelector("#saveCrBtn").addEventListener("click", async () => {
-    const requestedDate = dialog.querySelector("#crDate").value;
+    const requestedDate = dialog.querySelector("#crDate").value || _crCalState.selectedDate;
     const changeType = dialog.querySelector("#crChangeType").value;
     const requestedOwner = changeType === "day" ? dialog.querySelector("#crRequestedOwner").value : null;
     const pickupTime = changeType === "hours" ? dialog.querySelector("#crPickupTime").value : null;
     const dropoffTime = changeType === "hours" ? dialog.querySelector("#crDropoffTime").value : null;
+    const exchangeTime = dialog.querySelector("#crExchangeTime")?.value || null;
     const reason = dialog.querySelector("#crReason").value.trim();
-    if (!requestedDate) { showFeatureToast("Please select a date"); return; }
+    if (!requestedDate) { showFeatureToast("Please select a date on the calendar or type it in"); return; }
     const cardId = "scr-day-" + Date.now();
     const cr = {
       id: "cr-" + Date.now(),
@@ -5222,6 +5347,7 @@ function openChangeRequestDialog(selectedDateKey, currentOwner) {
       requestedOwner,
       pickupTime,
       dropoffTime,
+      exchangeTime,
       reason,
       status: "pending",
       supabaseCardId: cardId,
