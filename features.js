@@ -979,10 +979,6 @@ function openCustodyScheduleDialog() {
         <div class="custody-dialog-body sched-dialog-body">
           <div class="custody-dialog-fields" style="margin-bottom:10px;">
             <label class="clean-field custody-dialog-field">
-              <span>Show custody calendar</span>
-              <input type="checkbox" id="schedEnabled" ${dlgState.working.enabled ? "checked" : ""} />
-            </label>
-            <label class="clean-field custody-dialog-field">
               <span>Schedule pattern</span>
               <select id="schedType">
                 <option value="7-7"${dlgState.working.type === "7-7" ? " selected" : ""}>Alternating weeks (7-7)</option>
@@ -1689,6 +1685,65 @@ function bindAutomationSettings() {
   workCalendarProvider?.addEventListener("change", save);
   globalReminderPreset?.addEventListener("change", save);
   reminderDelivery?.addEventListener("change", save);
+
+  // ── Cisza nocna (quiet hours) ───────────────────────────────────────────────
+  const quietHoursToggle = featureModule.querySelector("#quietHoursToggle");
+  const quietHoursTimesBlock = featureModule.querySelector("#quietHoursTimesBlock");
+  const quietHoursFrom = featureModule.querySelector("#quietHoursFrom");
+  const quietHoursTo = featureModule.querySelector("#quietHoursTo");
+
+  function _showQuietTimes(show) {
+    if (quietHoursTimesBlock) quietHoursTimesBlock.style.display = show ? "flex" : "none";
+  }
+
+  async function _saveQuietHours() {
+    const session = typeof getAuthState === "function" ? getAuthState() : null;
+    const userId = session?.session?.user?.id;
+    if (!userId || !window.supabaseClient) return;
+    const enabled = quietHoursToggle?.checked ?? false;
+    const from = quietHoursFrom?.value || "22:00";
+    const to = quietHoursTo?.value || "07:00";
+    // Merge with existing prefs so we don't overwrite email/push settings
+    const { data: existing } = await window.supabaseClient
+      .from("profiles").select("notification_prefs").eq("id", userId).single().catch(() => ({ data: null }));
+    const base = existing?.notification_prefs || {};
+    await window.supabaseClient.from("profiles").update({
+      notification_prefs: { ...base, quiet_enabled: enabled, quiet_from: from, quiet_to: to }
+    }).eq("id", userId);
+    if (typeof showToast === "function") showToast(enabled ? `Cisza nocna: ${from} - ${to}` : "Cisza nocna wylaczona");
+  }
+
+  // Load saved quiet hours from Supabase and populate controls
+  (async () => {
+    const session = typeof getAuthState === "function" ? getAuthState() : null;
+    const userId = session?.session?.user?.id;
+    if (!userId || !window.supabaseClient) return;
+    try {
+      const { data } = await window.supabaseClient
+        .from("profiles").select("notification_prefs").eq("id", userId).single();
+      const prefs = data?.notification_prefs || {};
+      const enabled = prefs.quiet_enabled !== false && (prefs.quiet_enabled === true || Boolean(prefs.quiet_from));
+      if (quietHoursToggle) quietHoursToggle.checked = enabled;
+      if (quietHoursFrom && prefs.quiet_from) {
+        const h = prefs.quiet_from.split(":")[0].padStart(2,"0");
+        quietHoursFrom.value = `${h}:00`;
+      }
+      if (quietHoursTo && prefs.quiet_to) {
+        const h = prefs.quiet_to.split(":")[0].padStart(2,"0");
+        quietHoursTo.value = `${h}:00`;
+      }
+      _showQuietTimes(enabled);
+    } catch {}
+  })();
+
+  quietHoursToggle?.addEventListener("change", () => {
+    _showQuietTimes(quietHoursToggle.checked);
+    _saveQuietHours();
+  });
+  quietHoursFrom?.addEventListener("change", _saveQuietHours);
+  quietHoursTo?.addEventListener("change", _saveQuietHours);
+  // ── end cisza nocna ─────────────────────────────────────────────────────────
+
   featureModule.querySelectorAll("[data-connect-work-provider]").forEach((button) => {
     button.addEventListener("click", () => {
       const provider = button.dataset.connectWorkProvider;
@@ -3355,10 +3410,6 @@ function _renderSchedulePanelHTML() {
   return `
     <div class="cal-inline-panel-schedule">
       <div class="custody-dialog-fields" style="margin-bottom:10px;">
-        <label class="clean-field custody-dialog-field">
-          <span>Show custody calendar</span>
-          <input type="checkbox" id="spEnabled" ${sp.working.enabled ? "checked" : ""} />
-        </label>
         <label class="clean-field custody-dialog-field">
           <span>Schedule pattern</span>
           <select id="spType">
@@ -5884,6 +5935,33 @@ function renderSpecialPanel(moduleName, part = "all") {
               <option value="calendar-and-app" ${automation.reminderDelivery === "calendar-and-app" || !["app-only","calendar-only"].includes(automation.reminderDelivery) ? "selected" : ""}>${_at("auto.delivery_cal_app")}</option>
             </select>
           </label>
+          <label class="settings-toggle-row" id="quietHoursToggleRow">
+            <span>
+              <strong>Cisza nocna</strong>
+              <em>Brak powiadomien i przypomnien w godzinach nocnych</em>
+            </span>
+            <input type="checkbox" id="quietHoursToggle" />
+          </label>
+          <div id="quietHoursTimesBlock" style="display:none;flex-direction:column;gap:4px;">
+            <label class="settings-select-row">
+              <span style="padding-left:16px;">
+                <strong>Od godziny</strong>
+                <em>Poczatek ciszy nocnej</em>
+              </span>
+              <select id="quietHoursFrom">
+                ${Array.from({length:24},(_,h)=>`<option value="${String(h).padStart(2,"0")}:00">${String(h).padStart(2,"0")}:00</option>`).join("")}
+              </select>
+            </label>
+            <label class="settings-select-row">
+              <span style="padding-left:16px;">
+                <strong>Do godziny</strong>
+                <em>Koniec ciszy nocnej</em>
+              </span>
+              <select id="quietHoursTo">
+                ${Array.from({length:24},(_,h)=>`<option value="${String(h).padStart(2,"0")}:00">${String(h).padStart(2,"0")}:00</option>`).join("")}
+              </select>
+            </label>
+          </div>
         </div>
       </section>
       <section class="feature-panel google-calendar-connection">
@@ -7683,17 +7761,8 @@ async function renderNotifPrefsPanel() {
           <span class="toggle-knob"></span>
         </label>
       </div>
-      <div style="width:100%;">
-        <strong style="display:block;margin-bottom:8px;">Quiet hours</strong>
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-          <label style="font-size:13px;color:var(--muted);">From
-            <input type="time" id="notifQuietFrom" value="${prefs.quiet_from || "22:00"}" style="margin-left:6px;font-size:13px;border:1px solid var(--border);border-radius:8px;padding:4px 8px;background:var(--input-bg,var(--card-bg));color:var(--text);">
-          </label>
-          <label style="font-size:13px;color:var(--muted);">To
-            <input type="time" id="notifQuietTo" value="${prefs.quiet_to || "07:00"}" style="margin-left:6px;font-size:13px;border:1px solid var(--border);border-radius:8px;padding:4px 8px;background:var(--input-bg,var(--card-bg));color:var(--text);">
-          </label>
-        </div>
-        <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">No reminders sent during quiet hours.</p>
+      <div style="width:100%;display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--border);">
+        <span style="font-size:13px;color:var(--muted);">Cisza nocna: ustawiana w sekcji Przypomnienia w ustawieniach.</span>
       </div>
       <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
         <button class="secondary-button" id="saveNotifPrefs" style="font-size:13px;">Save</button>
@@ -7706,9 +7775,6 @@ async function renderNotifPrefsPanel() {
   document.getElementById("saveNotifPrefs")?.addEventListener("click", async () => {
     const emailOn = document.getElementById("notifPrefEmail")?.checked ?? true;
     const pushOn = document.getElementById("notifPrefPush")?.checked ?? true;
-    const quietFrom = document.getElementById("notifQuietFrom")?.value || "22:00";
-    const quietTo = document.getElementById("notifQuietTo")?.value || "07:00";
-    const newPrefs = { email: emailOn, push: pushOn, quiet_from: quietFrom, quiet_to: quietTo };
 
     // Subscribe or unsubscribe from push based on toggle
     if (pushOn && pushPermission === "default") {
@@ -7721,9 +7787,13 @@ async function renderNotifPrefsPanel() {
     }
 
     if (userId && window.supabaseClient) {
+      // Merge with existing prefs to preserve quiet hours set in Reminders section
+      const { data: existing } = await window.supabaseClient
+        .from("profiles").select("notification_prefs").eq("id", userId).single().catch(() => ({ data: null }));
+      const base = existing?.notification_prefs || {};
       await window.supabaseClient
         .from("profiles")
-        .update({ notification_prefs: newPrefs })
+        .update({ notification_prefs: { ...base, email: emailOn, push: pushOn } })
         .eq("id", userId);
     }
     if (typeof showToast === "function") showToast("Notification preferences saved");

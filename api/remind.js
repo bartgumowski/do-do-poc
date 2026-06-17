@@ -16,7 +16,9 @@ async function encryptWebPush(subscription, payload) {
   }
 }
 
-function isInQuietHours(quietFrom, quietTo, userTimezone) {
+function isInQuietHours(quietFrom, quietTo, userTimezone, quietEnabled) {
+  // If quiet_enabled is explicitly false, never suppress
+  if (quietEnabled === false) return false;
   if (!quietFrom || !quietTo) return false;
   try {
     const tz = userTimezone || "UTC";
@@ -174,7 +176,7 @@ export default async function handler(req, res) {
 
       for (const recipient of recipients) {
         const prefs = recipient.prefs || { email: true, push: true };
-        const inQuiet = isInQuietHours(prefs.quiet_from, prefs.quiet_to, recipient.timezone);
+        const inQuiet = isInQuietHours(prefs.quiet_from, prefs.quiet_to, recipient.timezone, prefs.quiet_enabled);
 
         // Email
         if (prefs.email !== false && recipient.email && !inQuiet && resendKey) {
