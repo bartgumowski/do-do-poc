@@ -6702,13 +6702,10 @@ function renderSettingsFeature() {
 
       <section class="feature-panel" id="promoCodePanel">
         <h3>Access code</h3>
-        <p class="feature-note" style="font-size:13px;color:var(--muted);margin:0 0 12px;">
-          Have a secret access code? Enter it below to unlock all features for free.
-        </p>
         ${window.isPromoActive?.() ? `
           <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;border:1px solid var(--line);">
             <span style="color:#22c55e;font-size:16px;">&#10003;</span>
-            <span style="font-size:13px;font-weight:600;color:var(--ink);">Access code active - full access unlocked</span>
+            <span style="font-size:13px;font-weight:600;color:var(--ink);">Active</span>
           </div>
         ` : `
           <div style="display:flex;gap:8px;align-items:center;">
@@ -6717,7 +6714,7 @@ function renderSettingsFeature() {
               autocomplete="off" spellcheck="false">
             <button class="secondary-button" id="promoCodeApplyBtn">Apply</button>
           </div>
-          <p id="promoCodeError" style="font-size:12px;color:#ef4444;margin:6px 0 0;display:none;">Invalid code. Please try again.</p>
+          <p id="promoCodeError" style="font-size:12px;color:#ef4444;margin:6px 0 0;display:none;">Invalid code.</p>
         `}
       </section>
 
@@ -7010,13 +7007,13 @@ function renderSettingsFeature() {
         panel.insertAdjacentHTML("beforeend", `
           <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;border:1px solid var(--line);">
             <span style="color:#22c55e;font-size:16px;">&#10003;</span>
-            <span style="font-size:13px;font-weight:600;color:var(--ink);">Access code active - full access unlocked</span>
+            <span style="font-size:13px;font-weight:600;color:var(--ink);">Active</span>
           </div>
         `);
       }
       // Refresh subscription panel so it reflects paid status
       renderSubscriptionPanel();
-      showFeatureToast("Access code applied - full access unlocked!");
+      showFeatureToast("Access code applied.");
     } else {
       if (errorEl) errorEl.style.display = "block";
       if (input) { input.value = ""; input.focus(); }
