@@ -2680,20 +2680,110 @@ function renderExpensesFeature() {
     .filter((card) => card.type === "Expense" || card.topic === "Expenses")
     .sort((a, b) => new Date(a.due || 0) - new Date(b.due || 0));
 
-  // Month filter
+  const _t = window.t || ((k) => k);
+  const _sym = (window.LOCALE_CONFIG || LOCALE_CONFIG)?.symbol || "CHF";
+  const activeTab = featureModule.dataset.expenseTab || "monthly";
+
+  // ── Shared data ──────────────────────────────────────────────────────────
+  const myName = typeof getMyName === "function" ? getMyName() : "";
+  const setup = window.getOnboardingState?.() || {};
+  const coparentName = setup.parents?.coparent || "Co-parent";
+
+  // ── Tab: Recurring ───────────────────────────────────────────────────────
+  if (activeTab === "recurring") {
+    const recurringCards = allCards.filter((c) => c.recurrence?.freq && c.recurrence.freq !== "none");
+    const freqLabel = (freq) => ({
+      daily:    _t("recurrence.daily")    || "Daily",
+      weekly:   _t("recurrence.weekly")   || "Weekly",
+      biweekly: _t("recurrence.biweekly") || "Every 2 weeks",
+      monthly:  _t("recurrence.monthly")  || "Monthly",
+    })[freq] || freq;
+
+    // Group by frequency
+    const groups = {};
+    recurringCards.forEach((c) => {
+      const f = c.recurrence.freq;
+      if (!groups[f]) groups[f] = [];
+      groups[f].push(c);
+    });
+    const freqOrder = ["daily", "weekly", "biweekly", "monthly"];
+    const sortedFreqs = Object.keys(groups).sort((a, b) => {
+      const ai = freqOrder.indexOf(a), bi = freqOrder.indexOf(b);
+      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+    });
+
+    const monthlyTotal = recurringCards
+      .filter((c) => c.recurrence.freq === "monthly")
+      .reduce((s, c) => s + expenseAmount(c.amount), 0);
+    const weeklyTotal = recurringCards
+      .filter((c) => ["weekly", "biweekly"].includes(c.recurrence.freq))
+      .reduce((s, c) => s + expenseAmount(c.amount) * (c.recurrence.freq === "weekly" ? 4 : 2), 0);
+
+    featureModule.innerHTML = `
+      <section class="finance-hero">
+        <div>
+          <span>${_t("expense.total")}</span>
+          <strong>${_sym} ${formatExpenseCurrency(monthlyTotal + weeklyTotal)}</strong>
+          <p style="font-size:12px;color:var(--muted)">Est. monthly commitment</p>
+        </div>
+        <div class="expense-hero-actions">
+          <button class="primary-button" type="button" id="addExpenseButton">${_t("expense.add")}</button>
+        </div>
+      </section>
+
+      <div class="expense-tab-bar">
+        <button class="cal-panel-tab" data-expense-tab="monthly">Monthly</button>
+        <button class="cal-panel-tab active" data-expense-tab="recurring">&#x21BB; Recurring</button>
+      </div>
+
+      <section class="upcoming-expenses">
+        ${recurringCards.length === 0
+          ? `<article class="agenda-empty">No recurring expenses yet. Add one with the recurring toggle.</article>`
+          : sortedFreqs.map((freq) => `
+              <div class="recurring-freq-group">
+                <div class="recurring-freq-heading">
+                  <span class="recurring-freq-badge">${freqLabel(freq)}</span>
+                  <span class="recurring-freq-total">${_sym} ${formatExpenseCurrency(groups[freq].reduce((s, c) => s + expenseAmount(c.amount), 0))}</span>
+                </div>
+                <div class="upcoming-expense-list">
+                  ${groups[freq].map((card) => renderExpenseCard(card, true)).join("")}
+                </div>
+              </div>
+            `).join("")
+        }
+      </section>
+    `;
+
+    featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => openQuickExpenseDialog());
+    featureModule.querySelectorAll("[data-expense-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        featureModule.dataset.expenseTab = btn.dataset.expenseTab;
+        renderExpensesFeature();
+      });
+    });
+    featureModule.querySelectorAll("[data-expense-action]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        handleExpenseAction(btn.dataset.cardId, btn.dataset.expenseAction);
+      });
+    });
+    window.bindUnifiedCardInteractions?.(featureModule);
+    return;
+  }
+
+  // ── Tab: Monthly (default) ───────────────────────────────────────────────
   const now = new Date();
   const months = [];
   for (let i = 0; i < 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     months.push({ value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: d.toLocaleString("default", { month: "long", year: "numeric" }) });
   }
-  // Read selected month from dataset (persisted on featureModule)
   const selectedMonth = featureModule.dataset.expenseMonth || months[0].value;
   const [selYear, selMon] = selectedMonth.split("-").map(Number);
 
   const expenseCards = allCards.filter((card) => {
     const d = card.due ? new Date(card.due) : null;
-    if (!d) return true; // no due date - show in current month
+    if (!d) return true;
     return d.getFullYear() === selYear && d.getMonth() + 1 === selMon;
   });
 
@@ -2701,33 +2791,23 @@ function renderExpensesFeature() {
   const openCards = expenseCards.filter((card) => card.status !== "Done" && card.payment_status !== "paid");
   const paidCards = expenseCards.filter((card) => card.status === "Done" || card.payment_status === "paid");
 
-  const myName = typeof getMyName === "function" ? getMyName() : "";
-  const setup = window.getOnboardingState?.() || {};
-  const coparentName = setup.parents?.coparent || "Co-parent";
-
   const balance = computeBalance(expenseCards, myName);
   const balanceAbs = Math.abs(balance);
-  const _sym = (window.LOCALE_CONFIG || LOCALE_CONFIG)?.symbol || "CHF";
   const balanceLabel = balance > 0.01
     ? `<span class="balance-positive">${window.t?.("expense.they_owe", { sym: _sym, amt: formatExpenseCurrency(balanceAbs) }) ?? `They owe you ${_sym} ${formatExpenseCurrency(balanceAbs)}`}</span>`
     : balance < -0.01
     ? `<span class="balance-negative">${window.t?.("expense.you_owe", { sym: _sym, amt: formatExpenseCurrency(balanceAbs) }) ?? `You owe ${_sym} ${formatExpenseCurrency(balanceAbs)}`}</span>`
     : `<span class="balance-zero">${window.t?.("expense.settled") ?? "Settled up"}</span>`;
 
-  // Per-parent paid breakdown
   function paidByParent(name) {
     return paidCards.reduce((sum, card) => {
       const isPrimary = card.author === name || card.assignee === name;
-      const amt = expenseAmount(card.amount);
-      return sum + (isPrimary ? amt : 0);
+      return sum + (isPrimary ? expenseAmount(card.amount) : 0);
     }, 0);
   }
   const myPaid = paidByParent(myName);
   const coPaid = paidCards.reduce((sum, card) => sum + expenseAmount(card.amount), 0) - myPaid;
 
-  const _t = window.t || ((k) => k);
-
-  // Settlement section: only show when balance != 0
   const settlementSection = balanceAbs > 0.01 ? (() => {
     const theyOwe = balance > 0.01;
     const amtStr = `${_sym} ${formatExpenseCurrency(balanceAbs)}`;
@@ -2768,6 +2848,11 @@ function renderExpensesFeature() {
       </div>
     </section>
     ${settlementSection}
+
+    <div class="expense-tab-bar">
+      <button class="cal-panel-tab active" data-expense-tab="monthly">Monthly</button>
+      <button class="cal-panel-tab" data-expense-tab="recurring">&#x21BB; Recurring</button>
+    </div>
 
     <div class="expense-month-filter">
       <label style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;">
@@ -2820,7 +2905,14 @@ function renderExpensesFeature() {
     </section>
   `;
 
-  featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => _openNewExpenseCard());
+  featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => openQuickExpenseDialog());
+
+  featureModule.querySelectorAll("[data-expense-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      featureModule.dataset.expenseTab = btn.dataset.expenseTab;
+      renderExpensesFeature();
+    });
+  });
 
   featureModule.querySelector("#sendSettlementBtn")?.addEventListener("click", () => {
     openSettlementModal({ expenseCards, balance, balanceAbs, coparentName, myName, _sym, selectedMonth });
@@ -2839,7 +2931,6 @@ function renderExpensesFeature() {
     exportExpensesPdf(selectedMonth, _sym);
   });
 
-  // Expense quick-action and request-payment buttons
   featureModule.querySelectorAll("[data-expense-action]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();

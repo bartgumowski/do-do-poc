@@ -10747,3 +10747,53 @@ html[data-theme="dark"] .expense-split-chip.active {
   border-color: var(--accent, #6366f1);
   color: #fff;
 }
+
+/* ─── Expense tab bar ──────────────────────────────────────────────────── */
+
+.expense-tab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: #f0f1ee;
+  align-self: flex-start;
+  margin-bottom: 2px;
+}
+
+html[data-theme="dark"] .expense-tab-bar {
+  background: var(--surface-raised, #1e2027);
+}
+
+/* reuse cal-panel-tab but override grid to flex */
+.expense-tab-bar .cal-panel-tab {
+  flex: 1;
+  font-size: 12px;
+  padding: 6px 14px;
+}
+
+/* ─── Recurring expense groups ─────────────────────────────────────────── */
+
+.recurring-freq-group {
+  margin-bottom: 20px;
+}
+
+.recurring-freq-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.recurring-freq-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.recurring-freq-total {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
