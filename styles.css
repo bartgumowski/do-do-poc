@@ -10521,8 +10521,8 @@ td.vac-range-in-cell {
   border-radius: 16px;
   padding: 0;
   border: none;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
-  background: var(--surface, #fff);
+  box-shadow: 0 30px 76px rgba(31, 41, 35, 0.075);
+  background: var(--paper);
   overflow: visible;
 }
 
@@ -10679,17 +10679,12 @@ td.vac-range-in-cell {
   border-top: 1px solid var(--line, #e2e8f0);
 }
 
-/* Dark mode */
-html[data-theme="dark"] .quick-expense-dialog {
-  background: var(--surface-dark, #1e293b);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-}
-
+/* Dark mode inputs */
 html[data-theme="dark"] .qed-input,
 html[data-theme="dark"] .qed-chip {
-  background: var(--surface-input-dark, #0f172a);
-  border-color: var(--line-dark, #334155);
-  color: var(--ink-dark, #e2e8f0);
+  background: color-mix(in srgb, var(--paper) 80%, #000);
+  border-color: var(--line);
+  color: var(--ink);
 }
 
 /* ─── Expense split chips (inside payment panel side column) ──────────────── */
