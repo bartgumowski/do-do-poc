@@ -2,6 +2,33 @@
 
 ---
 
+## v0.27.0 - 2026-06-18 - SEG-21: In-app guide system (Pendo-like onboarding tours)
+
+**New feature:** Step-by-step spotlight guides that walk new users through the app's key features. No external library - pure JS/CSS.
+
+**7 guides built:**
+- Welcome tour (auto-fires on first login, chains to setup-parents)
+- Set up parents (names + invite co-parent)
+- Set up children (first visit to Settings)
+- Custody schedule & handovers (first visit to Calendar)
+- Vacations (first time adding a vacation block)
+- Calendar connection (first visit to calendar settings)
+- Shopping list (first visit to Shopping)
+
+**How it works:**
+- Dark overlay with a spotlight cutout highlights the relevant UI element
+- Floating tooltip shows title, body text, progress dots, Skip and Next/Done buttons
+- Each guide fires once automatically; never re-fires unless reset
+- Progress saved to localStorage
+- Mobile: tooltip anchors to bottom of screen full-width
+- All text translated in English, Polish and German
+
+**Settings > Help & Tours:** new section lists all 7 guides with a "Run again" button each.
+
+**Files changed:** `guide.js` (new), `i18n.js` (+50 translation keys), `index.html` (overlay elements + script tag), `styles.css` (guide CSS), `app.js` (welcome trigger post-login), `features.js` (module switch triggers + Settings panel), `plan/SEG-21-in-app-guides.md` (spec)
+
+---
+
 ## v0.26.5 - 2026-06-18 - Fix: Export PDF and Download History no longer require sign-in
 
 **Bug fix:** "Export PDF" (legal record) and "Download History" in Settings showed "Sign in required" even when the user was already signed in.
