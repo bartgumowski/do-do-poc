@@ -6542,6 +6542,27 @@ function renderSettingsFeature() {
         </div>
       </section>
 
+      <section class="feature-panel" id="promoCodePanel">
+        <h3>Access code</h3>
+        <p class="feature-note" style="font-size:13px;color:var(--muted);margin:0 0 12px;">
+          Have a secret access code? Enter it below to unlock all features for free.
+        </p>
+        ${window.isPromoActive?.() ? `
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;border:1px solid var(--line);">
+            <span style="color:#22c55e;font-size:16px;">&#10003;</span>
+            <span style="font-size:13px;font-weight:600;color:var(--ink);">Access code active - full access unlocked</span>
+          </div>
+        ` : `
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="promoCodeInput" placeholder="Enter code"
+              style="flex:1;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-page);color:var(--ink);font-size:13px;"
+              autocomplete="off" spellcheck="false">
+            <button class="secondary-button" id="promoCodeApplyBtn">Apply</button>
+          </div>
+          <p id="promoCodeError" style="font-size:12px;color:#ef4444;margin:6px 0 0;display:none;">Invalid code. Please try again.</p>
+        `}
+      </section>
+
       <section class="feature-panel share-panel">
         <div class="feature-panel-header">
           <h3>${_st("share.heading")}</h3>
@@ -6808,6 +6829,39 @@ function renderSettingsFeature() {
 
   // Subscription panel
   renderSubscriptionPanel();
+
+  // Promo code panel
+  featureModule.querySelector("#promoCodeApplyBtn")?.addEventListener("click", () => {
+    const input = featureModule.querySelector("#promoCodeInput");
+    const errorEl = featureModule.querySelector("#promoCodeError");
+    const code = input?.value?.trim() || "";
+    if (window.activatePromoCode?.(code)) {
+      // Re-render the panel to show the active state
+      const panel = featureModule.querySelector("#promoCodePanel");
+      if (panel) {
+        panel.querySelector("div[style]")?.remove();
+        input?.closest("div")?.remove();
+        if (errorEl) errorEl.remove();
+        panel.insertAdjacentHTML("beforeend", `
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;border:1px solid var(--line);">
+            <span style="color:#22c55e;font-size:16px;">&#10003;</span>
+            <span style="font-size:13px;font-weight:600;color:var(--ink);">Access code active - full access unlocked</span>
+          </div>
+        `);
+      }
+      // Refresh subscription panel so it reflects paid status
+      renderSubscriptionPanel();
+      showFeatureToast("Access code applied - full access unlocked!");
+    } else {
+      if (errorEl) errorEl.style.display = "block";
+      if (input) { input.value = ""; input.focus(); }
+    }
+  });
+
+  // Allow pressing Enter in the promo code input
+  featureModule.querySelector("#promoCodeInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") featureModule.querySelector("#promoCodeApplyBtn")?.click();
+  });
 
   // Co-parent invite panel
   renderInvitePanel();

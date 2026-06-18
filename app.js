@@ -1,4 +1,4 @@
-const APP_VERSION = "0.27.0";
+const APP_VERSION = "0.27.1";
 const APP_VERSION_DATE = "2026-06-18";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -310,9 +310,28 @@ function saveCalSettings(startHour, endHour) {
   storage.setItem(_calSettingsKey, JSON.stringify({ startHour: Number(startHour), endHour: Number(endHour) }));
 }
 
+// ─── Promo code ───────────────────────────────────────────────────────────────
+const PROMO_CODE_STORAGE_KEY = "do-do-promo-activated";
+const VALID_PROMO_CODE = "Dzwiad";
+
+function isPromoActive() {
+  try { return storage.getItem(PROMO_CODE_STORAGE_KEY) === "1"; } catch { return false; }
+}
+
+function activatePromoCode(code) {
+  if (code === VALID_PROMO_CODE) {
+    try { storage.setItem(PROMO_CODE_STORAGE_KEY, "1"); } catch {}
+    return true;
+  }
+  return false;
+}
+
+window.isPromoActive = isPromoActive;
+window.activatePromoCode = activatePromoCode;
+
 // Subscription helpers
 function isPaidUser() {
-  return ["active", "trialing"].includes(state.subscriptionStatus);
+  return ["active", "trialing"].includes(state.subscriptionStatus) || isPromoActive();
 }
 
 function freeCardCount() {

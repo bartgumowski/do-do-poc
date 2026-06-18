@@ -2,6 +2,12 @@
 
 ---
 
+## v0.27.1 - 2026-06-18 - Secret access code
+
+**New feature:** Settings > Access code panel. Enter a secret code to unlock full paid access for free. Stored in localStorage - persists across sessions. The code input also works with Enter key. Once activated, the panel shows a green confirmation and the subscription panel reflects paid status immediately.
+
+---
+
 ## v0.27.0 - 2026-06-18 - SEG-21: In-app guide system (Pendo-like onboarding tours)
 
 **New feature:** Step-by-step spotlight guides that walk new users through the app's key features. No external library - pure JS/CSS.
