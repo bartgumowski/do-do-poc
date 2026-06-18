@@ -670,11 +670,12 @@ window.switchModule = function(moduleName) {
   localStorage.setItem("do-do-last-module", moduleName);
 
   // SEG-21: fire contextual guides on first visit to each module
-  if (window.GuideEngine) {
+  // Guard: skip if a guide is already running (prevents guide-internal navigation from resetting the guide)
+  if (window.GuideEngine && !window.GuideEngine.isActive()) {
     const G = window.GuideEngine;
-    if (moduleName === "calendar"  && !G.isDone("setup-schedule"))    setTimeout(() => G.show("setup-schedule"),    400);
-    if (moduleName === "shopping"  && !G.isDone("shopping"))          setTimeout(() => G.show("shopping"),          400);
-    if (moduleName === "settings"  && G.isDone("setup-children") && !G.isDone("calendar-connect"))  setTimeout(() => G.show("calendar-connect"),  400);
+    if (moduleName === "calendar" && !G.isDone("setup-schedule"))                                    setTimeout(() => G.show("setup-schedule"),   400);
+    if (moduleName === "shopping" && !G.isDone("shopping"))                                          setTimeout(() => G.show("shopping"),         400);
+    if (moduleName === "settings" && G.isDone("setup-children") && !G.isDone("calendar-connect"))    setTimeout(() => G.show("calendar-connect"), 400);
   }
 };
 
@@ -6799,22 +6800,29 @@ function renderSettingsFeature() {
 
       ${renderSpecialPanel("settings", "appearance")}
 
-      <!-- SEG-21: Help & Tours -->
+      <!-- SEG-21: Guides -->
       <section class="feature-panel" id="helpToursPanel">
-        <h3>${_st("guide.settings.title")}</h3>
+        <div class="feature-panel-header">
+          <h3>${_st("guide.settings.title")}</h3>
+          <a href="https://help.do-do.app" target="_blank" rel="noopener" class="ghost-button" style="font-size:12px;padding:4px 10px;">${_st("guide.settings.docs")}</a>
+        </div>
+        <p class="feature-note" style="margin-bottom:8px;">${_st("guide.settings.subtitle")}</p>
         <div class="guide-tours-list">
           ${[
-            "welcome",
-            "setup-parents",
-            "setup-children",
-            "setup-schedule",
-            "setup-vacation",
-            "calendar-connect",
-            "shopping",
-          ].map(id => `
+            ["welcome",          "guide.tour.welcome",           "guide.tour.welcome.desc"],
+            ["setup-parents",    "guide.tour.setup-parents",     "guide.tour.setup-parents.desc"],
+            ["setup-children",   "guide.tour.setup-children",    "guide.tour.setup-children.desc"],
+            ["setup-schedule",   "guide.tour.setup-schedule",    "guide.tour.setup-schedule.desc"],
+            ["setup-vacation",   "guide.tour.setup-vacation",    "guide.tour.setup-vacation.desc"],
+            ["calendar-connect", "guide.tour.calendar-connect",  "guide.tour.calendar-connect.desc"],
+            ["shopping",         "guide.tour.shopping",          "guide.tour.shopping.desc"],
+          ].map(([id, nameKey, descKey]) => `
             <div class="guide-tour-row">
-              <span class="guide-tour-name">${_st("guide.tour." + id)}</span>
-              <button class="guide-run-btn" data-guide-id="${id}">${_st("guide.settings.run_again")}</button>
+              <div class="guide-tour-info">
+                <span class="guide-tour-name">${_st(nameKey)}</span>
+                <span class="guide-tour-desc">${_st(descKey)}</span>
+              </div>
+              <button class="secondary-button" style="font-size:12px;padding:4px 12px;min-height:28px;white-space:nowrap;" data-guide-id="${id}">${_st("guide.settings.run_again")}</button>
             </div>
           `).join("")}
         </div>
@@ -6862,8 +6870,8 @@ function renderSettingsFeature() {
   // Edit my name
   featureModule.querySelector("#editMyNameBtn")?.addEventListener("click", () => promptEditMyName());
 
-  // SEG-21: fire setup-children guide on first Settings visit
-  if (window.GuideEngine && !window.GuideEngine.isDone("setup-children")) {
+  // SEG-21: fire setup-children guide on first Settings visit (only if no guide is already running)
+  if (window.GuideEngine && !window.GuideEngine.isDone("setup-children") && !window.GuideEngine.isActive()) {
     setTimeout(() => window.GuideEngine.show("setup-children"), 600);
   }
 
@@ -6873,8 +6881,8 @@ function renderSettingsFeature() {
   featureModule.querySelector("#addCaregiverBtn")?.addEventListener("click", () => showAddCaregiverForm());
   featureModule.querySelector("#addCaregiverBtn2")?.addEventListener("click", () => showAddCaregiverForm());
 
-  // SEG-21: bind Help & Tours "Run again" buttons
-  featureModule.querySelectorAll(".guide-run-btn[data-guide-id]").forEach((btn) => {
+  // SEG-21: bind Guides "Run again" buttons
+  featureModule.querySelectorAll("#helpToursPanel [data-guide-id]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.guideId;
       if (window.GuideEngine) window.GuideEngine.reset(id);

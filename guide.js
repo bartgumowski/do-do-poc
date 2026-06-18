@@ -343,8 +343,14 @@
     _positionTooltip(step.target, step.position);
   });
 
+  // Returns true if any guide is currently running (or a specific one if guideId provided)
+  function isActive(guideId) {
+    if (guideId) return _activeGuideId === guideId;
+    return _activeGuideId !== null;
+  }
+
   // ─── Export ──────────────────────────────────────────────────────────────────
 
-  window.GuideEngine = { show, next, dismiss, reset, isDone };
+  window.GuideEngine = { show, next, dismiss, reset, isDone, isActive };
 
 })();

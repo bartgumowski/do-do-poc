@@ -10486,6 +10486,7 @@ td.vac-range-in-cell {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border, #e2e8f0);
 }
@@ -10494,26 +10495,23 @@ td.vac-range-in-cell {
   border-bottom: none;
 }
 
+.guide-tour-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .guide-tour-name {
   font-size: 14px;
+  font-weight: 500;
   color: var(--text, #1e293b);
 }
 
-.guide-run-btn {
+.guide-tour-desc {
   font-size: 12px;
-  padding: 4px 12px;
-  border-radius: 6px;
-  background: none;
-  border: 1px solid var(--border, #e2e8f0);
-  color: var(--accent, #6366f1);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  white-space: nowrap;
-}
-
-.guide-run-btn:hover {
-  background: var(--accent-light, #eef2ff);
-  border-color: var(--accent, #6366f1);
+  color: var(--muted, #94a3b8);
+  line-height: 1.4;
 }
 
 /* ─── Quick Expense Dialog ─────────────────────────────────────────────── */

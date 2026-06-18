@@ -2,6 +2,20 @@
 
 ---
 
+## v0.27.4 - 2026-06-18 - SEG-21: Guide loop fix + Settings panel redesign
+
+**Bug fixes:**
+- Fixed guide loop on mobile and in calendar/shopping modules: when the guide internally called `switchModule()` to navigate, the module-switch hooks were firing `G.show()` again and resetting the guide to step 0. Fixed by adding `isActive()` to GuideEngine and guarding all trigger points.
+- Same fix applied to the `setup-children` trigger inside `renderSettingsFeature` (was overriding setup-parents mid-flow).
+
+**UI improvements:**
+- Settings panel renamed from "Help & Tours" to "Guides"
+- Added subtitle text and "Documentation" link
+- Each guide now shows a short description below its name
+- "Run again" buttons replaced with standard `secondary-button` style
+
+---
+
 ## v0.27.3 - 2026-06-18 - Quick Add Expense dialog
 
 **New feature:** Expenses section now has a dedicated quick-add expense dialog.
