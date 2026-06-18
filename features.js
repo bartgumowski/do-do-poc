@@ -668,6 +668,14 @@ window.switchModule = function(moduleName) {
   const hash = "#" + moduleName;
   if (location.hash !== hash) history.pushState(null, "", hash);
   localStorage.setItem("do-do-last-module", moduleName);
+
+  // SEG-21: fire contextual guides on first visit to each module
+  if (window.GuideEngine) {
+    const G = window.GuideEngine;
+    if (moduleName === "calendar"  && !G.isDone("setup-schedule"))    setTimeout(() => G.show("setup-schedule"),    400);
+    if (moduleName === "shopping"  && !G.isDone("shopping"))          setTimeout(() => G.show("shopping"),          400);
+    if (moduleName === "settings"  && G.isDone("setup-children") && !G.isDone("calendar-connect"))  setTimeout(() => G.show("calendar-connect"),  400);
+  }
 };
 
 function routeFromHash() {
@@ -6613,6 +6621,27 @@ function renderSettingsFeature() {
 
       ${renderSpecialPanel("settings", "appearance")}
 
+      <!-- SEG-21: Help & Tours -->
+      <section class="feature-panel" id="helpToursPanel">
+        <h3>${_st("guide.settings.title")}</h3>
+        <div class="guide-tours-list">
+          ${[
+            "welcome",
+            "setup-parents",
+            "setup-children",
+            "setup-schedule",
+            "setup-vacation",
+            "calendar-connect",
+            "shopping",
+          ].map(id => `
+            <div class="guide-tour-row">
+              <span class="guide-tour-name">${_st("guide.tour." + id)}</span>
+              <button class="guide-run-btn" data-guide-id="${id}">${_st("guide.settings.run_again")}</button>
+            </div>
+          `).join("")}
+        </div>
+      </section>
+
       <div class="settings-version-panel">
         <div class="settings-version-badge">
           <span class="settings-version-name">Do-Do</span>
@@ -6655,11 +6684,24 @@ function renderSettingsFeature() {
   // Edit my name
   featureModule.querySelector("#editMyNameBtn")?.addEventListener("click", () => promptEditMyName());
 
+  // SEG-21: fire setup-children guide on first Settings visit
+  if (window.GuideEngine && !window.GuideEngine.isDone("setup-children")) {
+    setTimeout(() => window.GuideEngine.show("setup-children"), 600);
+  }
+
   // Add child/pet/caregiver
   featureModule.querySelector("#addChildBtn")?.addEventListener("click", () => promptAddChild());
   featureModule.querySelector("#addPetBtn")?.addEventListener("click", () => promptAddPet());
   featureModule.querySelector("#addCaregiverBtn")?.addEventListener("click", () => showAddCaregiverForm());
   featureModule.querySelector("#addCaregiverBtn2")?.addEventListener("click", () => showAddCaregiverForm());
+
+  // SEG-21: bind Help & Tours "Run again" buttons
+  featureModule.querySelectorAll(".guide-run-btn[data-guide-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.guideId;
+      if (window.GuideEngine) window.GuideEngine.reset(id);
+    });
+  });
 
   // Share Do-Do
   const SHARE_URL = "https://do-do.app";
@@ -6690,12 +6732,11 @@ function renderSettingsFeature() {
     btn.disabled = true;
     btn.textContent = "Preparing...";
     try {
-      const session = (await window.supabaseClient?.auth?.getSession())?.data?.session;
-      const token = session?.access_token;
-      if (!token) { showFeatureToast("Sign in required"); return; }
+      const authHeader = await window.getAuthHeader?.() || {};
+      if (!authHeader.Authorization) { showFeatureToast("Sign in required"); return; }
 
       const res = await fetch("/api/export-data", {
-        headers: { "Authorization": `Bearer ${token}` },
+        headers: authHeader,
       });
       if (!res.ok) throw new Error(await res.text());
 
@@ -6783,12 +6824,11 @@ function renderSettingsFeature() {
     btn.disabled = true;
     btn.textContent = "Preparing record...";
     try {
-      const session = (await window.supabaseClient?.auth?.getSession())?.data?.session;
-      const token = session?.access_token;
-      if (!token) { showFeatureToast("Sign in required"); return; }
+      const authHeader = await window.getAuthHeader?.() || {};
+      if (!authHeader.Authorization) { showFeatureToast("Sign in required"); return; }
 
       const res = await fetch("/api/export-data?action=legal-export", {
-        headers: { "Authorization": `Bearer ${token}` },
+        headers: authHeader,
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
@@ -6992,12 +7032,11 @@ async function renderSharedHistoryPanel() {
   if (!panel || !content) return;
 
   try {
-    const session = (await window.supabaseClient?.auth?.getSession())?.data?.session;
-    const token = session?.access_token;
-    if (!token) return;
+    const authHeader = await window.getAuthHeader?.() || {};
+    if (!authHeader.Authorization) return;
 
     const res = await fetch("/api/export-data?action=history-stats", {
-      headers: { "Authorization": `Bearer ${token}` },
+      headers: authHeader,
     });
     if (!res.ok) return;
     const stats = await res.json();

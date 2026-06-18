@@ -2,6 +2,18 @@
 
 ---
 
+## v0.26.5 - 2026-06-18 - Fix: Export PDF and Download History no longer require sign-in
+
+**Bug fix:** "Export PDF" (legal record) and "Download History" in Settings showed "Sign in required" even when the user was already signed in.
+
+Root cause: `features.js` was calling `window.supabaseClient` which was never assigned - `app.js` created the Supabase client as a local `const` but did not expose it on `window`. The result was `undefined`, so the session check always failed.
+
+Fixes:
+- `app.js`: added `window.supabaseClient = supabaseClient` immediately after client creation so `features.js` and `supabase-data.js` can access it
+- `features.js`: switched "Download my data", "Download legal record (PDF)", and `renderSharedHistoryPanel` to use `window.getAuthHeader()` - the same pattern used by `exportExpensesPdf` and all API calls in `app.js`
+
+---
+
 ## v0.25.1 - 2026-06-17 - Calendar right panel: tabbed sections
 
 The calendar's right panel now has four tabs replacing the old "Selected day" label. All schedule management is inline - no more separate dialogs.

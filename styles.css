@@ -10349,3 +10349,169 @@ td.vac-range-in-cell {
 .cg-extra-header {
   padding: 12px 0 4px;
 }
+
+/* ─── SEG-21: In-app guide system ─────────────────────────────────────────── */
+
+/* Dark overlay behind everything */
+#guide-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 9000;
+  pointer-events: all;
+}
+
+/* Transparent cutout that sits above the overlay, revealing the target */
+#guide-spotlight {
+  position: absolute;
+  z-index: 9010;
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+  display: none;
+}
+
+/* Tooltip card */
+#guide-tooltip {
+  position: fixed;
+  z-index: 9020;
+  width: 320px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 20px;
+  pointer-events: all;
+}
+
+/* Centered modal variant (no spotlight target) */
+#guide-tooltip.guide-tooltip-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Mobile: fixed to bottom, full width */
+#guide-tooltip.guide-tooltip-mobile {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  transform: none;
+  top: auto;
+}
+
+/* Inner layout */
+.guide-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.guide-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.guide-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border, #e2e8f0);
+  transition: background 0.2s;
+}
+
+.guide-dot.guide-dot-done {
+  background: var(--accent, #6366f1);
+}
+
+.guide-skip {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted, #94a3b8);
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.guide-skip:hover {
+  color: var(--text, #1e293b);
+}
+
+.guide-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text, #1e293b);
+  margin: 0 0 8px;
+  line-height: 1.35;
+}
+
+.guide-body {
+  font-size: 14px;
+  color: var(--muted, #64748b);
+  line-height: 1.55;
+  margin: 0 0 16px;
+}
+
+.guide-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.guide-step-count {
+  font-size: 12px;
+  color: var(--muted, #94a3b8);
+}
+
+.guide-next {
+  min-width: 90px;
+}
+
+/* Help & Tours section in Settings */
+.guide-tours-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guide-tour-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.guide-tour-row:last-child {
+  border-bottom: none;
+}
+
+.guide-tour-name {
+  font-size: 14px;
+  color: var(--text, #1e293b);
+}
+
+.guide-run-btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: none;
+  border: 1px solid var(--border, #e2e8f0);
+  color: var(--accent, #6366f1);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.guide-run-btn:hover {
+  background: var(--accent-light, #eef2ff);
+  border-color: var(--accent, #6366f1);
+}

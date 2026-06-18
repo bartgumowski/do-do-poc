@@ -1,5 +1,5 @@
-const APP_VERSION = "0.26.4";
-const APP_VERSION_DATE = "2026-06-17";
+const APP_VERSION = "0.26.5";
+const APP_VERSION_DATE = "2026-06-18";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
 // To add a new market: add an entry to LOCALE_CONFIGS and add the corresponding
@@ -109,6 +109,7 @@ const supabaseClient = window.supabase?.createClient?.(supabaseUrl, supabaseAnon
     detectSessionInUrl: true,
   },
 }) || null;
+window.supabaseClient = supabaseClient; // expose for features.js
 let currentAuthSession = null;
 
 // SEG-14: auth header helper for calls to our own /api endpoints.
@@ -1274,6 +1275,13 @@ function showApp(session) {
   if (window.initAppleCalendar) {
     window.initAppleCalendar().catch(() => {});
   }
+
+  // SEG-21: trigger welcome guide on first login
+  setTimeout(() => {
+    if (window.GuideEngine && !window.GuideEngine.isDone("welcome")) {
+      window.GuideEngine.show("welcome");
+    }
+  }, 800);
 }
 
 function showAuthScreen() {
