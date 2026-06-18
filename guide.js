@@ -74,20 +74,20 @@
     "setup-schedule": [
       { target: ".module-link[data-module='calendar']",
         titleKey: "guide.schedule.1.title", bodyKey: "guide.schedule.1.body", position: "bottom" },
-      { target: "#calPageBcalSection",      navigate: "calendar",
-        titleKey: "guide.schedule.2.title", bodyKey: "guide.schedule.2.body", position: "top" },
+      { target: "[data-cal-panel='schedule']", navigate: "calendar",
+        titleKey: "guide.schedule.2.title", bodyKey: "guide.schedule.2.body", position: "bottom" },
       { target: ".module-link[data-module='przekazanie']",
         titleKey: "guide.schedule.3.title", bodyKey: "guide.schedule.3.body", position: "bottom" },
       { target: null,
         titleKey: "guide.schedule.4.title", bodyKey: "guide.schedule.4.body", position: "center" },
     ],
 
-    // Vacation: step 2 needs the calendar mini picker visible
+    // Vacation: step 2 highlights the Vacations tab in the Calendar right panel
     "setup-vacation": [
       { target: null,
         titleKey: "guide.vacation.1.title", bodyKey: "guide.vacation.1.body", position: "center" },
-      { target: ".mini-cal-picker",          navigate: "calendar",
-        titleKey: "guide.vacation.2.title", bodyKey: "guide.vacation.2.body", position: "top" },
+      { target: "[data-cal-panel='vacations']", navigate: "calendar",
+        titleKey: "guide.vacation.2.title", bodyKey: "guide.vacation.2.body", position: "bottom" },
       { target: null,
         titleKey: "guide.vacation.3.title", bodyKey: "guide.vacation.3.body", position: "center" },
     ],
@@ -96,7 +96,7 @@
     "calendar-connect": [
       { target: null,
         titleKey: "guide.calcon.1.title", bodyKey: "guide.calcon.1.body", position: "center" },
-      { target: "#calendarSettingsPanel",  navigate: "settings",
+      { target: ".google-calendar-connection", navigate: "settings",
         titleKey: "guide.calcon.2.title", bodyKey: "guide.calcon.2.body", position: "top" },
       { target: null,
         titleKey: "guide.calcon.3.title", bodyKey: "guide.calcon.3.body", position: "center" },
@@ -272,14 +272,17 @@
     _tooltip.hidden = false;
     _overlay.hidden = false;
 
-    _positionSpotlight(step.target);
-    _positionTooltip(step.target, step.position);
-
-    // Scroll target into view if needed
+    // Scroll target into view first (instant), then reposition spotlight
+    // so coordinates reflect the post-scroll position.
     if (step.target) {
       const el = document.querySelector(step.target);
-      el?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+      if (el) {
+        el.scrollIntoView({ behavior: "instant", block: "center" });
+      }
     }
+
+    _positionSpotlight(step.target);
+    _positionTooltip(step.target, step.position);
 
     document.getElementById("guideNextBtn")?.addEventListener("click", next);
     document.getElementById("guideSkipBtn")?.addEventListener("click", dismiss);

@@ -1,4 +1,4 @@
-const APP_VERSION = "0.27.1";
+const APP_VERSION = "0.27.2";
 const APP_VERSION_DATE = "2026-06-18";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────

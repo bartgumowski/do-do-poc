@@ -2,6 +2,16 @@
 
 ---
 
+## v0.27.2 - 2026-06-18 - SEG-21: Guide step targets corrected
+
+**Fixes:**
+- Schedule guide step 2 now spotlights the "Schedule" tab in the Calendar right panel (was incorrectly targeting the calendar grid)
+- Vacation guide step 2 now spotlights the "Vacations" tab in the Calendar right panel (was targeting a non-existent `.mini-cal-picker` element)
+- Calendar-connect guide scroll bug fixed: spotlight now positions AFTER `scrollIntoView` settles (was landing on wrong element because `block:"nearest"` didn't scroll and spotlight coords were wrong)
+- All guide targets confirmed against live DOM - asked Bart for each navigating step
+
+---
+
 ## v0.27.1 - 2026-06-18 - Secret access code
 
 **New feature:** Settings > Access code panel. Enter a secret code to unlock full paid access for free. Stored in localStorage - persists across sessions. The code input also works with Enter key. Once activated, the panel shows a green confirmation and the subscription panel reflects paid status immediately.
