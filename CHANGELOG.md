@@ -2,6 +2,18 @@
 
 ---
 
+## v0.27.3 - 2026-06-18 - Quick Add Expense dialog
+
+**New feature:** Expenses section now has a dedicated quick-add expense dialog.
+- Clicking "Add Expense" opens a lightweight card-style dialog (no need to navigate the full Do editor)
+- Title + amount fields
+- Split selector chips: **50/50** (default), **Mine only** (no reimbursement), **Custom** (enter exact co-parent share)
+- Recurring toggle - pick Weekly / Every 2 weeks / Monthly
+- Optional due date
+- Saves directly as an Expense Do card with correct `payment_amount` so balance calculation reflects chosen split
+
+---
+
 ## v0.27.2 - 2026-06-18 - SEG-21: Guide step targets corrected
 
 **Fixes:**

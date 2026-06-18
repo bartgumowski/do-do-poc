@@ -1,4 +1,4 @@
-const APP_VERSION = "0.27.2";
+const APP_VERSION = "0.27.3";
 const APP_VERSION_DATE = "2026-06-18";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -4786,6 +4786,52 @@ function buildCreateToast(card) {
   if (card.googleCalendar?.synced) parts.push("calendar ready");
   return parts.join(" · ");
 }
+
+// Direct card creation from features.js (quick-add expense, etc.)
+window.createCardDirect = function(cardData) {
+  if (!isPaidUser() && freeCardCount() >= FREE_CARD_LIMIT) {
+    showUpgradePrompt(`You have reached the ${FREE_CARD_LIMIT}-Do limit on the free plan. Upgrade for unlimited Dos.`);
+    return null;
+  }
+  const setup = getOnboardingState() || {};
+  const authorName = setup.parents?.primary
+    || currentAuthSession?.user?.user_metadata?.full_name
+    || currentAuthSession?.user?.email?.split("@")[0]
+    || "Parent A";
+  const card = {
+    id: makeId(),
+    title: "",
+    topic: "Expenses",
+    type: "Expense",
+    status: "To Do",
+    assignee: null,
+    child: null,
+    due: "",
+    amount: "",
+    details: "",
+    comments: [],
+    acknowledged: false,
+    reminder: null,
+    recurrence: null,
+    googleCalendar: null,
+    author: authorName,
+    createdAt: Date.now(),
+    lastEditedAt: Date.now(),
+    lastEditedBy: authorName,
+    ...cardData,
+  };
+  state.cards.unshift(card);
+  persist();
+  showToast(buildCreateToast(card));
+  render();
+  if (window.saveCardToSupabase) window.saveCardToSupabase(card).catch(() => {});
+  if (window.appendExpenseLedger) {
+    const amt = card.amount ? Number(String(card.amount).replace(/[^\d.,-]/g, "").replace(",", ".")) || null : null;
+    const cur = String(card.amount || "").match(/[A-Za-z]{2,3}/)?.[0]?.toUpperCase() || null;
+    window.appendExpenseLedger({ event_type: "created", card_id: card.id, amount: amt, currency: cur }).catch(() => {});
+  }
+  return card;
+};
 
 window.getAutomationSettings = getAutomationSettings;
 window.updateAutomationSettings = updateAutomationSettings;

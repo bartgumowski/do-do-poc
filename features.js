@@ -2491,6 +2491,163 @@ function escapeFeatureHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+// ─── Quick Expense Dialog ─────────────────────────────────────────────────────
+
+function openQuickExpenseDialog() {
+  document.getElementById("quickExpenseDialog")?.remove();
+
+  const _t = window.t || ((k) => k);
+  const _sym = (window.LOCALE_CONFIG)?.symbol || "CHF";
+  const setup = window.getOnboardingState?.() || {};
+  const coparentName = setup.parents?.coparent || "Co-parent";
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "quickExpenseDialog";
+  dialog.className = "card-dialog quick-expense-dialog";
+  document.body.appendChild(dialog);
+
+  dialog.innerHTML = `
+    <div class="qed-header">
+      <strong>${_t("expense.add") || "Add Expense"}</strong>
+      <button class="qed-close-btn" type="button" aria-label="Close">&#x2715;</button>
+    </div>
+
+    <div class="qed-body">
+      <div class="qed-field">
+        <label class="qed-label">${_t("card.title") || "Description"}</label>
+        <input id="qedTitle" class="qed-input" type="text" placeholder="${_t("expense.title_placeholder") || "e.g. Dentist, School trip..."}" autocomplete="off" />
+      </div>
+
+      <div class="qed-field qed-row">
+        <div class="qed-field" style="flex:1">
+          <label class="qed-label">${_t("card.amount") || "Amount"} (${_sym})</label>
+          <input id="qedAmount" class="qed-input" type="number" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="qed-field" style="flex:1">
+          <label class="qed-label">${_t("card.due") || "Due date"} <span style="color:var(--muted)">(${_t("general.optional") || "optional"})</span></label>
+          <input id="qedDue" class="qed-input" type="date" />
+        </div>
+      </div>
+
+      <div class="qed-field">
+        <label class="qed-label">${_t("expense.split") || "Split with"} ${escapeHtml(coparentName)}</label>
+        <div class="qed-split-chips" id="qedSplitChips">
+          <button class="qed-chip active" type="button" data-split="50-50">50 / 50</button>
+          <button class="qed-chip" type="button" data-split="mine">${_t("expense.mine_only") || "Mine only"}</button>
+          <button class="qed-chip" type="button" data-split="custom">${_t("expense.custom_split") || "Custom"}</button>
+        </div>
+        <div id="qedCustomShare" class="qed-custom-share" style="display:none">
+          <label class="qed-label" style="margin-top:8px">${_t("expense.their_share") || "Their share"} (${_sym})</label>
+          <input id="qedCustomAmount" class="qed-input" type="number" min="0" step="0.01" placeholder="0.00" />
+        </div>
+      </div>
+
+      <div class="qed-field qed-recurring-row">
+        <label class="qed-label qed-recurring-label">
+          <input id="qedRecurring" type="checkbox" class="qed-checkbox" />
+          ${_t("card.recurring") || "Recurring"}
+        </label>
+        <select id="qedRecurringFreq" class="qed-input qed-freq-select" style="display:none">
+          <option value="weekly">${_t("recurrence.weekly") || "Weekly"}</option>
+          <option value="biweekly">${_t("recurrence.biweekly") || "Every 2 weeks"}</option>
+          <option value="monthly" selected>${_t("recurrence.monthly") || "Monthly"}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="qed-footer">
+      <button class="ghost-button" type="button" id="qedCancel">${_t("general.cancel") || "Cancel"}</button>
+      <button class="primary-button" type="button" id="qedSave">${_t("expense.add") || "Add Expense"}</button>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+  dialog.showModal();
+
+  // Auto-focus title
+  dialog.querySelector("#qedTitle").focus();
+
+  // Split chip selection
+  let selectedSplit = "50-50";
+  dialog.querySelectorAll(".qed-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      dialog.querySelectorAll(".qed-chip").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      selectedSplit = chip.dataset.split;
+      dialog.querySelector("#qedCustomShare").style.display = selectedSplit === "custom" ? "" : "none";
+    });
+  });
+
+  // Recurring toggle
+  dialog.querySelector("#qedRecurring").addEventListener("change", (e) => {
+    dialog.querySelector("#qedRecurringFreq").style.display = e.target.checked ? "" : "none";
+  });
+
+  // Close
+  dialog.querySelector("#qedCancel").addEventListener("click", () => dialog.close());
+  dialog.querySelector(".qed-close-btn").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+
+  // Save
+  dialog.querySelector("#qedSave").addEventListener("click", () => {
+    const title = dialog.querySelector("#qedTitle").value.trim();
+    if (!title) {
+      dialog.querySelector("#qedTitle").focus();
+      showFeatureToast(_t("expense.title_required") || "Please add a description");
+      return;
+    }
+
+    const rawAmount = dialog.querySelector("#qedAmount").value.trim();
+    const numAmount = rawAmount ? parseFloat(rawAmount) : 0;
+    const amountStr = rawAmount ? `${_sym} ${parseFloat(rawAmount).toFixed(2)}` : "";
+
+    // Compute payment_amount (co-parent's share)
+    let paymentAmount = null;
+    if (selectedSplit === "50-50" && numAmount > 0) {
+      paymentAmount = numAmount / 2;
+    } else if (selectedSplit === "mine") {
+      paymentAmount = 0;
+    } else if (selectedSplit === "custom") {
+      const customVal = dialog.querySelector("#qedCustomAmount").value.trim();
+      paymentAmount = customVal ? parseFloat(customVal) : 0;
+    }
+
+    const dueVal = dialog.querySelector("#qedDue").value;
+    const due = dueVal ? new Date(dueVal).toISOString() : "";
+
+    const isRecurring = dialog.querySelector("#qedRecurring").checked;
+    const freq = dialog.querySelector("#qedRecurringFreq").value;
+    const recurrence = isRecurring ? { freq, days: [] } : null;
+
+    const cardData = {
+      title: title.charAt(0).toUpperCase() + title.slice(1),
+      type: "Expense",
+      topic: "Expenses",
+      amount: amountStr,
+      due,
+      recurrence,
+      ...(paymentAmount !== null ? { payment_amount: paymentAmount } : {}),
+    };
+
+    const saved = window.createCardDirect?.(cardData);
+    if (saved) {
+      dialog.close();
+      // Re-render expenses view
+      renderExpensesFeature();
+    }
+  });
+
+  // Enter key submits
+  dialog.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.tagName !== "BUTTON") {
+      dialog.querySelector("#qedSave").click();
+    }
+    if (e.key === "Escape") dialog.close();
+  });
+
+  dialog.addEventListener("close", () => dialog.remove());
+}
+
 function renderExpensesFeature() {
   const allCards = (typeof state !== "undefined" ? state.cards : [])
     .filter((card) => card.type === "Expense" || card.topic === "Expenses")
@@ -2636,7 +2793,7 @@ function renderExpensesFeature() {
     </section>
   `;
 
-  featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => openCardDialog());
+  featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => openQuickExpenseDialog());
 
   featureModule.querySelector("#sendSettlementBtn")?.addEventListener("click", () => {
     openSettlementModal({ expenseCards, balance, balanceAbs, coparentName, myName, _sym, selectedMonth });

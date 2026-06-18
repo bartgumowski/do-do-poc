@@ -10515,3 +10515,181 @@ td.vac-range-in-cell {
   background: var(--accent-light, #eef2ff);
   border-color: var(--accent, #6366f1);
 }
+
+/* ─── Quick Expense Dialog ─────────────────────────────────────────────── */
+
+.quick-expense-dialog {
+  width: min(420px, 94vw);
+  border-radius: 16px;
+  padding: 0;
+  border: none;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  background: var(--surface, #fff);
+  overflow: visible;
+}
+
+.quick-expense-dialog::backdrop {
+  background: rgba(15,23,42,0.45);
+  backdrop-filter: blur(2px);
+}
+
+.qed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+}
+
+.qed-header strong {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink, #1e293b);
+}
+
+.qed-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted, #94a3b8);
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.qed-close-btn:hover {
+  color: var(--ink, #1e293b);
+  background: var(--surface-hover, #f1f5f9);
+}
+
+.qed-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.qed-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.qed-row {
+  flex-direction: row;
+  gap: 12px;
+}
+
+.qed-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted, #64748b);
+  letter-spacing: 0.02em;
+}
+
+.qed-input {
+  padding: 9px 12px;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--ink, #1e293b);
+  background: var(--surface-input, #f8fafc);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.qed-input:focus {
+  outline: none;
+  border-color: var(--accent, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+/* Split chips */
+.qed-split-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qed-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--line, #e2e8f0);
+  background: var(--surface-input, #f8fafc);
+  color: var(--ink, #1e293b);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.qed-chip:hover {
+  border-color: var(--accent, #6366f1);
+  background: var(--accent-light, #eef2ff);
+  color: var(--accent, #6366f1);
+}
+
+.qed-chip.active {
+  border-color: var(--accent, #6366f1);
+  background: var(--accent, #6366f1);
+  color: #fff;
+}
+
+.qed-custom-share {
+  padding: 4px 0 0;
+}
+
+/* Recurring row */
+.qed-recurring-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.qed-recurring-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink, #1e293b);
+}
+
+.qed-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent, #6366f1);
+  cursor: pointer;
+}
+
+.qed-freq-select {
+  flex: 1;
+  font-size: 13px;
+  padding: 7px 10px;
+}
+
+/* Footer */
+.qed-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--line, #e2e8f0);
+}
+
+/* Dark mode */
+html[data-theme="dark"] .quick-expense-dialog {
+  background: var(--surface-dark, #1e293b);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+html[data-theme="dark"] .qed-input,
+html[data-theme="dark"] .qed-chip {
+  background: var(--surface-input-dark, #0f172a);
+  border-color: var(--line-dark, #334155);
+  color: var(--ink-dark, #e2e8f0);
+}
