@@ -2,6 +2,16 @@
 
 ---
 
+## v0.27.5 - 2026-06-18 - Full i18n: Google Calendar import + Custody week templates
+
+**Localization fixes:**
+- Google Calendar import section in Settings fully localized (heading, badges, labels, options, button) for EN/DE/PL
+- Custody week templates section heading and "+ New template" button now use i18n keys
+- `renderScheduleTemplates()` - "Every N weeks" and "Move week" button now localized
+- `openScheduleTemplateDialog()` - all dialog strings (title, labels, options, buttons, toasts) now localized for EN/DE/PL
+
+---
+
 ## v0.27.4 - 2026-06-18 - SEG-21: Guide loop fix + Settings panel redesign
 
 **Bug fixes:**
@@ -13,6 +23,19 @@
 - Added subtitle text and "Documentation" link
 - Each guide now shows a short description below its name
 - "Run again" buttons replaced with standard `secondary-button` style
+
+---
+
+## v0.27.4 - 2026-06-18 - Expense split chips in card dialog
+
+**Fix / rework:** "Add Expense" now opens the standard Do card dialog (full functionality: recurrence, reminder, assignee, comments, receipt upload, etc.) pre-set to type=Expense.
+- Split chips added to the Payment panel side column: **50/50**, **Mine only** (no reimbursement), **Custom** (enter their exact share)
+- Split panel appears immediately when type=Expense, even on new cards before saving
+- Changing type to/from Expense in the dialog live-shows/hides the split chips
+- On save, `payment_amount` is set automatically based on chosen split
+- "Send payment request" button hidden when "Mine only" is selected
+- i18n keys added for all 3 languages (EN/DE/PL): `expense.split_heading`, `expense.mine_only`, `expense.split_custom`
+- Removed the earlier separate quick-expense dialog (was showing i18n key names instead of translated text)
 
 ---
 

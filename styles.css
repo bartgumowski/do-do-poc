@@ -10691,3 +10691,64 @@ html[data-theme="dark"] .qed-chip {
   border-color: var(--line-dark, #334155);
   color: var(--ink-dark, #e2e8f0);
 }
+
+/* ─── Expense split chips (inside payment panel side column) ──────────────── */
+
+.expense-split-section {
+  margin-bottom: 12px;
+}
+
+.expense-split-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted, #94a3b8);
+  margin-bottom: 8px;
+}
+
+.expense-split-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.expense-split-chip {
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line, #e2e8f0);
+  background: var(--paper, #fff);
+  color: var(--ink, #1e293b);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.expense-split-chip:hover {
+  border-color: var(--accent, #6366f1);
+  color: var(--accent, #6366f1);
+}
+
+.expense-split-chip.active {
+  border-color: var(--accent, #6366f1);
+  background: var(--accent, #6366f1);
+  color: #fff;
+}
+
+.expense-request-section {
+  margin-top: 10px;
+}
+
+html[data-theme="dark"] .expense-split-chip {
+  background: var(--surface-dark, #1e293b);
+  border-color: var(--line-dark, #334155);
+  color: var(--ink-dark, #e2e8f0);
+}
+
+html[data-theme="dark"] .expense-split-chip.active {
+  background: var(--accent, #6366f1);
+  border-color: var(--accent, #6366f1);
+  color: #fff;
+}

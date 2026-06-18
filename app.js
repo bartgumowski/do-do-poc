@@ -1,4 +1,4 @@
-const APP_VERSION = "0.27.4";
+const APP_VERSION = "0.27.5";
 const APP_VERSION_DATE = "2026-06-18";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -59,6 +59,7 @@ const LOCALE_CONFIG = (() => {
   return _detectLocaleFromBrowser();
 })();
 window.LOCALE_CONFIG = LOCALE_CONFIG; // expose to features.js
+window.LOCALE_CONFIGS = LOCALE_CONFIGS; // expose for runtime currency switching
 
 // Returns the correct Stripe price ID for the current locale and billing period.
 function getLocalePriceId(period = "monthly") {
@@ -751,6 +752,19 @@ function bindEvents() {
   [elements.titleInput, elements.topicInput, elements.typeInput, elements.statusInput,
    elements.assigneeInput, elements.childInput, elements.dueInput, elements.amountInput].forEach((el) => {
     el?.addEventListener("change", scheduleAutosave);
+  });
+  // Refresh payment panel when type/topic changes (shows/hides split chips)
+  elements.typeInput?.addEventListener("change", () => {
+    const cardId = elements.cardId?.value;
+    const card = cardId ? state.cards.find((c) => c.id === cardId) : null;
+    updatePaymentPanel(card || null);
+    updateReceiptPanel(card || null);
+  });
+  elements.topicInput?.addEventListener("change", () => {
+    const cardId = elements.cardId?.value;
+    const card = cardId ? state.cards.find((c) => c.id === cardId) : null;
+    updatePaymentPanel(card || null);
+    updateReceiptPanel(card || null);
   });
   // Cancel button - close without saving
   elements.cardCancelButton?.addEventListener("click", () => elements.cardDialog?.close());
@@ -2141,16 +2155,21 @@ function updatePaymentPanel(card) {
   const content = document.querySelector("#paymentPanelContent");
   if (!panel || !content) return;
 
-  const isExpense = card && (card.type === "Expense" || card.topic === "Expenses");
-  const hasAmount = isExpense && card.amount;
-  panel.hidden = !hasAmount;
-  if (!hasAmount) return;
+  // For new cards (card=null), check the form inputs directly
+  const isExpense = card
+    ? (card.type === "Expense" || card.topic === "Expenses")
+    : (elements.typeInput?.value === "Expense" || elements.topicInput?.value === "Expenses");
 
-  const payStatus = card.payment_status || "none";
-  const rawAmt = parseFloat(String(card.amount).replace(/[^0-9.-]/g, "")) || 0;
-  const currencyMatch = String(card.amount).match(/[A-Za-z]{2,3}/);
+  panel.hidden = !isExpense;
+  if (!isExpense) return;
+
+  const _pt = window.t || ((k) => k);
+  const payStatus = card?.payment_status || "none";
+  const rawAmt = card?.amount ? parseFloat(String(card.amount).replace(/[^0-9.-]/g, "")) || 0 : 0;
+  const currencyMatch = card?.amount ? String(card.amount).match(/[A-Za-z]{2,3}/) : null;
   const currency = currencyMatch ? currencyMatch[0].toUpperCase() : LOCALE_CONFIG.currency;
 
+  // Already paid - just show status
   if (payStatus === "paid") {
     const paidAt = card.payment_paid_at
       ? new Date(card.payment_paid_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
@@ -2162,54 +2181,97 @@ function updatePaymentPanel(card) {
     return;
   }
 
+  // Payment requested - show status
   if (payStatus === "pending") {
     const pAmt = card.payment_amount != null
       ? `${currency} ${parseFloat(card.payment_amount).toFixed(2)}`
       : "";
     const payUrl = card.payment_intent_id ? `/pay/${card.payment_intent_id}` : null;
     content.innerHTML = `
-      <div class="payment-status-chip payment-chip-pending">${pAmt ? pAmt + " " : ""}${(window.t || ((k) => k))("expense.awaiting")}</div>
-      ${payUrl ? `<a class="ghost-button" href="${payUrl}" target="_blank" rel="noopener" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:13px">${(window.t || ((k) => k))("expense.open_link")}</a>` : ""}
+      <div class="payment-status-chip payment-chip-pending">${pAmt ? pAmt + " " : ""}${_pt("expense.awaiting")}</div>
+      ${payUrl ? `<a class="ghost-button" href="${payUrl}" target="_blank" rel="noopener" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:13px">${_pt("expense.open_link")}</a>` : ""}
     `;
     return;
   }
 
-  // No payment requested yet - show request form
-  const _pt = window.t || ((k) => k);
-  const defaultAmount = (rawAmt / 2).toFixed(2);
+  // Current saved split for existing card (default 50/50 = "50")
+  const savedSplitPct = card?.payment_amount != null && rawAmt > 0
+    ? String(Math.round((card.payment_amount / rawAmt) * 100))
+    : panel.dataset.splitPct || "50";
+
+  // Build split chips + optional payment request (only for existing cards with amount)
   content.innerHTML = `
-    <div class="payment-request-form">
-      <div class="payment-amount-row">
-        <span class="payment-currency-label">${currency}</span>
-        <input type="number" id="paymentAmountInput" class="payment-amount-input" value="${defaultAmount}" min="0.50" step="0.01" placeholder="0.00">
+    <div class="expense-split-section">
+      <div class="expense-split-label">${_pt("expense.split_heading") || "Split"}</div>
+      <div class="expense-split-chips" id="expenseSplitChips">
+        <button class="expense-split-chip${savedSplitPct === "50" ? " active" : ""}" type="button" data-pct="50">${_pt("pay.split_5050")}</button>
+        <button class="expense-split-chip${savedSplitPct === "0" ? " active" : ""}" type="button" data-pct="0">${_pt("expense.mine_only") || "Mine only"}</button>
+        <button class="expense-split-chip${savedSplitPct !== "50" && savedSplitPct !== "0" ? " active" : ""}" type="button" data-pct="custom">${_pt("expense.split_custom") || "Custom"}</button>
       </div>
-      <select id="paymentSplitSelect" class="payment-split-select">
-        <option value="50">${_pt("pay.split_5050")}</option>
-        <option value="100">${_pt("pay.split_100t")}</option>
-        <option value="60">${_pt("pay.split_60")}</option>
-        <option value="40">${_pt("pay.split_40")}</option>
-        <option value="0">${_pt("pay.split_me")}</option>
-      </select>
-      <button class="primary-button payment-request-btn" type="button" id="sendPaymentRequestButton">${_pt("expense.send_request")}</button>
+      <div id="expenseSplitCustomRow" style="display:${savedSplitPct !== "50" && savedSplitPct !== "0" ? "" : "none"};margin-top:8px;">
+        <div class="payment-amount-row">
+          <span class="payment-currency-label">${currency}</span>
+          <input type="number" id="expenseCustomShare" class="payment-amount-input" value="${savedSplitPct !== "50" && savedSplitPct !== "0" && card?.payment_amount != null ? parseFloat(card.payment_amount).toFixed(2) : ""}" min="0" step="0.01" placeholder="0.00">
+        </div>
+      </div>
     </div>
+    ${card && rawAmt > 0 ? `
+    <div class="expense-request-section" id="expenseRequestSection">
+      <button class="primary-button payment-request-btn" type="button" id="sendPaymentRequestButton">${_pt("expense.send_request")}</button>
+    </div>` : ""}
   `;
 
-  const splitSel = document.querySelector("#paymentSplitSelect");
-  const amtInput = document.querySelector("#paymentAmountInput");
-  splitSel?.addEventListener("change", () => {
-    const pct = parseInt(splitSel.value) / 100;
-    if (amtInput) amtInput.value = (rawAmt * pct).toFixed(2);
+  // Store current split pct on panel for new cards (before save)
+  panel.dataset.splitPct = savedSplitPct;
+
+  // Wire split chips
+  content.querySelectorAll(".expense-split-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      content.querySelectorAll(".expense-split-chip").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      const pct = chip.dataset.pct;
+      panel.dataset.splitPct = pct;
+      const customRow = document.getElementById("expenseSplitCustomRow");
+      if (customRow) customRow.style.display = pct === "custom" ? "" : "none";
+      // Update "send request" visibility - hide it for "Mine only"
+      const reqSection = document.getElementById("expenseRequestSection");
+      if (reqSection) reqSection.style.display = pct === "0" ? "none" : "";
+    });
   });
 
+  // Wire send payment request (existing cards with amount only)
   document.querySelector("#sendPaymentRequestButton")?.addEventListener("click", async (e) => {
     const btn = e.currentTarget;
-    const amt = parseFloat(amtInput?.value || defaultAmount);
+    const pct = panel.dataset.splitPct;
+    let amt;
+    if (pct === "custom") {
+      amt = parseFloat(document.getElementById("expenseCustomShare")?.value || "0");
+    } else {
+      amt = rawAmt * (parseInt(pct) / 100);
+    }
     if (!amt || amt < 0.5) { showToast("Enter a valid amount (min 0.50)."); return; }
     btn.disabled = true;
-    btn.textContent = (window.t || ((k) => k))("pay.sending");
+    btn.textContent = _pt("pay.sending");
     await requestExpensePayment(card.id, amt, currency, card.title);
     btn.disabled = false;
   });
+}
+
+// Reads the chosen split from the payment panel and returns payment_amount (or null if not an expense)
+function _readExpenseSplitAmount() {
+  const panel = document.querySelector("#cardPaymentPanel");
+  if (!panel || panel.hidden) return null;
+  const rawAmtStr = elements.amountInput?.value?.trim() || "";
+  const rawAmt = parseFloat(rawAmtStr.replace(/[^0-9.-]/g, "")) || 0;
+  const pct = panel.dataset.splitPct;
+  if (pct === undefined || pct === null) return null;
+  if (pct === "0") return 0;
+  if (pct === "custom") {
+    const custom = parseFloat(document.getElementById("expenseCustomShare")?.value || "0");
+    return isNaN(custom) ? null : custom;
+  }
+  const p = parseInt(pct);
+  return rawAmt > 0 ? rawAmt * (p / 100) : null;
 }
 
 async function requestExpensePayment(cardId, amount, currency, description) {
@@ -3762,6 +3824,21 @@ async function saveCard(event) {
     lastEditedAt: Date.now(),
     lastEditedBy: authorName,
   };
+
+  // Preserve split/payment_amount from expense panel selection
+  const isExpenseCard = card.type === "Expense" || card.topic === "Expenses";
+  if (isExpenseCard) {
+    const splitAmt = _readExpenseSplitAmount();
+    if (splitAmt !== null) {
+      card.payment_amount = splitAmt;
+    } else if (existing?.payment_amount != null) {
+      card.payment_amount = existing.payment_amount; // preserve existing
+    }
+    // Preserve payment status
+    if (existing?.payment_status) card.payment_status = existing.payment_status;
+    if (existing?.payment_intent_id) card.payment_intent_id = existing.payment_intent_id;
+    if (existing?.payment_paid_at) card.payment_paid_at = existing.payment_paid_at;
+  }
 
   // If editing any field of an existing recurring card, ask scope
   if (existing && existing.recurrence && existing.recurrence.freq && existing.recurrence.freq !== "none") {

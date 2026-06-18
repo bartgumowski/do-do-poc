@@ -814,7 +814,8 @@ function openCustodyScheduleDialog() {
   dialog.className = "card-dialog custody-schedule-dialog sched-editor-dialog";
   document.body.appendChild(dialog);
 
-  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const _loc0 = _getDateLocale();
+  const MONTH_NAMES = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleDateString(_loc0, { month: "long" }));
 
   function getWorkingOwner(dateStr) {
     const ov = (dlgState.working.overrides || {})[dateStr];
@@ -835,8 +836,11 @@ function openCustodyScheduleDialog() {
   function buildMonthCalHTML() {
     const { viewYear, viewMonth, selectedDays } = dlgState;
     const ws = parseInt(localStorage.getItem("do-do-week-start") || "1");
-    const letters = ["S","M","T","W","T","F","S"];
-    const headers = Array.from({ length: 7 }, (_, i) => letters[(i + ws) % 7]);
+    const _loc1 = _getDateLocale();
+    const headers = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(2000, 0, 2 + (i + ws) % 7);
+      return d.toLocaleDateString(_loc1, { weekday: "narrow" });
+    });
     const firstDay = new Date(viewYear, viewMonth, 1);
     const startDow = (firstDay.getDay() - ws + 7) % 7;
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -976,11 +980,12 @@ function openCustodyScheduleDialog() {
   }
 
   function render() {
+    const _t = window.t || ((k, fb) => fb || k);
     const hasPending = divorced && Object.keys(dlgState.changedDays).length > 0;
     dialog.innerHTML = `
       <div class="dialog-content sched-editor-content">
         <div class="dialog-header">
-          <div><p class="eyebrow">Calendar</p><h2>Parenting schedule</h2></div>
+          <div><p class="eyebrow">${_t("nav.calendar", "Calendar")}</p><h2>${_t("custody.heading", "Parenting schedule")}</h2></div>
           <button class="icon-button" type="button" id="closeSchedBtn" aria-label="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
@@ -988,41 +993,41 @@ function openCustodyScheduleDialog() {
         <div class="custody-dialog-body sched-dialog-body">
           <div class="custody-dialog-fields" style="margin-bottom:10px;">
             <label class="clean-field custody-dialog-field">
-              <span>Schedule pattern</span>
+              <span>${_t("sched.pattern", "Schedule pattern")}</span>
               <select id="schedType">
-                <option value="7-7"${dlgState.working.type === "7-7" ? " selected" : ""}>Alternating weeks (7-7)</option>
-                <option value="2-2-3"${dlgState.working.type === "2-2-3" ? " selected" : ""}>2-2-3 rotation</option>
-                <option value="5-2"${dlgState.working.type === "5-2" ? " selected" : ""}>Weekdays / weekends split</option>
-                <option value="manual"${dlgState.working.type === "manual" ? " selected" : ""}>Manual (set each day)</option>
+                <option value="7-7"${dlgState.working.type === "7-7" ? " selected" : ""}>${_t("custody.7_7", "Alternating weeks (7-7)")}</option>
+                <option value="2-2-3"${dlgState.working.type === "2-2-3" ? " selected" : ""}>${_t("custody.2_2_3", "2-2-3 rotation")}</option>
+                <option value="5-2"${dlgState.working.type === "5-2" ? " selected" : ""}>${_t("custody.5_2", "Weekdays / weekends split")}</option>
+                <option value="manual"${dlgState.working.type === "manual" ? " selected" : ""}>${_t("sched.manual", "Manual (set each day)")}</option>
               </select>
             </label>
             <label class="clean-field custody-dialog-field" id="schedRefRow"${(dlgState.working.type === "5-2" || dlgState.working.type === "manual") ? ' style="display:none"' : ""}>
-              <span>My schedule starts</span>
+              <span>${_t("sched.my_starts", "My schedule starts")}</span>
               <input type="date" id="schedRefDate" value="${dlgState.working.referenceDate || toCalendarKey(new Date())}" />
             </label>
-            ${buildSwatchRow("myColor", "My days colour (your view only)")}
-            ${buildSwatchRow("coColor", "Co-parent days colour (your view only)")}
+            ${buildSwatchRow("myColor", _t("sched.my_days_hint", "My days colour (your view only)"))}
+            ${buildSwatchRow("coColor", _t("sched.co_days_hint", "Co-parent days colour (your view only)"))}
           </div>
           ${buildMonthCalHTML()}
           <div id="schedDayPanel">${buildDayPanel()}</div>
-          ${divorced ? `<div class="sched-divorced-notice">Separated/divorced mode - schedule changes are sent to ${coparentName} for approval and stored for court records.</div>` : ""}
+          ${divorced ? `<div class="sched-divorced-notice">${_t("sched.divorced_notice", "Separated/divorced mode - schedule changes are sent to {{name}} for approval and stored for court records.").replace("{{name}}", coparentName)}</div>` : ""}
           ${divorced ? buildPendingSection() : ""}
           <div class="sched-propagate-section">
-            <span class="sched-propagate-label">Propagate (applies after save):</span>
+            <span class="sched-propagate-label">${_t("sched.propagate", "Propagate (applies after save):")}</span>
             <div class="sched-propagate-chips">
-              <button class="custody-chip" type="button" data-propagate="this-week-all">This week - all weeks</button>
-              <button class="custody-chip" type="button" data-propagate="3">Next 3 months</button>
-              <button class="custody-chip" type="button" data-propagate="6">Next 6 months</button>
-              <button class="custody-chip" type="button" data-propagate="12">Full year</button>
+              <button class="custody-chip" type="button" data-propagate="this-week-all">${_t("sched.this_week_all", "This week - all weeks")}</button>
+              <button class="custody-chip" type="button" data-propagate="3">${_t("sched.3mo", "Next 3 months")}</button>
+              <button class="custody-chip" type="button" data-propagate="6">${_t("sched.6mo", "Next 6 months")}</button>
+              <button class="custody-chip" type="button" data-propagate="12">${_t("sched.full_year", "Full year")}</button>
             </div>
           </div>
           <div style="margin-top:10px;">
-            <button class="ghost-button sched-clear-schedule-btn" type="button" id="clearScheduleBtn">Clear entire schedule${divorced ? " (requires approval)" : ""}</button>
+            <button class="ghost-button sched-clear-schedule-btn" type="button" id="clearScheduleBtn">${_t("sched.clear", "Clear entire schedule")}${divorced ? " " + _t("sched.requires_approval", "(requires approval)") : ""}</button>
           </div>
         </div>
         <div class="dialog-actions">
-          <button class="ghost-button" type="button" id="cancelSchedBtn">Cancel</button>
-          <button class="primary-button" type="button" id="saveSchedBtn">${hasPending ? "Request changes" : "Save schedule"}</button>
+          <button class="ghost-button" type="button" id="cancelSchedBtn">${_t("card.cancel", "Cancel")}</button>
+          <button class="primary-button" type="button" id="saveSchedBtn">${hasPending ? _t("sched.request_changes", "Request changes") : _t("sched.save", "Save schedule")}</button>
         </div>
       </div>`;
     bindEvents();
@@ -1474,66 +1479,72 @@ function openScheduleSetupDialog() {
         </div>
       </label>`;
 
+    const _t = window.t || ((k, fb) => fb || k);
     if (step === 1) {
       dialog.innerHTML = `
         <div class="dialog-content sched-editor-content">
           <div class="dialog-header">
-            <div><p class="eyebrow">Step 1 of 2</p><h2>Set up parenting schedule</h2></div>
+            <div><p class="eyebrow">${_t("nav.calendar", "Calendar")}</p><h2>${_t("cal.set_up_schedule", "Set up parenting schedule")}</h2></div>
             <button class="icon-button" type="button" id="closeSetupBtn" aria-label="Close">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
           </div>
           <div class="custody-dialog-body sched-dialog-body">
-            <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">Choose how custody is shared. You can always fine-tune individual days afterward.</p>
+            <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">${_t("sched.choose_how", "Choose how custody is shared. You can always fine-tune individual days afterward.")}</p>
             <div class="custody-dialog-fields">
               <label class="clean-field custody-dialog-field">
-                <span>Schedule pattern</span>
+                <span>${_t("sched.pattern", "Schedule pattern")}</span>
                 <select id="setupType">
-                  <option value="7-7"${setupData.type === "7-7" ? " selected" : ""}>Alternating weeks (7-7)</option>
-                  <option value="2-2-3"${setupData.type === "2-2-3" ? " selected" : ""}>2-2-3 rotation</option>
-                  <option value="5-2"${setupData.type === "5-2" ? " selected" : ""}>Weekdays / weekends split</option>
-                  <option value="manual"${setupData.type === "manual" ? " selected" : ""}>Manual (set each day)</option>
+                  <option value="7-7"${setupData.type === "7-7" ? " selected" : ""}>${_t("custody.7_7", "Alternating weeks (7-7)")}</option>
+                  <option value="2-2-3"${setupData.type === "2-2-3" ? " selected" : ""}>${_t("custody.2_2_3", "2-2-3 rotation")}</option>
+                  <option value="5-2"${setupData.type === "5-2" ? " selected" : ""}>${_t("custody.5_2", "Weekdays / weekends split")}</option>
+                  <option value="manual"${setupData.type === "manual" ? " selected" : ""}>${_t("sched.manual", "Manual (set each day)")}</option>
                 </select>
               </label>
               <label class="clean-field custody-dialog-field" id="setupRefRow"${(setupData.type === "5-2" || setupData.type === "manual") ? ' style="display:none"' : ""}>
-                <span>My first week starts on</span>
+                <span>${_t("sched.my_first_week", "My first week starts on")}</span>
                 <input type="date" id="setupRefDate" value="${setupData.referenceDate}" />
               </label>
-              ${swatchRow("myColor", "Your days colour")}
-              ${swatchRow("coColor", `${escapeHtml(coparentName)}'s days colour`)}
+              ${swatchRow("myColor", _t("sched.your_days", "Your days colour"))}
+              ${swatchRow("coColor", `${escapeHtml(coparentName)} - ${_t("sched.co_days", "Co-parent days colour")}`)}
             </div>
-            ${divorced ? `<div class="sched-divorced-notice" style="margin-top:12px;">Separated/divorced mode - this setup will be sent to ${escapeHtml(coparentName)} for review and stored for records.</div>` : ""}
+            ${divorced ? `<div class="sched-divorced-notice" style="margin-top:12px;">${_t("sched.divorced_setup", "Separated/divorced mode - this setup will be sent to {{name}} for review and stored for records.").replace("{{name}}", escapeHtml(coparentName))}</div>` : ""}
           </div>
           <div class="dialog-actions">
-            <button class="ghost-button" type="button" id="cancelSetupBtn">Cancel</button>
-            <button class="primary-button" type="button" id="setupNextBtn">Next: confirm &rarr;</button>
+            <button class="ghost-button" type="button" id="cancelSetupBtn">${_t("card.cancel", "Cancel")}</button>
+            <button class="primary-button" type="button" id="setupNextBtn">${_t("sched.next_step", "Next: confirm →")}</button>
           </div>
         </div>`;
     } else {
       // Step 2: summary + confirm
-      const typeLabel = { "7-7": "Alternating weeks (7-7)", "2-2-3": "2-2-3 rotation", "5-2": "Weekdays / weekends split", manual: "Manual" }[setupData.type] || setupData.type;
+      const typeLabel = {
+        "7-7": _t("custody.7_7", "Alternating weeks (7-7)"),
+        "2-2-3": _t("custody.2_2_3", "2-2-3 rotation"),
+        "5-2": _t("custody.5_2", "Weekdays / weekends split"),
+        manual: _t("sched.manual", "Manual"),
+      }[setupData.type] || setupData.type;
       dialog.innerHTML = `
         <div class="dialog-content sched-editor-content">
           <div class="dialog-header">
-            <div><p class="eyebrow">Step 2 of 2</p><h2>Confirm schedule</h2></div>
+            <div><p class="eyebrow">${_t("sched.step2", "Step 2 of 2")}</p><h2>${_t("sched.confirm_heading", "Confirm schedule")}</h2></div>
             <button class="icon-button" type="button" id="closeSetupBtn" aria-label="Close">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
           </div>
           <div class="custody-dialog-body sched-dialog-body">
             <div class="sched-summary-block" style="background:var(--surface-raised);border-radius:10px;padding:14px;margin-bottom:16px;">
-              <div style="margin-bottom:8px;font-size:14px;"><strong>Pattern:</strong> ${typeLabel}</div>
-              ${setupData.type !== "5-2" && setupData.type !== "manual" ? `<div style="margin-bottom:8px;font-size:14px;"><strong>Starts:</strong> ${setupData.referenceDate}</div>` : ""}
-              <div style="font-size:14px;"><strong>Colours:</strong>
+              <div style="margin-bottom:8px;font-size:14px;"><strong>${_t("sched.pattern_label", "Pattern:")}</strong> ${typeLabel}</div>
+              ${setupData.type !== "5-2" && setupData.type !== "manual" ? `<div style="margin-bottom:8px;font-size:14px;"><strong>${_t("sched.starts_label", "Starts:")}</strong> ${setupData.referenceDate}</div>` : ""}
+              <div style="font-size:14px;"><strong>${_t("sched.colours_label", "Colours:")}</strong>
                 <span style="background:var(--custody-${setupData.myColor});display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:middle;margin:0 4px;"></span>You &nbsp;/&nbsp;
                 <span style="background:var(--custody-${setupData.coColor});display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:middle;margin:0 4px;"></span>${escapeHtml(coparentName)}
               </div>
             </div>
-            ${divorced ? `<div class="sched-divorced-notice">This will be saved as a schedule-setup request visible to ${escapeHtml(coparentName)}.</div>` : ""}
+            ${divorced ? `<div class="sched-divorced-notice">${_t("sched.divorced_confirm", "This will be saved as a schedule-setup request visible to {{name}}.").replace("{{name}}", escapeHtml(coparentName))}</div>` : ""}
           </div>
           <div class="dialog-actions">
-            <button class="ghost-button" type="button" id="setupBackBtn">&larr; Back</button>
-            <button class="primary-button" type="button" id="setupSaveBtn">${divorced ? "Send for review" : "Save schedule"}</button>
+            <button class="ghost-button" type="button" id="setupBackBtn">&larr; ${_t("card.cancel", "Back")}</button>
+            <button class="primary-button" type="button" id="setupSaveBtn">${divorced ? _t("sched.send_for_review", "Send for review") : _t("sched.save", "Save schedule")}</button>
           </div>
         </div>`;
     }
@@ -1956,10 +1967,17 @@ function bindAutomationSettings() {
   // Currency selector (independent of language)
   const currencySelect = featureModule.querySelector("#currencyPreference");
   currencySelect?.addEventListener("change", () => {
-    window.setCurrencyPreference?.(currencySelect.value);
-    showFeatureToast(`Currency set to ${currencySelect.value}`);
-    // Reload so LOCALE_CONFIG re-initializes with the new value
-    setTimeout(() => location.reload(), 800);
+    const newKey = currencySelect.value;
+    window.setCurrencyPreference?.(newKey);
+    // Update LOCALE_CONFIG in-place so the rest of the app picks it up immediately
+    const configs = { CHF: window.LOCALE_CONFIGS?.chf, EUR: window.LOCALE_CONFIGS?.eur, PLN: window.LOCALE_CONFIGS?.pl };
+    const newConfig = configs[newKey];
+    if (newConfig && window.LOCALE_CONFIG) {
+      Object.assign(window.LOCALE_CONFIG, newConfig);
+    }
+    showFeatureToast(`Currency set to ${newKey}`);
+    // Re-render settings in place - no page reload needed
+    renderSettingsFeature();
   });
 
   // Siri / Shortcuts integration
@@ -2492,8 +2510,16 @@ function escapeFeatureHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
-// ─── Quick Expense Dialog ─────────────────────────────────────────────────────
+// ─── Expenses Feature ─────────────────────────────────────────────────────────
+// "Add Expense" opens the standard Do card dialog pre-filled as an Expense.
+// Split options (50/50, Mine only, Custom) live in the payment panel side column.
 
+function _openNewExpenseCard() {
+  window.openCardDialog?.("", "info", { topic: "Expenses", type: "Expense" });
+}
+
+// --- REMOVED openQuickExpenseDialog (replaced by full card dialog) ---
+// Dead code kept as tombstone so git blame is clear.
 function openQuickExpenseDialog() {
   document.getElementById("quickExpenseDialog")?.remove();
 
@@ -2794,7 +2820,7 @@ function renderExpensesFeature() {
     </section>
   `;
 
-  featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => openQuickExpenseDialog());
+  featureModule.querySelector("#addExpenseButton")?.addEventListener("click", () => _openNewExpenseCard());
 
   featureModule.querySelector("#sendSettlementBtn")?.addEventListener("click", () => {
     openSettlementModal({ expenseCards, balance, balanceAbs, coparentName, myName, _sym, selectedMonth });
@@ -3444,7 +3470,8 @@ function _renderSchedulePanelHTML() {
   const myName = setup.parents?.primary || "Parent A";
   const divorced = isDivorced();
   const sp = _getSchedPanelState();
-  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const _loc2 = _getDateLocale();
+  const MONTH_NAMES = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleDateString(_loc2, { month: "long" }));
   const CUSTODY_COLORS_LOCAL = [
     { value: "#6366f1", label: "Indigo" }, { value: "#22c55e", label: "Green" },
     { value: "#f59e0b", label: "Amber" }, { value: "#ef4444", label: "Red" },
@@ -3469,8 +3496,11 @@ function _renderSchedulePanelHTML() {
 
   // Month calendar
   const ws = parseInt(localStorage.getItem("do-do-week-start") || "1");
-  const letters = ["S","M","T","W","T","F","S"];
-  const headers = Array.from({ length: 7 }, (_, i) => letters[(i + ws) % 7]);
+  const _loc3 = _getDateLocale();
+  const headers = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(2000, 0, 2 + (i + ws) % 7);
+    return d.toLocaleDateString(_loc3, { weekday: "narrow" });
+  });
   const firstDay = new Date(sp.viewYear, sp.viewMonth, 1);
   const startDow = (firstDay.getDay() - ws + 7) % 7;
   const daysInMonth = new Date(sp.viewYear, sp.viewMonth + 1, 0).getDate();
@@ -3569,28 +3599,29 @@ function _renderSchedulePanelHTML() {
       <button class="custody-chip custody-chip-reset" type="button" id="spClearPendingBtn" style="margin-top:6px;font-size:11px;">Clear all</button>
     </div>` : "";
 
+  const _tsp = window.t || ((k, fb) => fb || k);
   const hasPending = divorced && pendingEntries.length > 0;
-  const saveLabel = hasPending ? "Request changes" : "Save schedule";
+  const saveLabel = hasPending ? _tsp("sched.request_changes", "Request changes") : _tsp("sched.save", "Save schedule");
   const showRefRow = sp.working.type !== "5-2" && sp.working.type !== "manual";
 
   return `
     <div class="cal-inline-panel-schedule">
       <div class="custody-dialog-fields" style="margin-bottom:10px;">
         <label class="clean-field custody-dialog-field">
-          <span>Schedule pattern</span>
+          <span>${_tsp("sched.pattern", "Schedule pattern")}</span>
           <select id="spType">
-            <option value="7-7"${sp.working.type === "7-7" ? " selected" : ""}>Alternating weeks (7-7)</option>
-            <option value="2-2-3"${sp.working.type === "2-2-3" ? " selected" : ""}>2-2-3 rotation</option>
-            <option value="5-2"${sp.working.type === "5-2" ? " selected" : ""}>Weekdays / weekends split</option>
-            <option value="manual"${sp.working.type === "manual" ? " selected" : ""}>Manual (set each day)</option>
+            <option value="7-7"${sp.working.type === "7-7" ? " selected" : ""}>${_tsp("custody.7_7", "Alternating weeks (7-7)")}</option>
+            <option value="2-2-3"${sp.working.type === "2-2-3" ? " selected" : ""}>${_tsp("custody.2_2_3", "2-2-3 rotation")}</option>
+            <option value="5-2"${sp.working.type === "5-2" ? " selected" : ""}>${_tsp("custody.5_2", "Weekdays / weekends split")}</option>
+            <option value="manual"${sp.working.type === "manual" ? " selected" : ""}>${_tsp("sched.manual", "Manual (set each day)")}</option>
           </select>
         </label>
         <label class="clean-field custody-dialog-field" id="spRefRow"${showRefRow ? "" : ' style="display:none"'}>
-          <span>My schedule starts</span>
+          <span>${_tsp("sched.my_starts", "My schedule starts")}</span>
           <input type="date" id="spRefDate" value="${sp.working.referenceDate || toCalendarKey(new Date())}" />
         </label>
-        ${swatchRow("myColor", "My days colour")}
-        ${swatchRow("coColor", "Co-parent days colour")}
+        ${swatchRow("myColor", _tsp("sched.my_days", "My days colour"))}
+        ${swatchRow("coColor", _tsp("sched.co_days", "Co-parent days colour"))}
       </div>
       <div class="sched-month-cal">
         <div class="mc-header">
@@ -3605,19 +3636,19 @@ function _renderSchedulePanelHTML() {
         ${selHint}
       </div>
       <div id="spDayPanel">${dayPanelHtml}</div>
-      ${divorced ? `<div class="sched-divorced-notice">Separated/divorced mode - schedule changes sent to ${escapeHtml(coparentName)} for approval.</div>` : ""}
+      ${divorced ? `<div class="sched-divorced-notice">${_tsp("sched.divorced_notice", "Separated/divorced mode - schedule changes are sent to {{name}} for approval and stored for court records.").replace("{{name}}", escapeHtml(coparentName))}</div>` : ""}
       ${pendingHtml}
       <div class="sched-propagate-section">
-        <span class="sched-propagate-label">Propagate:</span>
+        <span class="sched-propagate-label">${_tsp("sched.propagate_short", "Propagate:")}</span>
         <div class="sched-propagate-chips">
-          <button class="custody-chip" type="button" data-sp-propagate="this-week-all">This week - all weeks</button>
-          <button class="custody-chip" type="button" data-sp-propagate="3">3 months</button>
-          <button class="custody-chip" type="button" data-sp-propagate="6">6 months</button>
-          <button class="custody-chip" type="button" data-sp-propagate="12">Full year</button>
+          <button class="custody-chip" type="button" data-sp-propagate="this-week-all">${_tsp("sched.this_week_all", "This week - all weeks")}</button>
+          <button class="custody-chip" type="button" data-sp-propagate="3">${_tsp("sched.3mo_short", "3 months")}</button>
+          <button class="custody-chip" type="button" data-sp-propagate="6">${_tsp("sched.6mo_short", "6 months")}</button>
+          <button class="custody-chip" type="button" data-sp-propagate="12">${_tsp("sched.full_year", "Full year")}</button>
         </div>
       </div>
       <div class="sched-panel-actions">
-        <button class="ghost-button sched-clear-schedule-btn" type="button" id="spClearSchedBtn">Clear entire schedule${divorced ? " (requires approval)" : ""}</button>
+        <button class="ghost-button sched-clear-schedule-btn" type="button" id="spClearSchedBtn">${_tsp("sched.clear", "Clear entire schedule")}${divorced ? " " + _tsp("sched.requires_approval", "(requires approval)") : ""}</button>
         <button class="primary-button" type="button" id="spSaveBtn">${saveLabel}</button>
       </div>
     </div>`;
@@ -3663,7 +3694,8 @@ function _renderChangesPanelHTML() {
 function _renderVacationsPanelHTML() {
   const setup = window.getOnboardingState?.() || {};
   const coparentName = setup.parents?.coparent || "Co-parent";
-  const weekDayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const _locWd = _getDateLocale();
+  const weekDayNames = Array.from({ length: 7 }, (_, i) => new Date(2000, 0, 2 + i).toLocaleDateString(_locWd, { weekday: "long" }));
   const vp = _panelVacState;
   const vacations = loadVacations();
 
@@ -5016,7 +5048,8 @@ function openVacationsDialog(editId = null) {
   document.getElementById("vacationsDialog")?.remove();
   const setup = window.getOnboardingState?.() || {};
   const coparentName = setup.parents?.coparent || "Co-parent";
-  const weekDayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const _locWd = _getDateLocale();
+  const weekDayNames = Array.from({ length: 7 }, (_, i) => new Date(2000, 0, 2 + i).toLocaleDateString(_locWd, { weekday: "long" }));
 
   const vState = {
     editingId: editId,
@@ -5302,10 +5335,15 @@ function openVacationsDialog(editId = null) {
 
 function _buildVacRangeCalHTML(vState, vacations) {
   const { viewYear, viewMonth, rangeStart, rangeEnd, editingId } = vState;
-  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const _loc = _getDateLocale();
+  const monthNames = Array.from({ length: 12 }, (_, i) =>
+    new Date(2000, i, 1).toLocaleDateString(_loc, { month: "long" })
+  );
   const weekStart = parseInt(localStorage.getItem("do-do-week-start") || "1");
-  const allDayLetters = ["S","M","T","W","T","F","S"];
-  const headerLetters = Array.from({ length: 7 }, (_, i) => allDayLetters[(i + weekStart) % 7]);
+  const headerLetters = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(2000, 0, 2 + (i + weekStart) % 7); // Jan 2 2000 is Sunday
+    return d.toLocaleDateString(_loc, { weekday: "narrow" });
+  });
 
   const firstDay = new Date(viewYear, viewMonth, 1);
   const startDow = (firstDay.getDay() - weekStart + 7) % 7;
@@ -5385,10 +5423,15 @@ const _crCalState = {
 
 function _buildCrSingleDateCalHTML(state) {
   const { viewYear, viewMonth, selectedDate } = state;
-  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const _loc = _getDateLocale();
+  const monthNames = Array.from({ length: 12 }, (_, i) =>
+    new Date(2000, i, 1).toLocaleDateString(_loc, { month: "long" })
+  );
   const weekStart = parseInt(localStorage.getItem("do-do-week-start") || "1");
-  const allDayLetters = ["S","M","T","W","T","F","S"];
-  const headerLetters = Array.from({ length: 7 }, (_, i) => allDayLetters[(i + weekStart) % 7]);
+  const headerLetters = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(2000, 0, 2 + (i + weekStart) % 7);
+    return d.toLocaleDateString(_loc, { weekday: "narrow" });
+  });
   const firstDay = new Date(viewYear, viewMonth, 1);
   const startDow = (firstDay.getDay() - weekStart + 7) % 7;
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -5975,13 +6018,14 @@ function renderSpecialPanel(moduleName, part = "all") {
       reminderDelivery: "calendar-and-app",
     };
     const workCalendarConnections = Array.isArray(automation.workCalendarConnections) ? automation.workCalendarConnections : [];
+    const _lt = window.t || ((k, fb) => fb || k);
     const leadTimes = [
-      ["15", "15 minutes before"],
-      ["60", "1 hour before"],
-      ["120", "2 hours before"],
-      ["1440", "1 day before"],
-      ["10080", "1 week before"],
-      ["at-due", "At due time"],
+      ["15",    _lt("auto.15min",  "15 minutes before")],
+      ["60",    _lt("auto.1hour",  "1 hour before")],
+      ["120",   _lt("auto.2hours", "2 hours before")],
+      ["1440",  _lt("auto.1day",   "1 day before")],
+      ["10080", _lt("auto.1week",  "1 week before")],
+      ["at-due",_lt("auto.at_due", "At due time")],
     ];
     return `
       ${part === "all" || part === "custody" ? (() => {
@@ -6123,16 +6167,16 @@ function renderSpecialPanel(moduleName, part = "all") {
           </label>
           <label class="settings-toggle-row" id="quietHoursToggleRow">
             <span>
-              <strong>Cisza nocna</strong>
-              <em>Brak powiadomien i przypomnien w godzinach nocnych</em>
+              <strong>${_at("auto.quiet_hours", "Quiet hours")}</strong>
+              <em>${_at("auto.quiet_hours_hint", "No notifications or reminders during night hours.")}</em>
             </span>
             <input type="checkbox" id="quietHoursToggle" />
           </label>
           <div id="quietHoursTimesBlock" style="display:none;flex-direction:column;gap:4px;">
             <label class="settings-select-row">
               <span style="padding-left:16px;">
-                <strong>Od godziny</strong>
-                <em>Poczatek ciszy nocnej</em>
+                <strong>${_at("auto.quiet_from", "From")}</strong>
+                <em>${_at("auto.quiet_from_hint", "Start of quiet hours.")}</em>
               </span>
               <select id="quietHoursFrom">
                 ${Array.from({length:24},(_,h)=>`<option value="${String(h).padStart(2,"0")}:00">${String(h).padStart(2,"0")}:00</option>`).join("")}
@@ -6140,8 +6184,8 @@ function renderSpecialPanel(moduleName, part = "all") {
             </label>
             <label class="settings-select-row">
               <span style="padding-left:16px;">
-                <strong>Do godziny</strong>
-                <em>Koniec ciszy nocnej</em>
+                <strong>${_at("auto.quiet_to", "Until")}</strong>
+                <em>${_at("auto.quiet_to_hint", "End of quiet hours.")}</em>
               </span>
               <select id="quietHoursTo">
                 ${Array.from({length:24},(_,h)=>`<option value="${String(h).padStart(2,"0")}:00">${String(h).padStart(2,"0")}:00</option>`).join("")}
@@ -6238,19 +6282,19 @@ function renderSpecialPanel(moduleName, part = "all") {
 
       <section class="feature-panel calendar-import-settings">
         <div class="feature-panel-header">
-          <h3>Import from Google Calendar</h3>
-          <span class="feature-badge ${automation.importCalendarId ? "badge-connected" : "badge-pending"}">${automation.importCalendarId ? "Active" : "Set up"}</span>
+          <h3>${_at("auto.import_heading", "Import from Google Calendar")}</h3>
+          <span class="feature-badge ${automation.importCalendarId ? "badge-connected" : "badge-pending"}">${automation.importCalendarId ? _at("auto.import_active", "Active") : _at("auto.import_setup", "Set up")}</span>
         </div>
-        <p class="feature-note">Pull events from any Google Calendar into your Do-Do board as cards. Updates automatically on each app load.</p>
+        <p class="feature-note">${_at("auto.import_note", "Pull events from any Google Calendar into your Do-Do board as cards. Updates automatically on each app load.")}</p>
         <div class="settings-control-list">
           <div class="settings-connection-row">
             <span>
-              <strong>Calendar to import</strong>
-              <em>Pick which of your Google Calendars to import events from.</em>
+              <strong>${_at("auto.import_calendar", "Calendar to import")}</strong>
+              <em>${_at("auto.import_calendar_hint", "Pick which of your Google Calendars to import events from.")}</em>
             </span>
             <div class="import-cal-selector">
               <select id="importCalendarSelect">
-                <option value="">${automation.importCalendarId ? "Loading..." : "-- pick a calendar --"}</option>
+                <option value="">${automation.importCalendarId ? _at("auto.import_loading", "Loading...") : _at("auto.import_pick", "-- pick a calendar --")}</option>
                 ${automation.importCalendarId ? `<option value="${escapeHtml(automation.importCalendarId)}" selected>${escapeHtml(automation.importCalendarName || automation.importCalendarId)}</option>` : ""}
               </select>
               <button class="ghost-button" type="button" id="refreshCalendarListBtn" title="Refresh list">&#8635;</button>
@@ -6258,29 +6302,29 @@ function renderSpecialPanel(moduleName, part = "all") {
           </div>
           <div class="settings-connection-row">
             <span>
-              <strong>Import range</strong>
-              <em>How many days ahead to import events.</em>
+              <strong>${_at("auto.import_range", "Import range")}</strong>
+              <em>${_at("auto.import_range_hint", "How many days ahead to import events.")}</em>
             </span>
             <div class="import-range-selector">
               <input type="number" id="importCalDaysAhead" min="7" max="365" value="${automation.importCalendarDaysAhead || 30}" style="width:4.5rem;text-align:center;" />
-              <span>days</span>
+              <span>${_at("auto.import_days", "days")}</span>
             </div>
           </div>
           <div class="settings-connection-row">
             <span>
-              <strong>Sync mode</strong>
-              <em>Import only: pull events as read-only cards. Two-way: editing a card also updates the calendar event.</em>
+              <strong>${_at("auto.import_sync_mode", "Sync mode")}</strong>
+              <em>${_at("auto.import_sync_hint", "Import only: pull events as read-only cards. Two-way: editing a card also updates the calendar event.")}</em>
             </span>
             <select id="importCalSyncMode">
-              <option value="import-only" ${automation.importCalendarSyncMode !== "two-way" ? "selected" : ""}>Import only</option>
-              <option value="two-way" ${automation.importCalendarSyncMode === "two-way" ? "selected" : ""}>Two-way sync</option>
+              <option value="import-only" ${automation.importCalendarSyncMode !== "two-way" ? "selected" : ""}>${_at("auto.import_only", "Import only")}</option>
+              <option value="two-way" ${automation.importCalendarSyncMode === "two-way" ? "selected" : ""}>${_at("auto.import_two_way", "Two-way sync")}</option>
             </select>
           </div>
           <div class="settings-connection-row import-cal-action-row">
             <span id="importCalStatusMsg">
-              ${automation.importCalendarId ? `<em>Last source: <strong>${escapeHtml(automation.importCalendarName || automation.importCalendarId)}</strong></em>` : "<em>No calendar linked yet.</em>"}
+              ${automation.importCalendarId ? `<em>${_at("auto.import_last_source", "Last source:")} <strong>${escapeHtml(automation.importCalendarName || automation.importCalendarId)}</strong></em>` : `<em>${_at("auto.import_none", "No calendar linked yet.")}</em>`}
             </span>
-            <button class="secondary-button" type="button" id="runCalendarImportBtn">Import now</button>
+            <button class="secondary-button" type="button" id="runCalendarImportBtn">${_at("auto.import_now", "Import now")}</button>
           </div>
         </div>
       </section>
@@ -6759,14 +6803,14 @@ function renderSettingsFeature() {
       <!-- SEG-11.4: Schedule cascade -->
       <section class="feature-panel" id="scheduleCascadePanel">
         <div class="feature-panel-header">
-          <h3>Custody week templates</h3>
-          <button class="secondary-button" id="addScheduleTemplateBtn">+ New template</button>
+          <h3>${_at("tmpl.heading", "Custody week templates")}</h3>
+          <button class="secondary-button" id="addScheduleTemplateBtn">+ ${_at("tmpl.add", "New template")}</button>
         </div>
         <p class="feature-note" style="font-size:13px;color:var(--muted);margin:6px 0 12px;">
-          Named recurring custody weeks. Moving one template updates all linked cards and calendar events in one action.
+          ${_at("tmpl.desc", "Named recurring custody weeks. Moving one template updates all linked cards and calendar events in one action.")}
         </p>
         <div id="scheduleTemplatesList">
-          <p class="feature-empty" style="font-size:13px;color:var(--muted);">Loading templates...</p>
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_at("tmpl.empty", "Loading templates...")}</p>
         </div>
       </section>
 
@@ -7302,13 +7346,14 @@ window.checkCardMilestoneToast = checkCardMilestoneToast;
 // ─── SEG-11.4: Schedule templates UI ─────────────────────────────────────────
 
 async function renderScheduleTemplates() {
+  const _trt = window.t || ((k, fb) => fb || k);
   const list = featureModule.querySelector("#scheduleTemplatesList");
   if (!list) return;
 
   const schedules = await window.loadSchedules?.() || [];
 
   if (!schedules.length) {
-    list.innerHTML = `<p class="feature-empty" style="font-size:13px;color:var(--muted);">No templates yet. Create one to group custody week cards together.</p>`;
+    list.innerHTML = `<p class="feature-empty" style="font-size:13px;color:var(--muted);">${_trt("tmpl.empty", "No templates yet. Create one to group custody week cards together.")}</p>`;
     return;
   }
 
@@ -7317,10 +7362,10 @@ async function renderScheduleTemplates() {
       <div class="feature-item-main">
         ${s.color ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${escapeHtml(s.color)};margin-right:6px;vertical-align:middle;"></span>` : ""}
         <strong>${escapeHtml(s.name)}</strong>
-        <span style="font-size:12px;color:var(--muted);margin-left:6px;">Every ${s.repeat_every_weeks || 2} weeks</span>
+        <span style="font-size:12px;color:var(--muted);margin-left:6px;">${_trt("tmpl.every_weeks", "Every {{n}} weeks").replace("{{n}}", s.repeat_every_weeks || 2)}</span>
       </div>
       <div class="feature-item-actions">
-        <button class="secondary-button" style="font-size:12px;padding:4px 10px;" data-cascade-btn="${escapeHtml(s.id)}" data-cascade-name="${escapeHtml(s.name)}">Move week</button>
+        <button class="secondary-button" style="font-size:12px;padding:4px 10px;" data-cascade-btn="${escapeHtml(s.id)}" data-cascade-name="${escapeHtml(s.name)}">${_trt("tmpl.move_week", "Move week")}</button>
         <button class="icon-button icon-button-sm" data-edit-schedule="${escapeHtml(s.id)}" aria-label="Edit ${escapeHtml(s.name)}">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M11.5 2.5a1.5 1.5 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5Z"/></svg>
         </button>
@@ -7350,6 +7395,7 @@ async function renderScheduleTemplates() {
 }
 
 function openScheduleTemplateDialog(scheduleId) {
+  const _tsd = window.t || ((k, fb) => fb || k);
   document.getElementById("scheduleTemplateDialog")?.remove();
   const COLORS = ["#7c3aed","#2563eb","#16a34a","#dc2626","#d97706","#0891b2","#db2777","#4b5563"];
 
@@ -7361,38 +7407,38 @@ function openScheduleTemplateDialog(scheduleId) {
   dialog.className = "card-dialog";
   dialog.innerHTML = `
     <div class="dialog-header">
-      <h2 class="dialog-title">${scheduleId ? "Edit" : "New"} custody week template</h2>
+      <h2 class="dialog-title">${scheduleId ? _tsd("tmpl.edit", "Edit") : _tsd("tmpl.new", "New")} ${_tsd("tmpl.new_edit", "custody week template")}</h2>
       <button class="icon-button" id="closeSched" aria-label="Close">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
       </button>
     </div>
     <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
-      <label style="font-size:13px;font-weight:600;">Template name
-        <input type="text" id="schedNameInput" placeholder="e.g. Week A - Bart's week" maxlength="60"
+      <label style="font-size:13px;font-weight:600;">${_tsd("tmpl.name", "Template name")}
+        <input type="text" id="schedNameInput" placeholder="${_tsd("tmpl.name_placeholder", "e.g. Week A - Bart's week")}" maxlength="60"
           style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--surface-page);color:var(--ink);">
       </label>
-      <label style="font-size:13px;font-weight:600;">Repeats every
+      <label style="font-size:13px;font-weight:600;">${_tsd("tmpl.repeats", "Repeats every")}
         <select id="schedRepeatSelect" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--surface-page);color:var(--ink);">
-          <option value="1">1 week</option>
-          <option value="2" selected>2 weeks</option>
-          <option value="3">3 weeks</option>
-          <option value="4">4 weeks</option>
+          <option value="1">${_tsd("tmpl.1week", "1 week")}</option>
+          <option value="2" selected>${_tsd("tmpl.2weeks", "2 weeks")}</option>
+          <option value="3">${_tsd("tmpl.3weeks", "3 weeks")}</option>
+          <option value="4">${_tsd("tmpl.4weeks", "4 weeks")}</option>
         </select>
       </label>
-      <label style="font-size:13px;font-weight:600;">First week starts on
+      <label style="font-size:13px;font-weight:600;">${_tsd("tmpl.first_week", "First week starts on")}
         <input type="date" id="schedAnchorInput"
           style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--surface-page);color:var(--ink);"
           value="${new Date().toISOString().slice(0, 10)}">
       </label>
       <div>
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Color</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">${_tsd("tmpl.color", "Color")}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;" id="schedColorRow">
           ${COLORS.map((c) => `<button type="button" data-color="${c}" style="width:24px;height:24px;border-radius:50%;background:${c};border:2px solid transparent;cursor:pointer;" aria-label="${c}"></button>`).join("")}
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:4px;">
-        <button class="primary-button" id="saveSchedBtn" style="flex:1;">Save template</button>
-        <button class="secondary-button" id="cancelSchedBtn">Cancel</button>
+        <button class="primary-button" id="saveSchedBtn" style="flex:1;">${_tsd("tmpl.save", "Save template")}</button>
+        <button class="secondary-button" id="cancelSchedBtn">${_tsd("common.cancel", "Cancel")}</button>
       </div>
     </div>
   `;
@@ -7415,13 +7461,13 @@ function openScheduleTemplateDialog(scheduleId) {
 
   dialog.querySelector("#saveSchedBtn").addEventListener("click", async () => {
     const name = dialog.querySelector("#schedNameInput").value.trim();
-    if (!name) { showFeatureToast("Enter a template name"); return; }
+    if (!name) { showFeatureToast(_tsd("tmpl.enter_name", "Enter a template name")); return; }
     const repeatEveryWeeks = Number(dialog.querySelector("#schedRepeatSelect").value) || 2;
     const anchorDate = dialog.querySelector("#schedAnchorInput").value;
-    if (!anchorDate) { showFeatureToast("Pick a start date"); return; }
+    if (!anchorDate) { showFeatureToast(_tsd("tmpl.pick_date", "Pick a start date")); return; }
 
     const btn = dialog.querySelector("#saveSchedBtn");
-    btn.disabled = true; btn.textContent = "Saving...";
+    btn.disabled = true; btn.textContent = _tsd("tmpl.saving", "Saving...");
 
     const saved = await window.saveSchedule?.({
       id: scheduleId || undefined,
@@ -7433,7 +7479,7 @@ function openScheduleTemplateDialog(scheduleId) {
 
     dialog.close();
     if (saved) {
-      showFeatureToast("Template saved");
+      showFeatureToast(_tsd("tmpl.save", "Template saved"));
       renderScheduleTemplates();
     } else {
       showFeatureToast("Save failed - check Supabase DB migration for schedules table");
