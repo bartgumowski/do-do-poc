@@ -10797,3 +10797,15 @@ html[data-theme="dark"] .expense-tab-bar {
   font-weight: 600;
   color: var(--ink);
 }
+
+.recurring-inline-badge {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--accent, #6366f1);
+  font-weight: 500;
+}
+
+.recurring-expense-card {
+  cursor: default;
+}
