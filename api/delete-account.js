@@ -139,14 +139,53 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // 7. Delete the auth user (irreversible - do last)
-    const { error: deleteErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    if (deleteErr) {
-      console.error("Auth user deletion failed:", deleteErr.message);
-      // Profile is already deleted - still return ok so the user knows their data is gone
+    // 7. Schedule auth user deletion for 6 months from now (GDPR retention period).
+    // PII has already been removed above (anonymised cards, deleted messages, deleted profile).
+    // The auth record itself is queued for final purge after the 6-month window.
+    // The daily cron in remind.js processes this queue.
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const deleteAt = new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const queuePayload = JSON.stringify({
+      userId,
+      userEmail,
+      requestedAt: new Date().toISOString(),
+      deleteAt,
+      reason: "user-requested",
+    });
+
+    let queuedOk = false;
+    try {
+      const uploadRes = await fetch(
+        `${supabaseUrl}/storage/v1/object/receipts/deletion-queue/${userId}.json`,
+        {
+          method: "POST",
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+            "x-upsert": "true",
+          },
+          body: queuePayload,
+        }
+      );
+      queuedOk = uploadRes.ok;
+    } catch {
+      queuedOk = false;
     }
 
-    console.log(`Account deleted: ${userId} (${userEmail})`);
+    if (!queuedOk) {
+      // Storage upload failed - fall back to immediate deletion so the user
+      // is not stuck (profile already deleted, auth user still alive).
+      console.warn("Deletion queue upload failed - falling back to immediate auth deletion");
+      const { error: deleteErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (deleteErr) console.error("Auth user deletion failed:", deleteErr.message);
+      console.log(`Account deleted immediately (queue unavailable): ${userId} (${userEmail})`);
+    } else {
+      console.log(`Account queued for final deletion on ${deleteAt}: ${userId} (${userEmail})`);
+    }
+
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error("delete-account error:", err.message);

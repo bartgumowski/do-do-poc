@@ -1,5 +1,5 @@
-const APP_VERSION = "0.27.7";
-const APP_VERSION_DATE = "2026-06-18";
+const APP_VERSION = "0.28.0";
+const APP_VERSION_DATE = "2026-06-19";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
 // To add a new market: add an entry to LOCALE_CONFIGS and add the corresponding
@@ -4783,6 +4783,9 @@ async function _flushSyncQueue() {
     localStorage.removeItem(SYNC_QUEUE_KEY);
   }
 }
+
+// Expose queue function so supabase-data.js can use it on save failure
+window._queueOfflineCard = _queueOfflineCard;
 
 // Flush queue when coming back online
 window.addEventListener("online", () => _flushSyncQueue());

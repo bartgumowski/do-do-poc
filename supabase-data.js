@@ -186,8 +186,49 @@ async function initSupabaseData(session) {
 
 // ─── Load cards ───────────────────────────────────────────────────────────────
 
+// ─── Flush locally-queued cards before loading ───────────────────────────────
+// Saves any cards that failed to reach Supabase (network errors, etc.)
+// so they are not overwritten when state.cards is replaced below.
+
+async function _flushQueuedCards() {
+  if (!currentPairId || !currentUserId || !window.supabaseClient) return;
+  const SYNC_QUEUE_KEY = "do-do-sync-queue-v1";
+  try {
+    const raw = localStorage.getItem(SYNC_QUEUE_KEY);
+    if (!raw) return;
+    const queue = JSON.parse(raw);
+    if (!Array.isArray(queue) || !queue.length) return;
+
+    const saved = [];
+    for (const card of queue) {
+      const row = cardToDbRow(card, currentPairId, currentUserId);
+      const { error } = await window.supabaseClient
+        .from("unified_cards")
+        .upsert(row, { onConflict: "id" });
+      if (!error) {
+        saved.push(card.id);
+      } else {
+        break; // Still failing - stop so we do not lose position in queue
+      }
+    }
+
+    if (saved.length) {
+      const remaining = queue.filter((c) => !saved.includes(c.id));
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(remaining));
+      console.log(`[do-do] Flushed ${saved.length} queued card(s) before load`);
+    }
+  } catch {
+    // Unreadable queue - leave it alone
+  }
+}
+
 async function loadCardsFromSupabase() {
   if (!currentPairId || !window.supabaseClient) return;
+
+  // Flush any locally-queued cards FIRST so they are in Supabase before we
+  // overwrite state.cards. Without this, a card saved only to localStorage
+  // would be lost the moment Supabase data arrives.
+  await _flushQueuedCards();
 
   const { data, error } = await window.supabaseClient
     .from("unified_cards")
@@ -256,6 +297,8 @@ async function saveCardToSupabase(card) {
 
   if (error) {
     console.warn("Card save failed:", error.message);
+    // Queue for retry - same mechanism used for offline saves
+    window._queueOfflineCard?.(card);
   }
 }
 
@@ -1449,6 +1492,28 @@ async function toggleShoppingItem(id, checked) {
 
 async function deleteShoppingItem(id) {
   if (!window.supabaseClient) return;
+
+  // Buffer the item in localStorage before hard-deleting, so accidental
+  // bulk-wipes can be recovered. Keeps last 50 items, 30-day rolling window.
+  try {
+    const { data: row } = await window.supabaseClient
+      .from("shopping_items")
+      .select("id, list, name, checked")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (row) {
+      const TRASH_KEY = "do-do-shopping-trash-v1";
+      const trash = JSON.parse(localStorage.getItem(TRASH_KEY) || "[]");
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const pruned = trash.filter((t) => t.deletedAt > cutoff).slice(-49);
+      pruned.push({ ...row, deletedAt: Date.now() });
+      localStorage.setItem(TRASH_KEY, JSON.stringify(pruned));
+    }
+  } catch {
+    // localStorage unavailable or item not found - proceed with delete
+  }
+
   await window.supabaseClient.from("shopping_items").delete().eq("id", id);
 }
 

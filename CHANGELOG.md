@@ -2,6 +2,24 @@
 
 ---
 
+## v0.28.0 - 2026-06-19 - Data continuity: no more lost cards or data wipes
+
+**Bug fixes - data loss:**
+- Fixed silent save failure: when Supabase cannot save a card (network error, timeout), the card is now automatically added to the offline retry queue instead of being silently dropped. On next online/load it syncs automatically.
+- Fixed load-overwrite bug: before loading cards from Supabase, the app now flushes any locally-queued cards first. Previously a card saved only to localStorage would be wiped the moment Supabase data arrived.
+- Exposed `window._queueOfflineCard` so both app.js and supabase-data.js share the same retry mechanism.
+
+**Data protection:**
+- Shopping items now save to a 30-day rolling trash buffer in localStorage before hard-delete. Protects against accidental bulk wipes.
+
+**Backup:**
+- Added daily backup job inside the existing cron (remind.js, runs at 08:00 UTC). Exports all cards, messages, shopping items and pair metadata as JSON to Supabase Storage (`receipts/daily-backups/backup-YYYY-MM-DD.json`). Keeps last 7 days; older backups are pruned automatically. Backup runs even on days with no reminders due.
+
+**GDPR - 6-month retention on account deletion:**
+- Account deletion no longer immediately deletes the Supabase Auth user. Instead, a deletion record is written to `receipts/deletion-queue/{userId}.json` with a `deleteAt` date 6 months from the request. The daily cron processes the queue and permanently removes the auth record once the 6-month window passes. All PII (cards, messages, profile) is still anonymised immediately on deletion as before. Falls back to immediate deletion if Storage is unavailable.
+
+---
+
 ## v0.27.5 - 2026-06-18 - Full i18n: Google Calendar import + Custody week templates
 
 **Localization fixes:**

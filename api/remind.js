@@ -90,6 +90,10 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Supabase query failed", detail: err });
     }
 
+    // ─── Daily maintenance (backup + deletion queue) - runs regardless of reminders ─
+    try { await _runDailyBackup(supabaseUrl, supabaseKey); } catch (e) { console.error("Daily backup failed:", e.message); }
+    try { await _processDeletionQueue(supabaseUrl, supabaseKey); } catch (e) { console.error("Deletion queue failed:", e.message); }
+
     const cards = await cardsRes.json();
     if (!cards.length) return res.status(200).json({ sent: 0, message: "No reminders due" });
 
@@ -260,5 +264,181 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error("remind error:", err);
     return res.status(500).json({ error: err.message });
+  }
+}
+
+// ─── Daily backup helper ──────────────────────────────────────────────────────
+// Exports all active pairs' cards, messages, and shopping items as JSON and
+// uploads to Supabase Storage bucket "receipts" under daily-backups/.
+// Retains the 7 most recent backups; older ones are deleted.
+
+async function _runDailyBackup(supabaseUrl, supabaseKey) {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const filename = `daily-backups/backup-${today}.json`;
+
+  // Check if today's backup already exists (idempotent)
+  const existsRes = await fetch(
+    `${supabaseUrl}/storage/v1/object/info/receipts/${filename}`,
+    { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+  );
+  if (existsRes.ok) {
+    console.log(`[backup] Today's backup already exists: ${filename}`);
+    return;
+  }
+
+  // Fetch all non-deleted cards
+  const cardsRes = await fetch(
+    `${supabaseUrl}/rest/v1/unified_cards?select=id,pair_id,title,body,topic,card_type,status,assigned_to,child_label,due_at,amount,payment_status,created_at,updated_at,deleted_at&deleted_at=is.null&limit=10000`,
+    { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+  );
+  const cards = cardsRes.ok ? await cardsRes.json() : [];
+
+  // Fetch all non-deleted messages
+  const msgsRes = await fetch(
+    `${supabaseUrl}/rest/v1/messages_v2?select=id,pair_id,topic,body,sender_id,created_at&deleted_at=is.null&limit=10000`,
+    { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+  );
+  const messages = msgsRes.ok ? await msgsRes.json() : [];
+
+  // Fetch all shopping items
+  const shopRes = await fetch(
+    `${supabaseUrl}/rest/v1/shopping_items?select=id,family_id,list,name,checked,created_at&limit=10000`,
+    { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+  );
+  const shopping = shopRes.ok ? await shopRes.json() : [];
+
+  // Fetch all active pairs (metadata only - no PII)
+  const pairsRes = await fetch(
+    `${supabaseUrl}/rest/v1/pairs?select=id,created_at,subscription_status&limit=1000`,
+    { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+  );
+  const pairs = pairsRes.ok ? await pairsRes.json() : [];
+
+  const payload = JSON.stringify({
+    backup_date: today,
+    generated_at: new Date().toISOString(),
+    format: "do-do-daily-backup-v1",
+    counts: { pairs: pairs.length, cards: cards.length, messages: messages.length, shopping: shopping.length },
+    pairs,
+    cards,
+    messages,
+    shopping,
+  });
+
+  // Upload to Supabase Storage
+  const uploadRes = await fetch(
+    `${supabaseUrl}/storage/v1/object/receipts/${filename}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+        "x-upsert": "true",
+      },
+      body: payload,
+    }
+  );
+
+  if (!uploadRes.ok) {
+    const errText = await uploadRes.text();
+    throw new Error(`Storage upload failed: ${errText}`);
+  }
+
+  console.log(`[backup] Backup stored: ${filename} (${(payload.length / 1024).toFixed(1)} KB)`);
+
+  // Prune backups older than 7 days
+  try {
+    const listRes = await fetch(
+      `${supabaseUrl}/storage/v1/object/list/receipts`,
+      {
+        method: "POST",
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ prefix: "daily-backups/", limit: 100 }),
+      }
+    );
+
+    if (listRes.ok) {
+      const files = await listRes.json();
+      const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const toDelete = (files || [])
+        .filter((f) => f.created_at < cutoff)
+        .map((f) => `daily-backups/${f.name}`);
+
+      if (toDelete.length) {
+        await fetch(
+          `${supabaseUrl}/storage/v1/object/receipts`,
+          {
+            method: "DELETE",
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ prefixes: toDelete }),
+          }
+        );
+        console.log(`[backup] Pruned ${toDelete.length} old backup(s)`);
+      }
+    }
+  } catch (pruneErr) {
+    // Prune failure is non-fatal
+    console.warn("[backup] Prune failed:", pruneErr.message);
+  }
+}
+
+// ─── Deferred deletion queue ──────────────────────────────────────────────────
+// Processes accounts scheduled for full deletion 6 months after the deletion
+// request. Files live in Supabase Storage under deletion-queue/{userId}.json.
+
+async function _processDeletionQueue(supabaseUrl, supabaseKey) {
+  const listRes = await fetch(
+    `${supabaseUrl}/storage/v1/object/list/receipts`,
+    {
+      method: "POST",
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ prefix: "deletion-queue/", limit: 100 }),
+    }
+  );
+
+  if (!listRes.ok) return;
+  const files = await listRes.json();
+  if (!Array.isArray(files) || !files.length) return;
+
+  const now = Date.now();
+
+  for (const file of files) {
+    try {
+      const fileRes = await fetch(
+        `${supabaseUrl}/storage/v1/object/receipts/deletion-queue/${file.name}`,
+        { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+      );
+      if (!fileRes.ok) continue;
+
+      const record = await fileRes.json();
+      if (!record.userId || !record.deleteAt) continue;
+
+      if (now < new Date(record.deleteAt).getTime()) continue; // Not yet due
+
+      // Delete the Supabase Auth user (final, irreversible step)
+      const deleteRes = await fetch(
+        `${supabaseUrl}/auth/v1/admin/users/${record.userId}`,
+        {
+          method: "DELETE",
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+        }
+      );
+
+      if (deleteRes.ok || deleteRes.status === 404) {
+        // Remove the queue file
+        await fetch(
+          `${supabaseUrl}/storage/v1/object/receipts`,
+          {
+            method: "DELETE",
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ prefixes: [`deletion-queue/${file.name}`] }),
+          }
+        );
+        console.log(`[deletion-queue] Purged auth user ${record.userId} (requested: ${record.requestedAt})`);
+      }
+    } catch (fileErr) {
+      console.warn(`[deletion-queue] Failed to process ${file.name}:`, fileErr.message);
+    }
   }
 }
