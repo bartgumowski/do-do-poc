@@ -2578,6 +2578,7 @@ function openQuickExpenseDialog() {
           <option value="weekly">${_t("recurrence.weekly") || "Weekly"}</option>
           <option value="biweekly">${_t("recurrence.biweekly") || "Every 2 weeks"}</option>
           <option value="monthly" selected>${_t("recurrence.monthly") || "Monthly"}</option>
+          <option value="yearly">${_t("recurrence.yearly") || "Yearly"}</option>
         </select>
       </div>
     </div>
@@ -2697,6 +2698,7 @@ function renderExpensesFeature() {
       weekly:   _t("recurrence.weekly")   || "Weekly",
       biweekly: _t("recurrence.biweekly") || "Every 2 weeks",
       monthly:  _t("recurrence.monthly")  || "Monthly",
+      yearly:   _t("recurrence.yearly")   || "Yearly",
     })[freq] || freq;
 
     // Group by frequency
@@ -2706,24 +2708,24 @@ function renderExpensesFeature() {
       if (!groups[f]) groups[f] = [];
       groups[f].push(c);
     });
-    const freqOrder = ["daily", "weekly", "biweekly", "monthly"];
+    const freqOrder = ["daily", "weekly", "biweekly", "monthly", "yearly"];
     const sortedFreqs = Object.keys(groups).sort((a, b) => {
       const ai = freqOrder.indexOf(a), bi = freqOrder.indexOf(b);
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
     });
 
-    const monthlyTotal = recurringCards
-      .filter((c) => c.recurrence.freq === "monthly")
-      .reduce((s, c) => s + expenseAmount(c.amount), 0);
-    const weeklyTotal = recurringCards
-      .filter((c) => ["weekly", "biweekly"].includes(c.recurrence.freq))
-      .reduce((s, c) => s + expenseAmount(c.amount) * (c.recurrence.freq === "weekly" ? 4 : 2), 0);
+    const freqToMonthly = { daily: 30, weekly: 4, biweekly: 2, monthly: 1, yearly: 1/12 };
+    const monthlyTotal = recurringCards.reduce((s, c) => {
+      const mult = freqToMonthly[c.recurrence.freq] ?? 1;
+      return s + expenseAmount(c.amount) * mult;
+    }, 0);
+    const weeklyTotal = 0; // folded into monthlyTotal above
 
     featureModule.innerHTML = `
       <section class="finance-hero">
         <div>
           <span>${_t("expense.total")}</span>
-          <strong>${_sym} ${formatExpenseCurrency(monthlyTotal + weeklyTotal)}</strong>
+          <strong>${_sym} ${formatExpenseCurrency(monthlyTotal)}</strong>
           <p style="font-size:12px;color:var(--muted)">Est. monthly commitment</p>
         </div>
         <div class="expense-hero-actions">
