@@ -1,4 +1,4 @@
-const APP_VERSION = "0.29.4";
+const APP_VERSION = "0.29.5";
 const APP_VERSION_DATE = "2026-06-23";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -112,6 +112,7 @@ const supabaseClient = window.supabase?.createClient?.(supabaseUrl, supabaseAnon
 }) || null;
 window.supabaseClient = supabaseClient; // expose for features.js
 let currentAuthSession = null;
+let _appFirstLoad = true; // module restoration only runs on the first showApp call
 
 // SEG-14: auth header helper for calls to our own /api endpoints.
 // Returns { Authorization: "Bearer <jwt>" } or {} when signed out.
@@ -878,9 +879,12 @@ async function handleAuthCallback() {
         showApp(nextSession);
       }
     } else {
-      // USER_UPDATED can fire with null session during email confirmation flow -
-      // don't sign the user out in that case.
-      if (event !== "USER_UPDATED") {
+      // Only sign the user out on an explicit SIGNED_OUT event.
+      // USER_UPDATED, INITIAL_SESSION and TOKEN_REFRESHED can all fire with
+      // a null session in edge cases (email confirmation flow, PKCE exchange
+      // timing) - treating those as sign-outs caused the Google OAuth redirect
+      // to drop users back on the login screen.
+      if (event === "SIGNED_OUT") {
         showAuthScreen();
       }
     }
@@ -1283,18 +1287,22 @@ function showApp(session) {
   if (elements.verifyEmailScreen) elements.verifyEmailScreen.hidden = true;
   initializeOnboarding();
 
-  // Restore last visited module (PWA restart loses the URL hash)
-  // Priority: URL hash > sessionStorage (same browser session) > localStorage (persistent)
-  setTimeout(() => {
-    const validModules = ["board", "calendar", "shopping", "expenses", "settings", "przekazanie"];
-    const fromHash = location.hash.replace("#", "").toLowerCase();
-    const fromSession = (() => { try { return sessionStorage.getItem("do-do-current-module"); } catch (_) { return null; } })();
-    const fromStorage = localStorage.getItem("do-do-last-module");
-    const target = (validModules.includes(fromHash) ? fromHash : null)
-      ?? (validModules.includes(fromSession) ? fromSession : null)
-      ?? (validModules.includes(fromStorage) ? fromStorage : null);
-    if (target) window.switchModule?.(target);
-  }, 0);
+  // Restore last visited module (PWA restart loses the URL hash).
+  // Only run once - subsequent showApp calls (token refresh etc.) must not
+  // override the module the user has already navigated to.
+  if (_appFirstLoad) {
+    _appFirstLoad = false;
+    setTimeout(() => {
+      const validModules = ["board", "calendar", "shopping", "expenses", "settings", "przekazanie"];
+      const fromHash = location.hash.replace("#", "").toLowerCase();
+      const fromSession = (() => { try { return sessionStorage.getItem("do-do-current-module"); } catch (_) { return null; } })();
+      const fromStorage = localStorage.getItem("do-do-last-module");
+      const target = (validModules.includes(fromHash) ? fromHash : null)
+        ?? (validModules.includes(fromSession) ? fromSession : null)
+        ?? (validModules.includes(fromStorage) ? fromStorage : null);
+      if (target) window.switchModule?.(target);
+    }, 0);
+  }
   // Load real data from Supabase in the background
   if (window.initSupabaseData) {
     window.initSupabaseData(currentAuthSession).then(() => {

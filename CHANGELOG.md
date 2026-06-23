@@ -17,6 +17,14 @@ A small tip card shown on the home screen between the Daily Summary and the boar
 
 ---
 
+## v0.29.5 - 2026-06-23 - Settings + Google login fix
+
+- **Settings flash fixed** - module restoration (`showApp` setTimeout) now only runs on the very first app load. Previously it ran on every auth event (including background token refreshes), which could interrupt active navigation and cause settings to flicker or revert.
+- **Google login fixed** - `onAuthStateChange` now only calls `showAuthScreen()` on a real `"SIGNED_OUT"` event. Previously it also fired on `"INITIAL_SESSION"` and `"TOKEN_REFRESHED"` with null session (which can happen during the PKCE exchange), sending users back to the login page after signing in with Google.
+- **Script cache busters updated** - `app.js` and `features.js` now load with `?v=20260623-authfix` so all browsers get the latest code.
+
+---
+
 ## v0.29.4 - 2026-06-23 - Cache bust + login fix
 
 - **Cache bust** - updated `?v=` query strings on all script tags so browsers load the latest app.js and features.js instead of cached copies from June 18. This is likely why the login fix in v0.29.3 was not taking effect.
