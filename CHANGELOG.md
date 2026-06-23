@@ -17,6 +17,12 @@ A small tip card shown on the home screen between the Daily Summary and the boar
 
 ---
 
+## v0.29.4 - 2026-06-23 - Cache bust + login fix
+
+- **Cache bust** - updated `?v=` query strings on all script tags so browsers load the latest app.js and features.js instead of cached copies from June 18. This is likely why the login fix in v0.29.3 was not taking effect.
+
+---
+
 ## v0.29.3 - 2026-06-23 - UI fixes + login fix
 
 - **Login fix** - reverted `routeFromHash` to use `_origSwitchModule` (safe, no side effects) instead of full `window.switchModule` which was firing GuideEngine and history changes before auth completed, breaking the login flow.

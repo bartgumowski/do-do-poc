@@ -270,7 +270,7 @@
       "settings.download_data_hint": "Full JSON export of your data (GDPR / RODO).",
 
       // Auth
-      "auth.hero_headline":       "Two homes. One childhood.",
+      "auth.hero_headline":       "Two homes. One peaceful childhood.",
       "auth.hero_sub":            "One board, both parents, everything in one place - so your child never has to carry messages between homes.",
       "auth.chip_instant_label":  "Instant",
       "auth.chip_instant_desc":   "Add by voice or text in seconds",
@@ -1524,7 +1524,7 @@
       "settings.download_data_title":"Eksportuj moje dane",
       "settings.download_data_hint": "Pelny eksport JSON Twoich danych (RODO / GDPR).",
 
-      "auth.hero_headline":       "Dwa domy. Jedno dzieciństwo.",
+      "auth.hero_headline":       "Dwa domy. Jedno spokojne dzieciństwo.",
       "auth.hero_sub":            "Jedna tablica, oboje rodziców, wszystko w jednym miejscu - żeby dziecko nie musiało przenosić wiadomości między domami.",
       "auth.chip_instant_label":  "Błyskawicznie",
       "auth.chip_instant_desc":   "Dodaj głosem lub tekstem w kilka sekund",
