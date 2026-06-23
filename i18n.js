@@ -174,7 +174,6 @@
       "settle.msg_intro_pay":   "Hi {{name}},\n\nSending {{amt}} for shared expenses ({{month}}).\n\nBreakdown:\n{{lines}}\n\nTotal: {{amt}}{{blik}}",
       "settle.blik_line":       "\nBLIK (transfer to number): {{phone}}",
       "expense.add":            "Add expense",
-      "expense.new_card_title": "Add Do - Expense",
       "expense.request_pay":    "Request payment",
       "expense.send_request":   "Send payment request",
       "expense.awaiting":       "requested – awaiting payment",
@@ -270,7 +269,7 @@
       "settings.download_data_hint": "Full JSON export of your data (GDPR / RODO).",
 
       // Auth
-      "auth.hero_headline":       "Two homes. One peaceful childhood.",
+      "auth.hero_headline":       "Two homes. One childhood.",
       "auth.hero_sub":            "One board, both parents, everything in one place - so your child never has to carry messages between homes.",
       "auth.chip_instant_label":  "Instant",
       "auth.chip_instant_desc":   "Add by voice or text in seconds",
@@ -653,12 +652,6 @@
       "sched.colours_label":      "Colours:",
       "sched.next_step":          "Next: confirm →",
       "sched.choose_how":         "Choose how custody is shared. You can always fine-tune individual days afterward.",
-
-      // Daily parenting tip
-      "tip.card.label":     "Today's tip",
-      "tip.dismiss":        "Got it",
-      "tip.settings.label": "Daily parenting tips",
-      "tip.settings.desc":  "A small daily reminder shown on the board",
     },
 
     // ── Deutsch ────────────────────────────────────────────────────────────────
@@ -799,7 +792,6 @@
       "settle.msg_intro_pay":   "Hallo {{name}},\n\nIch sende {{amt}} für gemeinsame Ausgaben ({{month}}).\n\nAufschlüsselung:\n{{lines}}\n\nGesamt: {{amt}}{{blik}}",
       "settle.blik_line":       "\nBLIK (Überweisung an Nummer): {{phone}}",
       "expense.add":            "Ausgabe hinzufügen",
-      "expense.new_card_title": "Do hinzufügen - Ausgabe",
       "expense.request_pay":    "Zahlung anfordern",
       "expense.send_request":   "Zahlungsanfrage senden",
       "expense.awaiting":       "angefordert – ausstehend",
@@ -1272,12 +1264,6 @@
       "sched.colours_label":      "Farben:",
       "sched.next_step":          "Weiter: Bestätigen →",
       "sched.choose_how":         "Wähle, wie die Betreuung aufgeteilt wird. Einzelne Tage können jederzeit angepasst werden.",
-
-      // Daily parenting tip - DE tip text needs Bart review; UI strings confirmed
-      "tip.card.label":     "Tipp des Tages",
-      "tip.dismiss":        "Verstanden",
-      "tip.settings.label": "Tagliche Erziehungstipps",
-      "tip.settings.desc":  "Eine kurze tagliche Erinnerung auf dem Board",
     },
 
     // ── Polski ─────────────────────────────────────────────────────────────────
@@ -1432,9 +1418,8 @@
       "settle.msg_intro_pay":   "Hej {{name}},\n\nPrzesyłam {{amt}} za wspólne wydatki ({{month}}).\n\nRozbicie:\n{{lines}}\n\nŁącznie: {{amt}}{{blik}}",
       "settle.blik_line":       "\nBLIK (przelew na numer): {{phone}}",
       "expense.add":            "Dodaj wydatek",
-      "expense.new_card_title": "Dodaj Do - Wydatek",
       "expense.request_pay":    "Poproś o zwrot",
-      "expense.send_request":   "Proszę zapłać",
+      "expense.send_request":   "Wyślij prośbę o płatność",
       "expense.awaiting":       "oczekuje na płatność",
       "expense.open_link":      "Otwórz link do płatności",
       "expense.mark_paid":      "Oznacz jako opłacone",
@@ -1456,11 +1441,11 @@
       "expense.mine_only":                   "Tylko ja",
       "expense.split_custom":                "Własny",
 
-      "pay.split_5050": "50/50",
-      "pay.split_100t": "Drugi rodzic - proszę zapłać",
+      "pay.split_5050": "Po równo (50/50)",
+      "pay.split_100t": "100 % oni",
       "pay.split_60":   "60 % oni / 40 % ja",
       "pay.split_40":   "40 % oni / 60 % ja",
-      "pay.split_me":   "Tylko ja",
+      "pay.split_me":   "Ja płacę",
       "pay.sending":    "Wysyłanie…",
 
       "msg.family_messages": "Wiadomości",
@@ -1524,7 +1509,7 @@
       "settings.download_data_title":"Eksportuj moje dane",
       "settings.download_data_hint": "Pelny eksport JSON Twoich danych (RODO / GDPR).",
 
-      "auth.hero_headline":       "Dwa domy. Jedno spokojne dzieciństwo.",
+      "auth.hero_headline":       "Dwa domy. Jedno dzieciństwo.",
       "auth.hero_sub":            "Jedna tablica, oboje rodziców, wszystko w jednym miejscu - żeby dziecko nie musiało przenosić wiadomości między domami.",
       "auth.chip_instant_label":  "Błyskawicznie",
       "auth.chip_instant_desc":   "Dodaj głosem lub tekstem w kilka sekund",
@@ -1905,12 +1890,6 @@
       "sched.colours_label":      "Kolory:",
       "sched.next_step":          "Dalej: potwierdz →",
       "sched.choose_how":         "Wybierz, jak podzielona jest opieka. Możesz zawsze dostosować poszczególne dni.",
-
-      // Daily parenting tip
-      "tip.card.label":     "Wskazowka dnia",
-      "tip.dismiss":        "Rozumiem",
-      "tip.settings.label": "Codzienne wskazowki",
-      "tip.settings.desc":  "Krotka codzienna podpowiedz na tablicy",
     },
   };
 
