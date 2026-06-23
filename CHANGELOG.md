@@ -2,6 +2,14 @@
 
 ---
 
+## v0.28.3 - 2026-06-19 - Polish expense labels + expense card title
+
+- Polish payment split labels corrected: "Tylko ja" (mine only), "Drugi rodzic - proszę zapłać" (co-parent pays), "50/50"
+- "Proszę zapłać" now used as the send-request button label in Polish
+- Card dialog title shows "Dodaj Do - Wydatek" (PL) / "Add Do - Expense" (EN) when opening a new expense via the Add Expense button, instead of the generic "New Do"
+
+---
+
 ## v0.28.0 - 2026-06-19 - Data continuity: no more lost cards or data wipes
 
 **Bug fixes - data loss:**

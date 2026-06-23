@@ -1,4 +1,4 @@
-const APP_VERSION = "0.28.2";
+const APP_VERSION = "0.28.3";
 const APP_VERSION_DATE = "2026-06-19";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -2028,7 +2028,8 @@ function openCardDialog(id = "", focusSection = "info", prefill = {}) {
   if (elements.voiceStatus) elements.voiceStatus.textContent = "Record what has to be done";
   elements.cardId.value = card?.id || "";
   const _dt = window.t || ((k) => k);
-  elements.dialogTitle.textContent = card ? card.title : _dt("board.new_do");
+  const _newTitle = card ? card.title : (prefill.type === "Expense" ? _dt("expense.new_card_title") : _dt("board.new_do"));
+  elements.dialogTitle.textContent = _newTitle;
   elements.dialogMode.textContent = card ? _dt("card.info_thread") : _dt("board.new_do");
   elements.llmCardChat?.classList.add("hidden"); // never shown - direct form always used
   elements.commentPanel?.classList.toggle("hidden", !card);
