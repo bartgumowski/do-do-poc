@@ -1,4 +1,4 @@
-const APP_VERSION = "0.29.0";
+const APP_VERSION = "0.29.2";
 const APP_VERSION_DATE = "2026-06-23";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1284,12 +1284,16 @@ function showApp(session) {
   initializeOnboarding();
 
   // Restore last visited module (PWA restart loses the URL hash)
+  // Priority: URL hash > sessionStorage (same browser session) > localStorage (persistent)
   setTimeout(() => {
-    const validModules = ["board", "calendar", "shopping", "expenses", "settings"];
+    const validModules = ["board", "calendar", "shopping", "expenses", "settings", "przekazanie"];
     const fromHash = location.hash.replace("#", "").toLowerCase();
+    const fromSession = (() => { try { return sessionStorage.getItem("do-do-current-module"); } catch (_) { return null; } })();
     const fromStorage = localStorage.getItem("do-do-last-module");
-    const target = validModules.includes(fromHash) ? fromHash : fromStorage;
-    if (target && validModules.includes(target)) window.switchModule?.(target);
+    const target = (validModules.includes(fromHash) ? fromHash : null)
+      ?? (validModules.includes(fromSession) ? fromSession : null)
+      ?? (validModules.includes(fromStorage) ? fromStorage : null);
+    if (target) window.switchModule?.(target);
   }, 0);
   // Load real data from Supabase in the background
   if (window.initSupabaseData) {
@@ -1555,6 +1559,7 @@ function render() {
   renderCounts();
   renderSummary();
   renderDailySummary();
+  renderDailyTip();
   renderInlineCaptureHost();
   renderAttention();
   renderBoard(cards);
@@ -1580,6 +1585,88 @@ function renderSummary() {
   document.querySelector("#topWaiting").textContent = String(waiting);
   document.querySelector("#topTodo").textContent = String(todo);
 }
+
+// ─── Daily parenting tip ─────────────────────────────────────────────────────
+// renderDailyTip is exposed on window so features.js settings toggle can call it.
+
+const DAILY_TIPS = [
+  // Praise (5)
+  { en: "Tell your child one specific thing they did well today - not just good job, but what exactly.", pl: "Powiedz dziecku jedna konkretna rzecz, ktora zrobilo dzisiaj dobrze - nie \"super\", ale co dokladnie.", de: "Tell your child one specific thing they did well today - not just good job, but what exactly." },
+  { en: "Say \"I noticed you...\" to your child today - kids light up when a parent pays attention to detail.", pl: "Powiedz dzisiaj dziecku \"Zauwazylam/em, ze...\" - dzieci rozswietlaja sie, gdy rodzic zauwaza szczegoly.", de: "Say \"I noticed you...\" to your child today - kids light up when a parent pays attention to detail." },
+  { en: "Praise the effort, not the result - \"You kept trying even when it was hard\" lands deeper than \"You're smart.\"", pl: "Chwal wysilek, nie wynik - \"Nie poddawales sie, nawet gdy bylo trudno\" trafia glebiej niz \"Jestes zdolny\".", de: "Praise the effort, not the result - \"You kept trying even when it was hard\" lands deeper than \"You're smart.\"" },
+  { en: "Ask your child what they are proud of today - you might be surprised by the answer.", pl: "Zapytaj dziecko, z czego jest dzisiaj dumne - mozesz byc zaskoczony odpowiedzia.", de: "Ask your child what they are proud of today - you might be surprised by the answer." },
+  { en: "When your child shows you something they made, stop what you are doing and really look at it.", pl: "Gdy dziecko pokazuje ci cos, co zrobilo, przerwij to, co robisz, i naprawde na to spojrzyj.", de: "When your child shows you something they made, stop what you are doing and really look at it." },
+
+  // Connection (5)
+  { en: "Hug your child today - 8 seconds is the magic number for a hug to feel real.", pl: "Przytul dzisiaj swoje dziecko - 8 sekund to magiczna liczba, by uscisk naprawde poczuc.", de: "Hug your child today - 8 seconds is the magic number for a hug to feel real." },
+  { en: "Put your phone down and make eye contact for 5 minutes while your child talks. Just listen.", pl: "Odloz telefon i patrz dziecku w oczy przez 5 minut, gdy mowi. Po prostu sluchaj.", de: "Put your phone down and make eye contact for 5 minutes while your child talks. Just listen." },
+  { en: "Bedtime is the best time for a 2-minute real talk. Ask what was the best part of today?", pl: "Czas przed snem to najlepsza chwila na prawdziwa rozmowe. Zapytaj: co bylo dzisiaj najlepsze?", de: "Bedtime is the best time for a 2-minute real talk. Ask what was the best part of today?" },
+  { en: "Let your child pick what you do together for 10 minutes today. Follow their lead completely.", pl: "Pozwol dziecku wybrac, co razem robicie przez 10 minut. Idz za jego pomyslem do konca.", de: "Let your child pick what you do together for 10 minutes today. Follow their lead completely." },
+  { en: "Tell your child one thing you love about spending time with them. Say it out loud.", pl: "Powiedz dziecku jedna rzecz, ktora kochasz we wspolnym czasie z nim. Powiedz to na glos.", de: "Tell your child one thing you love about spending time with them. Say it out loud." },
+
+  // Emotion (5)
+  { en: "When your child is upset, name the feeling first - before solving.", pl: "Gdy dziecko sie denerwuje, najpierw nazwij uczucie. Potem rozwiazuj.", de: "When your child is upset, name the feeling first - before solving." },
+  { en: "It is ok to say \"I was wrong\" in front of your child. It teaches them more than any lecture.", pl: "Powiedzenie \"mylilem sie\" przy dziecku jest w porzadku. Uczy go wiecej niz jakiekolwiek kazanie.", de: "It is ok to say \"I was wrong\" in front of your child. It teaches them more than any lecture." },
+  { en: "If you feel yourself getting angry, try a 5-second pause before responding. It changes everything.", pl: "Gdy czujesz, ze zaraz sie zloszcisz, sprobuj 5-sekundowej pauzy przed odpowiedzia. To zmienia wszystko.", de: "If you feel yourself getting angry, try a 5-second pause before responding. It changes everything." },
+  { en: "Let your child see you handle a frustrating moment calmly. They learn how to cope by watching you.", pl: "Pozwol dziecku zobaczyc, jak spokojnie radzisz sobie z trudna chwila. Uczy sie radzenia sobie, obserwujac ciebie.", de: "Let your child see you handle a frustrating moment calmly. They learn how to cope by watching you." },
+  { en: "Your child does not need you to fix every problem. Sometimes just being there is enough.", pl: "Twoje dziecko nie potrzebuje, zebys rozwiazywalo kazdy problem. Czasem wystarczy po prostu byc.", de: "Your child does not need you to fix every problem. Sometimes just being there is enough." },
+
+  // Routine (4)
+  { en: "Eat one meal together today with no screens. Even 15 minutes counts.", pl: "Zjedz dzisiaj jeden posilek razem, bez ekranow. Nawet 15 minut ma znaczenie.", de: "Eat one meal together today with no screens. Even 15 minutes counts." },
+  { en: "Read one page together tonight - it does not matter what, it matters that you are side by side.", pl: "Przeczytajcie razem jedna strone wieczorem - nieważne co, wazne ze jestescie obok siebie.", de: "Read one page together tonight - it does not matter what, it matters that you are side by side." },
+  { en: "A 10-minute walk with a child is often when the real conversations happen. Try it today.", pl: "10-minutowy spacer z dzieckiem to czesto chwila, gdy tocza sie prawdziwe rozmowy. Sprobuj dzisiaj.", de: "A 10-minute walk with a child is often when the real conversations happen. Try it today." },
+  { en: "A consistent bedtime routine gives your child something to count on. Even a short one matters.", pl: "Stala rutyna wieczorna daje dziecku cos, na co moze liczyc. Nawet krotka ma znaczenie.", de: "A consistent bedtime routine gives your child something to count on. Even a short one matters." },
+
+  // Co-parent - framed around the child (3)
+  { en: "Keep transitions calm - your child watches how both parents act at handover.", pl: "Zadbaj o spokojne przekazanie - twoje dziecko obserwuje, jak oboje rodzice sie zachowuja.", de: "Keep transitions calm - your child watches how both parents act at handover." },
+  { en: "Your child feels safer when handovers are predictable. A simple routine helps more than you would think.", pl: "Twoje dziecko czuje sie bezpieczniej, gdy przekazania sa przewidywalne. Prosta rutyna pomaga bardziej, niz myslisz.", de: "Your child feels safer when handovers are predictable. A simple routine helps more than you would think." },
+  { en: "When your child comes back to you, give them time to settle before asking lots of questions.", pl: "Gdy dziecko do ciebie wraca, daj mu czas na oswojenie sie, zanim zaczniesz zadawac duzo pytan.", de: "When your child comes back to you, give them time to settle before asking lots of questions." },
+
+  // Fun (3)
+  { en: "Be silly with your child today. A tickle, a funny face, or a made-up song - it matters more than you think.", pl: "Badz dzisiaj gluptasem razem z dzieckiem. Laskotki, smieszna mina, wymyslona piosenka - to wazniejsze niz myslisz.", de: "Be silly with your child today. A tickle, a funny face, or a made-up song - it matters more than you think." },
+  { en: "Celebrate something small today - finishing homework, brushing teeth without being asked, anything.", pl: "Swietuj dzisiaj cos malego - odrobione zadanie, umyte zeby bez przypominania, cokolwiek.", de: "Celebrate something small today - finishing homework, brushing teeth without being asked, anything." },
+  { en: "Start a small tradition with your child - pancakes on Saturday, a secret handshake, anything just yours.", pl: "Zacznij mala tradycje z dzieckiem - nalesniki w sobote, tajny uścisk dloni, cokolwiek wylacznie waszego.", de: "Start a small tradition with your child - pancakes on Saturday, a secret handshake, anything just yours." },
+];
+
+function getDailyTip() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now - start) / 86400000);
+  return DAILY_TIPS[dayOfYear % DAILY_TIPS.length];
+}
+
+function renderDailyTip() {
+  const card = document.getElementById("dailyTipCard");
+  if (!card) return;
+
+  // Check opt-out
+  const enabled = localStorage.getItem("do-do-tips-enabled");
+  if (enabled === "false") { card.hidden = true; return; }
+
+  // Check already dismissed today
+  const todayKey = "do-do-tip-dismissed-" + new Date().toISOString().slice(0, 10);
+  if (localStorage.getItem(todayKey) === "1") { card.hidden = true; return; }
+
+  const _t = window.t || ((k, fb) => fb || k);
+  const lang = window.getCurrentLang ? window.getCurrentLang() : "en";
+  const tip = getDailyTip();
+  const tipText = tip[lang] || tip.en;
+
+  card.hidden = false;
+  card.innerHTML = `
+    <div class="daily-tip-card-body">
+      <span class="daily-tip-card-label" data-i18n="tip.card.label">${_t("tip.card.label")}</span>
+      <span class="daily-tip-card-text">${tipText}</span>
+    </div>
+    <button class="daily-tip-dismiss" type="button" data-i18n="tip.dismiss">${_t("tip.dismiss")}</button>
+  `;
+
+  card.querySelector(".daily-tip-dismiss").addEventListener("click", () => {
+    localStorage.setItem(todayKey, "1");
+    card.hidden = true;
+  });
+}
+window.renderDailyTip = renderDailyTip;
 
 function renderDailySummary() {
   const todayCards = state.cards.filter((card) => isToday(card.due));

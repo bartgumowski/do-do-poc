@@ -2,6 +2,28 @@
 
 ---
 
+## v0.29.2 - 2026-06-23 - Daily parenting tip
+
+**New feature: Daily Parenting Tip**
+
+A small tip card shown on the home screen between the Daily Summary and the board.
+
+- One tip per day, same tip for both parents (selected by day-of-year, no server needed)
+- 25 tips across 6 themes: Praise, Connection, Emotion, Routine, Co-parent, Fun
+- Dismiss with one tap - resets automatically next day (localStorage key per date)
+- Full EN, PL, DE support - tip text and UI strings all translated
+- Settings toggle in Settings > Automation to opt out
+- DE tip text content to be reviewed by Bart before next release
+
+---
+
+## v0.29.1 - 2026-06-23 - UI fixes
+
+- **Shopping list width stability** - row width no longer shifts when the X delete button appears on hover or when a buyer avatar is assigned. All rows now consistently reserve the same space (using `flex: 0 0 28px` + `visibility: hidden` instead of `opacity: 0` on the delete button, plus explicit `width: 100%` on the row wrapper).
+- **Page persistence on reload** - the app now stays on the page you were on when you reload. Module restore now checks URL hash, then sessionStorage, then localStorage - in that order. Also fixed `routeFromHash` to write to sessionStorage so the reload target is always current.
+
+---
+
 ## v0.29.0 - 2026-06-23 - Kid Access
 
 **New feature: Kid Access**

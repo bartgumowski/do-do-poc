@@ -653,6 +653,12 @@
       "sched.colours_label":      "Colours:",
       "sched.next_step":          "Next: confirm →",
       "sched.choose_how":         "Choose how custody is shared. You can always fine-tune individual days afterward.",
+
+      // Daily parenting tip
+      "tip.card.label":     "Today's tip",
+      "tip.dismiss":        "Got it",
+      "tip.settings.label": "Daily parenting tips",
+      "tip.settings.desc":  "A small daily reminder shown on the board",
     },
 
     // ── Deutsch ────────────────────────────────────────────────────────────────
@@ -1266,6 +1272,12 @@
       "sched.colours_label":      "Farben:",
       "sched.next_step":          "Weiter: Bestätigen →",
       "sched.choose_how":         "Wähle, wie die Betreuung aufgeteilt wird. Einzelne Tage können jederzeit angepasst werden.",
+
+      // Daily parenting tip - DE tip text needs Bart review; UI strings confirmed
+      "tip.card.label":     "Tipp des Tages",
+      "tip.dismiss":        "Verstanden",
+      "tip.settings.label": "Tagliche Erziehungstipps",
+      "tip.settings.desc":  "Eine kurze tagliche Erinnerung auf dem Board",
     },
 
     // ── Polski ─────────────────────────────────────────────────────────────────
@@ -1893,6 +1905,12 @@
       "sched.colours_label":      "Kolory:",
       "sched.next_step":          "Dalej: potwierdz →",
       "sched.choose_how":         "Wybierz, jak podzielona jest opieka. Możesz zawsze dostosować poszczególne dni.",
+
+      // Daily parenting tip
+      "tip.card.label":     "Wskazowka dnia",
+      "tip.dismiss":        "Rozumiem",
+      "tip.settings.label": "Codzienne wskazowki",
+      "tip.settings.desc":  "Krotka codzienna podpowiedz na tablicy",
     },
   };
 

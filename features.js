@@ -668,6 +668,7 @@ window.switchModule = function(moduleName) {
   const hash = "#" + moduleName;
   if (location.hash !== hash) history.pushState(null, "", hash);
   localStorage.setItem("do-do-last-module", moduleName);
+  try { sessionStorage.setItem("do-do-current-module", moduleName); } catch (_) {}
 
   // SEG-21: fire contextual guides on first visit to each module
   // Guard: skip if a guide is already running (prevents guide-internal navigation from resetting the guide)
@@ -682,7 +683,7 @@ window.switchModule = function(moduleName) {
 function routeFromHash() {
   const module = location.hash.replace("#", "").toLowerCase();
   if (VALID_MODULES.includes(module)) {
-    _origSwitchModule(module);
+    window.switchModule(module);
   }
 }
 
@@ -1679,6 +1680,12 @@ function bindAutomationSettings() {
     showFeatureToast("Automation settings updated");
     window.switchModule("settings");
   };
+  // Daily tips toggle
+  featureModule.querySelector("#dailyTipsToggle")?.addEventListener("change", (e) => {
+    localStorage.setItem("do-do-tips-enabled", e.target.checked ? "true" : "false");
+    if (typeof window.renderDailyTip === "function") window.renderDailyTip();
+  });
+
   autoRemindersToggle?.addEventListener("change", save);
   familyCalendarToggle?.addEventListener("change", async (e) => {
     if (e.target.checked && !window.isPaidUser?.()) {
@@ -6091,6 +6098,13 @@ function renderSpecialPanel(moduleName, part = "all") {
       <section class="feature-panel automation-settings">
         <h3>${_at("settings.automation")}</h3>
         <div class="settings-control-list">
+          <label class="settings-toggle-row">
+            <span>
+              <strong>${_at("tip.settings.label")}</strong>
+              <em>${_at("tip.settings.desc")}</em>
+            </span>
+            <input type="checkbox" id="dailyTipsToggle" ${localStorage.getItem("do-do-tips-enabled") !== "false" ? "checked" : ""} />
+          </label>
           <label class="settings-toggle-row">
             <span>
               <strong>${_at("auto.remind_toggle")}</strong>
