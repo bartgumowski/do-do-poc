@@ -129,6 +129,8 @@
     _overlay = document.getElementById("guide-overlay");
     _tooltip = document.getElementById("guide-tooltip");
     _spotEl  = document.getElementById("guide-spotlight");
+    // Click anywhere on the dark background to dismiss the guide
+    if (_overlay) _overlay.addEventListener("click", dismiss);
   }
 
   function _t(key) {

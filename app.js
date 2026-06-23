@@ -1,5 +1,5 @@
-const APP_VERSION = "0.28.2";
-const APP_VERSION_DATE = "2026-06-19";
+const APP_VERSION = "0.28.4";
+const APP_VERSION_DATE = "2026-06-23";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
 // To add a new market: add an entry to LOCALE_CONFIGS and add the corresponding
@@ -107,11 +107,13 @@ const supabaseClient = window.supabase?.createClient?.(supabaseUrl, supabaseAnon
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false, // we exchange ?code= manually in handleAuthCallback
+    flowType: "pkce",          // generates a real code_verifier so GoTrue accepts the exchange
   },
 }) || null;
 window.supabaseClient = supabaseClient; // expose for features.js
 let currentAuthSession = null;
+let _appFirstLoad = true; // module restoration only runs on the first showApp call
 
 // SEG-14: auth header helper for calls to our own /api endpoints.
 // Returns { Authorization: "Bearer <jwt>" } or {} when signed out.
@@ -878,9 +880,11 @@ async function handleAuthCallback() {
         showApp(nextSession);
       }
     } else {
-      // USER_UPDATED can fire with null session during email confirmation flow -
-      // don't sign the user out in that case.
-      if (event !== "USER_UPDATED") {
+      // Only sign the user out on an explicit SIGNED_OUT event.
+      // USER_UPDATED, INITIAL_SESSION and TOKEN_REFRESHED can all fire with a
+      // null session during the PKCE exchange or email confirmation flow -
+      // treating those as sign-outs sent Google OAuth users back to login.
+      if (event === "SIGNED_OUT") {
         showAuthScreen();
       }
     }
@@ -1283,14 +1287,19 @@ function showApp(session) {
   if (elements.verifyEmailScreen) elements.verifyEmailScreen.hidden = true;
   initializeOnboarding();
 
-  // Restore last visited module (PWA restart loses the URL hash)
-  setTimeout(() => {
-    const validModules = ["board", "calendar", "shopping", "expenses", "settings"];
-    const fromHash = location.hash.replace("#", "").toLowerCase();
-    const fromStorage = localStorage.getItem("do-do-last-module");
-    const target = validModules.includes(fromHash) ? fromHash : fromStorage;
-    if (target && validModules.includes(target)) window.switchModule?.(target);
-  }, 0);
+  // Restore last visited module on first load only.
+  // Subsequent showApp calls (token refresh etc.) must not override the
+  // module the user has already navigated to.
+  if (_appFirstLoad) {
+    _appFirstLoad = false;
+    setTimeout(() => {
+      const validModules = ["board", "calendar", "shopping", "expenses", "settings"];
+      const fromHash = location.hash.replace("#", "").toLowerCase();
+      const fromStorage = localStorage.getItem("do-do-last-module");
+      const target = validModules.includes(fromHash) ? fromHash : fromStorage;
+      if (target && validModules.includes(target)) window.switchModule?.(target);
+    }, 0);
+  }
   // Load real data from Supabase in the background
   if (window.initSupabaseData) {
     window.initSupabaseData(currentAuthSession).then(() => {

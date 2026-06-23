@@ -10359,6 +10359,7 @@ td.vac-range-in-cell {
   background: rgba(0, 0, 0, 0.55);
   z-index: 9000;
   pointer-events: all;
+  cursor: pointer;
 }
 
 /* Transparent cutout that sits above the overlay, revealing the target */

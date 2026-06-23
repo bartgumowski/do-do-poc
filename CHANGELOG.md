@@ -2,6 +2,21 @@
 
 ---
 
+## v0.28.4 - 2026-06-23 - Fix Google sign-in (PKCE code_verifier)
+
+- **Google sign-in root cause fixed** - The Supabase client was configured with `flowType: 'implicit'` (the default), so `signInWithOAuth` never generated a `code_verifier`. When Google redirected back with `?code=`, the manual `exchangeCodeForSession` call sent an empty `code_verifier` to GoTrue. GoTrue rejected it. Fix: set `flowType: "pkce"` so a proper `code_verifier` is generated and stored before the redirect, and set `detectSessionInUrl: false` so Supabase does not try to consume the code automatically (which would conflict with the manual exchange).
+
+---
+
+## v0.28.3 - 2026-06-23 - Guide overlay + auth fixes
+
+- **Guide overlay no longer blocks all buttons** - clicking anywhere on the dark guide background now dismisses the guide. Previously the overlay had `pointer-events: all` with no click handler, so if the tooltip was off-screen or not visible, there was no way to dismiss and all buttons appeared to stop working. This was the root cause of the "settings button and other buttons not working" report.
+- **Settings no longer flashes on token refresh** - `showApp`'s module restoration setTimeout now only runs on the first app load, not on every background token refresh. Token refreshes were interrupting active navigation.
+- **Google login no longer redirects to login page** - `onAuthStateChange` now only calls `showAuthScreen()` on an explicit `SIGNED_OUT` event. Previously it also fired on `INITIAL_SESSION`/`TOKEN_REFRESHED` with null session (which can happen during the PKCE code exchange), sending users back to the login screen after signing in with Google.
+- **Cache busters updated** - all JS files now load with `?v=20260623-guidefix`.
+
+---
+
 ## v0.28.0 - 2026-06-19 - Data continuity: no more lost cards or data wipes
 
 **Bug fixes - data loss:**
