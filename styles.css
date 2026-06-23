@@ -1450,6 +1450,48 @@ svg {
   padding: 12px 12px 12px 16px;
 }
 
+/* Daily Parenting Tip card - subtle strip, same family as daily-summary */
+.daily-tip-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 20px 14px;
+  border-radius: 28px;
+  background: var(--paper);
+  box-shadow: 0 30px 76px rgba(31, 41, 35, 0.075);
+  padding: 12px 12px 12px 16px;
+}
+.daily-tip-card.hidden { display: none; }
+.daily-tip-main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.daily-tip-label {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.daily-tip-text {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 500;
+}
+.daily-tip-dismiss {
+  flex: 0 0 auto;
+  font-size: 12px;
+  padding: 4px 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .daily-summary-main {
   min-width: 0;
   display: grid;

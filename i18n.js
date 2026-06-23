@@ -552,6 +552,13 @@
       "guide.settings.subtitle": "Step-by-step walkthroughs for every feature.",
       "guide.settings.docs":     "Documentation",
       "guide.settings.run_again": "Run again",
+
+      // Daily Parenting Tip
+      "tip.card.label":     "Today's tip",
+      "tip.dismiss":        "Got it",
+      "tip.settings.label": "Daily parenting tips",
+      "tip.settings.desc":  "A small daily reminder on the board",
+
       "guide.tour.welcome":                   "Welcome",
       "guide.tour.welcome.desc":              "A 2-minute overview of Do-Do.",
       "guide.tour.setup-parents":             "Set up parents",
@@ -1164,6 +1171,13 @@
       "guide.settings.subtitle": "Schritt-für-Schritt-Anleitungen für jede Funktion.",
       "guide.settings.docs":     "Dokumentation",
       "guide.settings.run_again": "Erneut starten",
+
+      // Daily Parenting Tip (DE tip content pending Bart review - using EN as fallback)
+      "tip.card.label":     "Tipp des Tages",
+      "tip.dismiss":        "Verstanden",
+      "tip.settings.label": "Tagliche Erziehungstipps",
+      "tip.settings.desc":  "Eine kurze tagliche Erinnerung",
+
       "guide.tour.welcome":                   "Willkommen",
       "guide.tour.welcome.desc":              "Ein 2-minütiger Überblick über Do-Do.",
       "guide.tour.setup-parents":             "Eltern einrichten",
@@ -1790,6 +1804,13 @@
       "guide.settings.subtitle": "Przewodniki krok po kroku po każdej funkcji.",
       "guide.settings.docs":     "Dokumentacja",
       "guide.settings.run_again": "Uruchom ponownie",
+
+      // Daily Parenting Tip
+      "tip.card.label":     "Wskazowka dnia",
+      "tip.dismiss":        "Rozumiem",
+      "tip.settings.label": "Codzienne wskazowki",
+      "tip.settings.desc":  "Krotka codzienna podpowiedz",
+
       "guide.tour.welcome":                   "Powitanie",
       "guide.tour.welcome.desc":              "2-minutowy przegląd Do-Do.",
       "guide.tour.setup-parents":             "Konfiguracja rodziców",

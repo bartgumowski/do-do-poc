@@ -1964,6 +1964,14 @@ function bindAutomationSettings() {
     showFeatureToast(window.t?.("toast.lang_changed") ?? "Language updated");
   });
 
+  // Daily tips toggle
+  const dailyTipsToggle = featureModule.querySelector("#dailyTipsToggle");
+  dailyTipsToggle?.addEventListener("change", () => {
+    localStorage.setItem("do-do-tips-enabled", dailyTipsToggle.checked ? "true" : "false");
+    if (typeof window.renderDailyTip === "function") window.renderDailyTip();
+    showFeatureToast(window.t?.("toast.updated") ?? "Updated");
+  });
+
   // Currency selector (independent of language)
   const currencySelect = featureModule.querySelector("#currencyPreference");
   currencySelect?.addEventListener("change", () => {
@@ -6080,6 +6088,13 @@ function renderSpecialPanel(moduleName, part = "all") {
               <option value="EUR" ${(window.getCurrencyPreference?.() || window.LOCALE_CONFIG?.currency) === "EUR" ? "selected" : ""}>EUR - Euro</option>
               <option value="PLN" ${(window.getCurrencyPreference?.() || window.LOCALE_CONFIG?.currency) === "PLN" ? "selected" : ""}>PLN - Polish Zloty</option>
             </select>
+          </label>
+          <label class="settings-toggle-row">
+            <span>
+              <strong>${window.t?.("tip.settings.label") ?? "Daily parenting tips"}</strong>
+              <em>${window.t?.("tip.settings.desc") ?? "A small daily reminder on the board"}</em>
+            </span>
+            <input type="checkbox" id="dailyTipsToggle" ${localStorage.getItem("do-do-tips-enabled") !== "false" ? "checked" : ""} />
           </label>
         </div>
       </section>

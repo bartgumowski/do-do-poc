@@ -1,4 +1,4 @@
-const APP_VERSION = "0.28.4";
+const APP_VERSION = "0.29.0";
 const APP_VERSION_DATE = "2026-06-23";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1564,6 +1564,7 @@ function render() {
   renderCounts();
   renderSummary();
   renderDailySummary();
+  renderDailyTip();
   renderInlineCaptureHost();
   renderAttention();
   renderBoard(cards);
@@ -1588,6 +1589,72 @@ function renderSummary() {
   document.querySelector("#topNeeds").textContent = String(messages);
   document.querySelector("#topWaiting").textContent = String(waiting);
   document.querySelector("#topTodo").textContent = String(todo);
+}
+
+// ─── Daily Parenting Tips ─────────────────────────────────────────────────────
+// One tip shown per day, same for both parents (deterministic by day-of-year).
+// Dismiss writes a localStorage key that expires automatically next day.
+// Settings toggle: localStorage "do-do-tips-enabled" defaults to "true".
+// DE tip content pending Bart review - using EN as fallback for now.
+const DAILY_TIPS = [
+  // Praise
+  { en: "Tell your child one specific thing they did well today - not just good job, but what exactly.", pl: "Powiedz dziecku jedna konkretna rzecz, ktora zrobilo dzisiaj dobrze - nie \"super\", ale co dokladnie.", de: "Tell your child one specific thing they did well today - not just good job, but what exactly." },
+  { en: "Say \"I noticed you...\" to your child today - kids light up when a parent pays attention to detail.", pl: "Powiedz dzisiaj dziecku \"Zauwazylam/em, ze...\" - dzieci rozswietlaja sie, gdy rodzic zauwaza szczegoly.", de: "Say \"I noticed you...\" to your child today - kids light up when a parent pays attention to detail." },
+  { en: "Praise the effort, not the result - \"You kept trying even when it was hard\" lands deeper than \"You're smart.\"", pl: "Chwal wysilek, nie wynik - \"Nie poddawales sie, nawet gdy bylo trudno\" trafia glebiej niz \"Jestes zdolny\".", de: "Praise the effort, not the result - \"You kept trying even when it was hard\" lands deeper than \"You're smart.\"" },
+  // Connection
+  { en: "Hug your child today - 8 seconds is the magic number for a hug to feel real.", pl: "Przytul dzisiaj swoje dziecko - 8 sekund to magiczna liczba, by uscisk naprawde poczuc.", de: "Hug your child today - 8 seconds is the magic number for a hug to feel real." },
+  { en: "Put your phone down and make eye contact for 5 minutes while your child talks. Just listen.", pl: "Odloz telefon i patrz dziecku w oczy przez 5 minut, gdy mowi. Po prostu sluchaj.", de: "Put your phone down and make eye contact for 5 minutes while your child talks. Just listen." },
+  { en: "Bedtime is the best time for a 2-minute real talk. Ask what was the best part of today?", pl: "Czas przed snem to najlepsza chwila na prawdziwa rozmowe. Zapytaj: co bylo dzisiaj najlepsze?", de: "Bedtime is the best time for a 2-minute real talk. Ask what was the best part of today?" },
+  { en: "Let your child pick what you do together for 10 minutes today. Follow their lead completely.", pl: "Pozwol dziecku wybrac, co razem robicie przez 10 minut. Idz za jego pomyslem do konca.", de: "Let your child pick what you do together for 10 minutes today. Follow their lead completely." },
+  // Emotion
+  { en: "When your child is upset, name the feeling first - \"You seem really frustrated\" - before solving.", pl: "Gdy dziecko sie denerwuje, najpierw nazwij uczucie. Potem rozwiazuj.", de: "When your child is upset, name the feeling first - \"You seem really frustrated\" - before solving." },
+  { en: "It's ok to say \"I was wrong\" in front of your child. It teaches them more than any lecture.", pl: "Powiedzenie \"mylilem sie\" przy dziecku jest w porzadku. Uczy go wiecej niz jakiekolwiek kazanie.", de: "It's ok to say \"I was wrong\" in front of your child. It teaches them more than any lecture." },
+  { en: "If you feel yourself getting angry, try a 5-second pause before responding. It changes everything.", pl: "Gdy czujesz, ze zaraz sie zloszcisz, sprobuj 5-sekundowej pauzy przed odpowiedzia. To zmienia wszystko.", de: "If you feel yourself getting angry, try a 5-second pause before responding. It changes everything." },
+  // Routine
+  { en: "Eat one meal together today with no screens. Even 15 minutes counts.", pl: "Zjedz dzisiaj jeden posilek razem, bez ekranow. Nawet 15 minut ma znaczenie.", de: "Eat one meal together today with no screens. Even 15 minutes counts." },
+  { en: "Read one page together tonight - it doesn't matter what, it matters that you're side by side.", pl: "Przeczytajcie razem jedna strone wieczorem - nieważne co, wazne ze jestescie obok siebie.", de: "Read one page together tonight - it doesn't matter what, it matters that you're side by side." },
+  { en: "A 10-minute walk with a child is often when the real conversations happen. Try it today.", pl: "10-minutowy spacer z dzieckiem to czesto chwila, gdy tocza sie prawdziwe rozmowy. Sprobuj dzisiaj.", de: "A 10-minute walk with a child is often when the real conversations happen. Try it today." },
+  // Co-parent
+  { en: "Keep transitions calm - your child watches how both parents act at handover.", pl: "Zadbaj o spokojne przekazanie - twoje dziecko obserwuje, jak oboje rodzice sie zachowuja.", de: "Keep transitions calm - your child watches how both parents act at handover." },
+  { en: "Your child feels safer when handovers are predictable. A simple routine helps more than you'd think.", pl: "Twoje dziecko czuje sie bezpieczniej, gdy przekazania sa przewidywalne. Prosta rutyna pomaga bardziej, niz myslisz.", de: "Your child feels safer when handovers are predictable. A simple routine helps more than you'd think." },
+  // Fun
+  { en: "Be silly with your child today. A tickle, a funny face, or a made-up song - it matters more than you think.", pl: "Badz dzisiaj gluptasem razem z dzieckiem. Laskotki, smieszna mina, wymyslona piosenka - to wazniejsze niz myslisz.", de: "Be silly with your child today. A tickle, a funny face, or a made-up song - it matters more than you think." },
+  { en: "Celebrate something small today - finishing homework, brushing teeth without being asked, anything.", pl: "Swietuj dzisiaj cos malego - odrobione zadanie, umyte zeby bez przypominania, cokolwiek.", de: "Celebrate something small today - finishing homework, brushing teeth without being asked, anything." },
+];
+
+function renderDailyTip() {
+  const tipCard = document.getElementById("dailyTipCard");
+  if (!tipCard) return;
+
+  // Check settings toggle (defaults to enabled)
+  const enabled = localStorage.getItem("do-do-tips-enabled") !== "false";
+  if (!enabled) { tipCard.classList.add("hidden"); return; }
+
+  // Check if already dismissed today
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  if (localStorage.getItem("do-do-tip-dismissed-" + today) === "1") {
+    tipCard.classList.add("hidden");
+    return;
+  }
+
+  // Pick tip deterministically by day-of-year (same tip for both parents)
+  const start = new Date(new Date().getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((new Date() - start) / 86400000);
+  const tip = DAILY_TIPS[dayOfYear % DAILY_TIPS.length];
+  const lang = (typeof window.getCurrentLang === "function" ? window.getCurrentLang() : "en") || "en";
+  const text = tip[lang] || tip.en;
+
+  tipCard.querySelector(".daily-tip-text").textContent = text;
+  tipCard.classList.remove("hidden");
+
+  // Wire dismiss button (remove old listener first to avoid duplicates)
+  const dismissBtn = tipCard.querySelector(".daily-tip-dismiss");
+  const newBtn = dismissBtn.cloneNode(true);
+  dismissBtn.replaceWith(newBtn);
+  newBtn.addEventListener("click", () => {
+    localStorage.setItem("do-do-tip-dismissed-" + today, "1");
+    tipCard.classList.add("hidden");
+  });
 }
 
 function renderDailySummary() {
@@ -4795,6 +4862,9 @@ async function _flushSyncQueue() {
 
 // Expose queue function so supabase-data.js can use it on save failure
 window._queueOfflineCard = _queueOfflineCard;
+
+// Expose renderDailyTip so features.js settings toggle can refresh the card
+window.renderDailyTip = renderDailyTip;
 
 // Flush queue when coming back online
 window.addEventListener("online", () => _flushSyncQueue());

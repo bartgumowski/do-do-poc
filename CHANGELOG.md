@@ -2,6 +2,17 @@
 
 ---
 
+## v0.29.0 - 2026-06-23 - Daily Parenting Tip
+
+- **Daily tip card** - small strip shown between the Daily Summary and the board. One tip per day, same tip for both parents (deterministic by day-of-year, no sync needed).
+- **Dismiss** - tap "Got it" to hide for the rest of the day. Auto-resets next day via localStorage key `do-do-tip-dismissed-YYYY-MM-DD`.
+- **Settings toggle** - "Daily parenting tips" on/off switch added to the Appearance section in Settings. Defaults to on.
+- **17 tips in EN + PL** across 5 themes: Praise, Connection, Emotion, Routine, Co-parent, Fun. DE content uses EN as fallback pending Bart review.
+- **i18n** - added `tip.card.label`, `tip.dismiss`, `tip.settings.label`, `tip.settings.desc` in EN/PL/DE.
+- Changes isolated to: `index.html` (1 new section), `app.js` (DAILY_TIPS array + renderDailyTip function), `features.js` (toggle + event listener), `styles.css` (tip card styles), `i18n.js` (4 new keys x 3 languages). No existing functionality touched.
+
+---
+
 ## v0.28.4 - 2026-06-23 - Fix Google sign-in (PKCE code_verifier)
 
 - **Google sign-in root cause fixed** - The Supabase client was configured with `flowType: 'implicit'` (the default), so `signInWithOAuth` never generated a `code_verifier`. When Google redirected back with `?code=`, the manual `exchangeCodeForSession` call sent an empty `code_verifier` to GoTrue. GoTrue rejected it. Fix: set `flowType: "pkce"` so a proper `code_verifier` is generated and stored before the redirect, and set `detectSessionInUrl: false` so Supabase does not try to consume the code automatically (which would conflict with the manual exchange).
