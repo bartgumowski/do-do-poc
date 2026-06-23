@@ -6658,6 +6658,31 @@ function renderSettingsFeature() {
         </div>
       </section>
 
+      <!-- Kid Access panel -->
+      <section class="feature-panel" id="kidAccessPanel">
+        <div class="feature-panel-header">
+          <h3>Kid Access</h3>
+        </div>
+        <p class="feature-note" style="font-size:13px;color:var(--muted);margin:0 0 14px;">
+          Give each child a private link + 4-digit PIN so they can see their schedule and send you a "I need" card.
+        </p>
+        <div id="kidAccessList">
+          ${children.length
+            ? children.map((c, i) => {
+                const childName = c.name || c;
+                return `
+                  <article class="feature-item" style="flex-direction:column;gap:8px;align-items:stretch;" id="kidAccessItem-${i}">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      <strong style="flex:1;">${escapeHtml(childName)}</strong>
+                      <button class="secondary-button" data-kid-setup="${i}" style="font-size:12px;padding:4px 10px;min-height:28px;">Set up</button>
+                    </div>
+                    <div class="kid-access-status" id="kidStatus-${i}" style="font-size:12px;color:var(--muted);">Checking...</div>
+                  </article>`;
+              }).join("")
+            : `<p class="feature-empty" style="font-size:13px;color:var(--muted);">Add children above first, then set up their Kid Access here.</p>`}
+        </div>
+      </section>
+
       <section class="feature-panel">
         <div class="feature-panel-header">
           <h3>${_st("settings.pets")}</h3>
@@ -7134,6 +7159,139 @@ function renderSettingsFeature() {
     const i = Number(btn.dataset.deleteCaregiver);
     btn.addEventListener("click", () => confirmDeleteCaregiver(i));
   });
+
+  // ─── Kid Access ────────────────────────────────────────────────────────────
+  initKidAccessPanel();
+}
+
+// ─── Kid Access Settings ──────────────────────────────────────────────────────
+
+async function initKidAccessPanel() {
+  const setup = window.getOnboardingState?.() || {};
+  const children = setup.children || [];
+  if (!children.length) return;
+
+  // Load existing kid access config from Supabase for each child
+  for (let i = 0; i < children.length; i++) {
+    const childName = children[i].name || children[i];
+    await refreshKidAccessStatus(i, childName);
+  }
+
+  // Wire "Set up" buttons
+  featureModule.querySelectorAll("[data-kid-setup]").forEach((btn) => {
+    const i = Number(btn.dataset.kidSetup);
+    const childName = (children[i]?.name || children[i]);
+    btn.addEventListener("click", () => openKidAccessDialog(i, childName));
+  });
+}
+
+async function refreshKidAccessStatus(index, childName) {
+  const statusEl = featureModule?.querySelector(`#kidStatus-${index}`);
+  if (!statusEl) return;
+
+  try {
+    const kidData = await window.loadKidAccess?.(childName);
+    if (kidData?.kid_token) {
+      const link = `${window.location.origin}/kid?token=${kidData.kid_token}`;
+      statusEl.innerHTML = `
+        <span style="color:#22c55e;font-weight:600;">&#10003; Active</span>
+        <span style="margin:0 6px;color:var(--line)">|</span>
+        <button class="ghost-button" style="font-size:12px;padding:2px 6px;min-height:24px;" data-kid-copy-link="${index}" data-kid-link="${escapeHtml(link)}">Copy link</button>
+        <button class="ghost-button" style="font-size:12px;padding:2px 6px;min-height:24px;color:#ef4444;" data-kid-reset="${index}">Reset PIN</button>
+      `;
+      // Wire copy
+      statusEl.querySelector(`[data-kid-copy-link]`)?.addEventListener("click", async (e) => {
+        const url = e.currentTarget.dataset.kidLink;
+        try { await navigator.clipboard.writeText(url); showFeatureToast("Kid link copied!"); }
+        catch { showFeatureToast(url); }
+      });
+      // Wire reset
+      statusEl.querySelector(`[data-kid-reset]`)?.addEventListener("click", () => openKidAccessDialog(index, childName, true));
+    } else {
+      statusEl.innerHTML = `<span style="color:var(--muted);">Not set up yet</span>`;
+    }
+  } catch {
+    statusEl.innerHTML = `<span style="color:var(--muted);">Could not load</span>`;
+  }
+}
+
+function openKidAccessDialog(index, childName, isReset = false) {
+  const dialog = document.createElement("dialog");
+  dialog.className = "card-dialog";
+  dialog.style.cssText = "max-width:380px;width:90%;padding:0;border:none;border-radius:20px;overflow:hidden;";
+  dialog.innerHTML = `
+    <div class="dialog-header" style="padding:18px 20px 12px;border-bottom:1px solid var(--line);">
+      <h2 style="font-size:17px;font-weight:800;margin:0;">${isReset ? "Reset PIN" : "Set up Kid Access"} - ${escapeHtml(childName)}</h2>
+    </div>
+    <div style="padding:20px;">
+      ${!isReset ? `<p style="font-size:13px;color:var(--muted);margin:0 0 16px;">This creates a link for ${escapeHtml(childName)} to view their schedule and send you "I need" cards. They use a 4-digit PIN to get in.</p>` : ""}
+      <label style="display:block;margin-bottom:6px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">4-Digit PIN for ${escapeHtml(childName)}</label>
+      <input id="kidPinInput" type="password" inputmode="numeric" maxlength="4" pattern="\\d{4}" placeholder="e.g. 1234"
+        style="width:100%;padding:12px 14px;background:var(--surface-input);border:1.5px solid var(--line);border-radius:8px;font-size:18px;font-family:inherit;color:var(--ink);outline:none;letter-spacing:6px;text-align:center;"
+        autocomplete="off" />
+      <p id="kidPinHint" style="font-size:12px;color:var(--muted);margin:6px 0 0;">Use something the child can remember. You can change this anytime.</p>
+
+      <label style="display:block;margin:16px 0 6px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Note for ${escapeHtml(childName)} (optional)</label>
+      <textarea id="kidNoteInput" placeholder="e.g. Bring your PE kit on Tuesday" maxlength="500"
+        style="width:100%;padding:10px 12px;background:var(--surface-input);border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;color:var(--ink);outline:none;min-height:72px;resize:vertical;"></textarea>
+      <p id="kidDialogError" style="font-size:12px;color:#ef4444;margin:8px 0 0;display:none;"></p>
+    </div>
+    <div style="padding:0 20px 20px;display:flex;gap:10px;">
+      <button id="kidDialogCancel" class="ghost-button" style="flex:1;">Cancel</button>
+      <button id="kidDialogSave" class="secondary-button" style="flex:2;font-weight:700;">Save &amp; get link</button>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+  dialog.showModal();
+
+  dialog.querySelector("#kidDialogCancel").addEventListener("click", () => { dialog.close(); dialog.remove(); });
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) { dialog.close(); dialog.remove(); } });
+
+  const saveBtn = dialog.querySelector("#kidDialogSave");
+  const pinInput = dialog.querySelector("#kidPinInput");
+  const noteInput = dialog.querySelector("#kidNoteInput");
+  const errEl = dialog.querySelector("#kidDialogError");
+
+  // Pre-fill existing note
+  window.loadKidAccess?.(childName).then((d) => {
+    if (d?.kid_note) noteInput.value = d.kid_note;
+  }).catch(() => {});
+
+  saveBtn.addEventListener("click", async () => {
+    const pin = pinInput.value.trim();
+    if (!/^\d{4}$/.test(pin)) {
+      errEl.textContent = "Please enter exactly 4 digits.";
+      errEl.style.display = "";
+      pinInput.focus();
+      return;
+    }
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
+    errEl.style.display = "none";
+
+    try {
+      const result = await window.saveKidAccess?.(childName, pin, noteInput.value.trim() || null);
+      if (!result?.ok) throw new Error("save failed");
+
+      dialog.close(); dialog.remove();
+      showFeatureToast("Kid access set up! Link copied to clipboard.");
+
+      // Copy link to clipboard automatically
+      const link = `${window.location.origin}/kid?token=${result.token}`;
+      try { await navigator.clipboard.writeText(link); } catch {}
+
+      // Refresh status in panel
+      await refreshKidAccessStatus(index, childName);
+    } catch {
+      errEl.textContent = "Something went wrong. Try again.";
+      errEl.style.display = "";
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save & get link";
+    }
+  });
+
+  pinInput.focus();
 }
 
 function escapeHtml(str) {

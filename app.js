@@ -1,5 +1,5 @@
-const APP_VERSION = "0.28.3";
-const APP_VERSION_DATE = "2026-06-19";
+const APP_VERSION = "0.29.0";
+const APP_VERSION_DATE = "2026-06-23";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
 // To add a new market: add an entry to LOCALE_CONFIGS and add the corresponding
@@ -1832,6 +1832,7 @@ function renderUnifiedCard(card, options = {}) {
       <div class="card-state-row">
         <span class="card-date-tag">${dateStr}</span>
         ${card.type === "Vaccine" ? `<span class="card-type-badge card-type-vaccine">💉 ${_t("card.vaccine_badge", "Vaccine")}</span>` : ""}
+        ${card.createdByKid ? `<span class="card-type-badge card-type-kid" title="Sent by ${escapeHtml(card.kidName || "your child")}">&#127775; From ${escapeHtml(card.kidName || "child")}</span>` : ""}
         ${statusLabel ? `<span class="card-status-label${isDone ? " card-status-done" : ""}">${statusLabel}</span>` : ""}
         ${card.amount ? `<span class="card-money-tag">${escapeHtml(card.amount)}</span>` : ""}
       </div>

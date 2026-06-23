@@ -2,6 +2,33 @@
 
 ---
 
+## v0.29.0 - 2026-06-23 - Kid Access
+
+**New feature: Kid Access**
+
+Each child can get their own private link + 4-digit PIN to view their schedule and send "I need" cards to both parents.
+
+- **Settings > Kid Access** - parent generates a link and sets a PIN per child. Copy link button auto-copies to clipboard. Reset PIN anytime.
+- **Kid PIN screen** - child opens the link on any browser, enters 4 digits. No account needed. Session stored for 30 days so they don't re-enter every time.
+- **Kid dashboard** - shows: note from parents, upcoming cards assigned to this child (next 14 days), undated tasks, recently completed items.
+- **"I need something" button** - kid fills in title, optional date, optional note. Card appears on the parent board tagged with a star badge "From [child name]", assigned to both parents, topic: School.
+- **PIN lockout** - 5 wrong attempts = 10-minute lockout, handled server-side.
+- **No new serverless functions** - all kid API logic extended inside the existing guest-view.js (staying within the 12-function Vercel limit).
+- **DB migration required** - see below.
+
+**Requires a one-time SQL migration in Supabase:**
+```sql
+ALTER TABLE children
+  ADD COLUMN IF NOT EXISTS kid_token TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS kid_pin_hash TEXT,
+  ADD COLUMN IF NOT EXISTS kid_pin_salt TEXT,
+  ADD COLUMN IF NOT EXISTS kid_note TEXT,
+  ADD COLUMN IF NOT EXISTS kid_pin_attempts INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS kid_pin_locked_until TIMESTAMPTZ;
+```
+
+---
+
 ## v0.28.3 - 2026-06-19 - Polish expense labels + expense card title
 
 - Polish payment split labels corrected: "Tylko ja" (mine only), "Drugi rodzic - proszę zapłać" (co-parent pays), "50/50"

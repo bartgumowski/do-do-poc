@@ -6,20 +6,268 @@
 //
 // SEG-11.3: Also handles mediator stats page
 // GET ?type=mediator&code=<code>
+//
+// KID ACCESS (PIN-protected read + card creation)
+// POST { type: "kid-auth", token, pin }          -> verify PIN, return session JWT
+// GET  ?type=kid&token=xxx&session=yyy           -> return kid dashboard data
+// POST { type: "kid-card", token, session, ... } -> create a card on parent board
 
 const { createClient } = require("@supabase/supabase-js");
+const crypto = require("crypto");
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// ─── Kid session helpers ──────────────────────────────────────────────────────
+
+function kidSessionSecret() {
+  // Use service role key as signing secret - it's stable and already present
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback-dev-secret";
+}
+
+function signKidSession(kidToken) {
+  const payload = Buffer.from(JSON.stringify({
+    k: kidToken,
+    exp: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+  })).toString("base64url");
+  const sig = crypto.createHmac("sha256", kidSessionSecret()).update(payload).digest("base64url");
+  return payload + "." + sig;
+}
+
+function verifyKidSession(session) {
+  if (!session || typeof session !== "string") return null;
+  const [payload, sig] = session.split(".");
+  if (!payload || !sig) return null;
+  const expected = crypto.createHmac("sha256", kidSessionSecret()).update(payload).digest("base64url");
+  if (sig !== expected) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString());
+    if (!data.k || !data.exp || Date.now() > data.exp) return null;
+    return data.k; // returns the kidToken
+  } catch {
+    return null;
+  }
+}
+
+// ─── Kid PIN auth ─────────────────────────────────────────────────────────────
+
+async function handleKidAuth(req, res) {
+  const { token, pin } = req.body || {};
+  if (!token || !pin || !/^\d{4}$/.test(String(pin))) {
+    return res.status(400).json({ error: "invalid_request" });
+  }
+
+  const { data: child } = await supabaseAdmin
+    .from("children")
+    .select("id, name, kid_pin_hash, kid_pin_salt, kid_pin_attempts, kid_pin_locked_until")
+    .eq("kid_token", token)
+    .maybeSingle();
+
+  if (!child || !child.kid_pin_hash) return res.status(404).json({ error: "not_found" });
+
+  // Lockout check
+  if (child.kid_pin_locked_until && new Date(child.kid_pin_locked_until) > new Date()) {
+    return res.status(429).json({ error: "locked", until: child.kid_pin_locked_until });
+  }
+
+  // Verify PIN with PBKDF2
+  const hashAttempt = crypto.pbkdf2Sync(String(pin), child.kid_pin_salt, 100000, 32, "sha256").toString("hex");
+
+  if (hashAttempt !== child.kid_pin_hash) {
+    const attempts = (child.kid_pin_attempts || 0) + 1;
+    const lockUpdate = attempts >= 5
+      ? { kid_pin_attempts: attempts, kid_pin_locked_until: new Date(Date.now() + 10 * 60 * 1000).toISOString() }
+      : { kid_pin_attempts: attempts };
+    await supabaseAdmin.from("children").update(lockUpdate).eq("id", child.id);
+    return res.status(401).json({ error: "wrong_pin", attemptsLeft: Math.max(0, 5 - attempts) });
+  }
+
+  // Success - clear attempts and issue session
+  await supabaseAdmin.from("children").update({ kid_pin_attempts: 0, kid_pin_locked_until: null }).eq("id", child.id);
+  return res.status(200).json({ ok: true, session: signKidSession(token), childName: child.name });
+}
+
+// ─── Kid dashboard data ───────────────────────────────────────────────────────
+
+async function handleKidData(req, res) {
+  const token = (req.query.token || "").trim();
+  const session = (req.query.session || req.headers["x-kid-session"] || "").trim();
+
+  const verifiedToken = verifyKidSession(session);
+  if (!verifiedToken || verifiedToken !== token) {
+    return res.status(401).json({ error: "invalid_session" });
+  }
+
+  const { data: child } = await supabaseAdmin
+    .from("children")
+    .select("id, name, family_id, kid_note")
+    .eq("kid_token", token)
+    .maybeSingle();
+
+  if (!child) return res.status(404).json({ error: "not_found" });
+
+  // Get pair for this family (to get parent names and pair_id)
+  const { data: pair } = await supabaseAdmin
+    .from("pairs")
+    .select("id, parent_a, parent_b, profiles!pairs_parent_a_fkey(display_name)")
+    .eq("family_id", child.family_id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  // Fetch upcoming cards for this child (next 14 days + overdue)
+  const windowStart = new Date(Date.now() - 2 * 86400000).toISOString(); // from 2 days ago
+  const windowEnd = new Date(Date.now() + 14 * 86400000).toISOString();
+
+  const { data: cards } = await supabaseAdmin
+    .from("unified_cards")
+    .select("id, title, card_type, status, due_at, metadata")
+    .eq("pair_id", pair?.id || "")
+    .eq("child_label", child.name)
+    .is("deleted_at", null)
+    .gte("due_at", windowStart)
+    .lte("due_at", windowEnd)
+    .order("due_at", { ascending: true })
+    .limit(40);
+
+  // Also fetch recent undated tasks for this child
+  const { data: undatedCards } = await supabaseAdmin
+    .from("unified_cards")
+    .select("id, title, card_type, status, due_at, metadata")
+    .eq("pair_id", pair?.id || "")
+    .eq("child_label", child.name)
+    .is("deleted_at", null)
+    .is("due_at", null)
+    .neq("status", "done")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  const allCards = [...(cards || []), ...(undatedCards || [])].map((c) => ({
+    id: c.id,
+    title: c.title || "",
+    type: c.card_type || "task",
+    status: c.status || "todo",
+    dueAt: c.due_at || null,
+    createdByKid: c.metadata?.created_by_kid || false,
+  }));
+
+  // Get co-parent name if pair has parent_b
+  let coparentName = null;
+  if (pair?.parent_b) {
+    const { data: coProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("display_name")
+      .eq("id", pair.parent_b)
+      .maybeSingle();
+    coparentName = coProfile?.display_name || null;
+  }
+
+  return res.status(200).json({
+    childName: child.name,
+    parentAName: pair?.profiles?.display_name || null,
+    parentBName: coparentName,
+    note: child.kid_note || null,
+    cards: allCards,
+  });
+}
+
+// ─── Kid card creation ────────────────────────────────────────────────────────
+
+async function handleKidCard(req, res) {
+  const { token, session, title, due, details } = req.body || {};
+
+  const verifiedToken = verifyKidSession(session);
+  if (!verifiedToken || verifiedToken !== token) {
+    return res.status(401).json({ error: "invalid_session" });
+  }
+
+  if (!title || typeof title !== "string" || title.trim().length < 1) {
+    return res.status(400).json({ error: "title_required" });
+  }
+
+  const { data: child } = await supabaseAdmin
+    .from("children")
+    .select("id, name, family_id")
+    .eq("kid_token", token)
+    .maybeSingle();
+
+  if (!child) return res.status(404).json({ error: "not_found" });
+
+  const { data: pair } = await supabaseAdmin
+    .from("pairs")
+    .select("id, parent_a")
+    .eq("family_id", child.family_id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!pair) return res.status(404).json({ error: "no_pair" });
+
+  // Sanitise inputs
+  const cleanTitle = title.trim().slice(0, 200);
+  const cleanDetails = (details || "").trim().slice(0, 1000);
+  const cleanDue = due && /^\d{4}-\d{2}-\d{2}/.test(due) ? new Date(due).toISOString() : null;
+
+  const cardId = crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  const { error } = await supabaseAdmin
+    .from("unified_cards")
+    .insert({
+      id: cardId,
+      pair_id: pair.id,
+      created_by: pair.parent_a,
+      updated_by: pair.parent_a,
+      title: cleanTitle,
+      body: cleanDetails || null,
+      topic: "school",
+      card_type: "task",
+      status: "todo",
+      assigned_to: "both",
+      child_label: child.name,
+      due_at: cleanDue,
+      edit_history: [{ ts: now, by: "kid:" + child.name, action: "create" }],
+      metadata: {
+        created_by_kid: true,
+        kid_name: child.name,
+        comments: [],
+        acknowledged: false,
+        createdAt: Date.now(),
+      },
+    });
+
+  if (error) {
+    console.error("kid-card insert error:", error.message);
+    return res.status(500).json({ error: "server_error" });
+  }
+
+  return res.status(201).json({ ok: true, cardId });
+}
+
 module.exports = async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+
+  // ─── Kid access routes ────────────────────────────────────────────────────────
+  if (req.method === "POST") {
+    let body = req.body;
+    // Parse body if not already parsed (Vercel usually does this for JSON)
+    if (typeof body === "string") {
+      try { body = JSON.parse(body); } catch { body = {}; }
+    }
+    req.body = body || {};
+
+    if (body?.type === "kid-auth") return handleKidAuth(req, res);
+    if (body?.type === "kid-card") return handleKidCard(req, res);
+    return res.status(400).json({ error: "unknown_type" });
+  }
+
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  res.setHeader("Cache-Control", "no-store");
+  if (req.query.type === "kid") return handleKidData(req, res);
 
   // ─── SEG-11.3: Mediator stats (no auth) ──────────────────────────────────────
   if (req.query.type === "mediator") {
