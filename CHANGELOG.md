@@ -17,10 +17,11 @@ A small tip card shown on the home screen between the Daily Summary and the boar
 
 ---
 
-## v0.29.1 - 2026-06-23 - UI fixes
+## v0.29.3 - 2026-06-23 - UI fixes + login fix
 
+- **Login fix** - reverted `routeFromHash` to use `_origSwitchModule` (safe, no side effects) instead of full `window.switchModule` which was firing GuideEngine and history changes before auth completed, breaking the login flow.
 - **Shopping list width stability** - row width no longer shifts when the X delete button appears on hover or when a buyer avatar is assigned. All rows now consistently reserve the same space (using `flex: 0 0 28px` + `visibility: hidden` instead of `opacity: 0` on the delete button, plus explicit `width: 100%` on the row wrapper).
-- **Page persistence on reload** - the app now stays on the page you were on when you reload. Module restore now checks URL hash, then sessionStorage, then localStorage - in that order. Also fixed `routeFromHash` to write to sessionStorage so the reload target is always current.
+- **Page persistence on reload** - the app now stays on the page you were on when you reload. Module restore now checks URL hash, then sessionStorage, then localStorage - in that order. `routeFromHash` also writes to sessionStorage on each hash navigation.
 
 ---
 

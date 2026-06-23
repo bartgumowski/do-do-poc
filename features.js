@@ -683,7 +683,8 @@ window.switchModule = function(moduleName) {
 function routeFromHash() {
   const module = location.hash.replace("#", "").toLowerCase();
   if (VALID_MODULES.includes(module)) {
-    window.switchModule(module);
+    _origSwitchModule(module);
+    try { sessionStorage.setItem("do-do-current-module", module); } catch (_) {}
   }
 }
 
