@@ -1,0 +1,520 @@
+== DO-DO APP - BUG REPORT FOR AI DEBUGGING ==
+
+App: Do-Do - a co-parenting PWA. Vanilla JS, no framework. Supabase auth (PKCE). Deployed on Vercel.
+Files relevant to these bugs: guide.js, app.js, features.js, styles.css.
+
+There are TWO bugs to fix. Please read all the code below and propose exact fixes.
+
+==============================================================
+BUG 1: Navigation buttons stop working after clicking Settings
+==============================================================
+
+SYMPTOMS:
+- User clicks Settings (or any nav button)
+- The module briefly appears (~400ms)
+- A dark overlay covers the entire screen
+- ALL buttons stop responding to clicks
+- The module looks like it "reverted" because content is hidden behind the dark overlay
+- Refreshing the page restores buttons, but the same thing happens again on next Settings visit
+
+ROOT CAUSE IDENTIFIED:
+guide.js fires an in-app guide whenever certain conditions are met. The guide renders
+#guide-overlay (position:fixed, inset:0, z-index:9000, pointer-events:all) which covers
+the entire screen. If the guide tooltip is off-screen or not rendered, there is no way
+to dismiss the overlay - all clicks are swallowed by it. On refresh, _activeGuideId
+resets to null but isDone() is still false (dismiss was never called, markDone was
+never called), so the guide fires again on the next Settings visit. Infinite loop.
+
+FIX ATTEMPTED (still not working - please find why):
+Added _overlay.addEventListener("click", dismiss) inside _ensureDOM().
+Also added cursor:pointer to #guide-overlay in CSS.
+The fix was applied but the buttons are STILL not working after clicking Settings.
+
+==============================================================
+FULL RELEVANT CODE
+==============================================================
+
+---- guide.js (complete file, current state with fix applied) ----
+
+// guide.js - In-app guide system (Pendo-like)
+// Usage:
+//   window.GuideEngine.show('welcome')
+//   window.GuideEngine.reset('welcome')
+//   window.GuideEngine.isDone('welcome')
+//   window.GuideEngine.dismiss()
+
+(function () {
+  "use strict";
+
+  const STORAGE_PREFIX = "do-do-guide-done-";
+
+  function markDone(guideId) {
+    try { localStorage.setItem(STORAGE_PREFIX + guideId, "1"); } catch (_) {}
+  }
+  function markNotDone(guideId) {
+    try { localStorage.removeItem(STORAGE_PREFIX + guideId); } catch (_) {}
+  }
+  function isDone(guideId) {
+    try { return localStorage.getItem(STORAGE_PREFIX + guideId) === "1"; } catch (_) { return false; }
+  }
+
+  const GUIDES = {
+    welcome: [
+      { target: null,
+        titleKey: "guide.welcome.1.title", bodyKey: "guide.welcome.1.body", position: "center" },
+      { target: ".module-link[data-module='board']",
+        titleKey: "guide.welcome.2.title", bodyKey: "guide.welcome.2.body", position: "bottom" },
+      { target: ".module-link[data-module='calendar']",
+        titleKey: "guide.welcome.3.title", bodyKey: "guide.welcome.3.body", position: "bottom" },
+      { target: ".module-link[data-module='shopping']",
+        titleKey: "guide.welcome.4.title", bodyKey: "guide.welcome.4.body", position: "bottom" },
+    ],
+    "setup-parents": [
+      { target: null,
+        titleKey: "guide.parents.1.title", bodyKey: "guide.parents.1.body", position: "center" },
+      { target: "#caregiversPanel",    navigate: "settings",
+        titleKey: "guide.parents.2.title", bodyKey: "guide.parents.2.body", position: "top" },
+      { target: "#invitePanelContent", navigate: "settings",
+        titleKey: "guide.parents.3.title", bodyKey: "guide.parents.3.body", position: "top" },
+    ],
+    "setup-children": [
+      { target: null,
+        titleKey: "guide.children.1.title", bodyKey: "guide.children.1.body", position: "center" },
+      { target: "#addChildBtn", navigate: "settings",
+        titleKey: "guide.children.2.title", bodyKey: "guide.children.2.body", position: "bottom" },
+      { target: null,
+        titleKey: "guide.children.3.title", bodyKey: "guide.children.3.body", position: "center" },
+    ],
+    "setup-schedule": [
+      { target: ".module-link[data-module='calendar']",
+        titleKey: "guide.schedule.1.title", bodyKey: "guide.schedule.1.body", position: "bottom" },
+      { target: "[data-cal-panel='schedule']", navigate: "calendar",
+        titleKey: "guide.schedule.2.title", bodyKey: "guide.schedule.2.body", position: "bottom" },
+      { target: ".module-link[data-module='przekazanie']",
+        titleKey: "guide.schedule.3.title", bodyKey: "guide.schedule.3.body", position: "bottom" },
+      { target: null,
+        titleKey: "guide.schedule.4.title", bodyKey: "guide.schedule.4.body", position: "center" },
+    ],
+    "setup-vacation": [
+      { target: null,
+        titleKey: "guide.vacation.1.title", bodyKey: "guide.vacation.1.body", position: "center" },
+      { target: "[data-cal-panel='vacations']", navigate: "calendar",
+        titleKey: "guide.vacation.2.title", bodyKey: "guide.vacation.2.body", position: "bottom" },
+      { target: null,
+        titleKey: "guide.vacation.3.title", bodyKey: "guide.vacation.3.body", position: "center" },
+    ],
+    "calendar-connect": [
+      { target: null,
+        titleKey: "guide.calcon.1.title", bodyKey: "guide.calcon.1.body", position: "center" },
+      { target: ".google-calendar-connection", navigate: "settings",
+        titleKey: "guide.calcon.2.title", bodyKey: "guide.calcon.2.body", position: "top" },
+      { target: null,
+        titleKey: "guide.calcon.3.title", bodyKey: "guide.calcon.3.body", position: "center" },
+    ],
+    shopping: [
+      { target: ".module-link[data-module='shopping']",
+        titleKey: "guide.shopping.1.title", bodyKey: "guide.shopping.1.body", position: "bottom" },
+      { target: ".shopping-add", navigate: "shopping",
+        titleKey: "guide.shopping.2.title", bodyKey: "guide.shopping.2.body", position: "top" },
+      { target: null,
+        titleKey: "guide.shopping.3.title", bodyKey: "guide.shopping.3.body", position: "center" },
+    ],
+  };
+
+  let _activeGuideId = null;
+  let _activeSteps   = [];
+  let _currentStep   = 0;
+  let _overlay       = null;
+  let _tooltip       = null;
+  let _spotEl        = null;
+
+  function _ensureDOM() {
+    if (_overlay && _tooltip) return;  // only runs once
+    _overlay = document.getElementById("guide-overlay");
+    _tooltip = document.getElementById("guide-tooltip");
+    _spotEl  = document.getElementById("guide-spotlight");
+    // FIX APPLIED: click dark background to dismiss
+    if (_overlay) _overlay.addEventListener("click", dismiss);
+  }
+
+  function _t(key) {
+    return (window.t && window.t(key)) || key;
+  }
+
+  const SPOT_PAD = 8;
+
+  function _positionSpotlight(target) {
+    if (!_spotEl) return;
+    if (!target) { _spotEl.style.display = "none"; return; }
+    const el = (typeof target === "string") ? document.querySelector(target) : target;
+    if (!el) { _spotEl.style.display = "none"; return; }
+    const r = el.getBoundingClientRect();
+    _spotEl.style.display = "block";
+    _spotEl.style.top    = (r.top  - SPOT_PAD + window.scrollY) + "px";
+    _spotEl.style.left   = (r.left - SPOT_PAD + window.scrollX) + "px";
+    _spotEl.style.width  = (r.width  + SPOT_PAD * 2) + "px";
+    _spotEl.style.height = (r.height + SPOT_PAD * 2) + "px";
+  }
+
+  function _positionTooltip(targetSel, preferredPos) {
+    if (!_tooltip) return;
+    const isMobile = window.innerWidth < 640;
+    if (isMobile) {
+      _tooltip.className = "guide-tooltip guide-tooltip-mobile";
+      _tooltip.style.cssText = "";
+      return;
+    }
+    if (!targetSel) {
+      _tooltip.className = "guide-tooltip guide-tooltip-center";
+      _tooltip.style.cssText = "";
+      return;
+    }
+    const el = document.querySelector(targetSel);
+    if (!el) {
+      _tooltip.className = "guide-tooltip guide-tooltip-center";
+      _tooltip.style.cssText = "";
+      return;
+    }
+    const r   = el.getBoundingClientRect();
+    const tw  = 320;
+    const th  = 160;
+    const vw  = window.innerWidth;
+    const pos = preferredPos || "bottom";
+    _tooltip.className = "guide-tooltip guide-tooltip-" + pos;
+    if (pos === "bottom") {
+      let left = r.left + r.width / 2 - tw / 2;
+      left = Math.max(12, Math.min(left, vw - tw - 12));
+      _tooltip.style.cssText = `top:${r.bottom + SPOT_PAD + 8}px;left:${left}px;`;
+    } else if (pos === "top") {
+      let left = r.left + r.width / 2 - tw / 2;
+      left = Math.max(12, Math.min(left, vw - tw - 12));
+      const top = Math.max(12, r.top - th - SPOT_PAD - 8);
+      _tooltip.style.cssText = `top:${top}px;left:${left}px;`;
+    } else if (pos === "right") {
+      _tooltip.style.cssText = `top:${r.top}px;left:${r.right + SPOT_PAD + 8}px;`;
+    } else if (pos === "left") {
+      _tooltip.style.cssText = `top:${r.top}px;left:${r.left - tw - SPOT_PAD - 8}px;`;
+    } else {
+      _tooltip.className = "guide-tooltip guide-tooltip-center";
+      _tooltip.style.cssText = "";
+    }
+  }
+
+  function _renderStep() {
+    _ensureDOM();
+    if (!_overlay || !_tooltip) return;
+    const step = _activeSteps[_currentStep];
+
+    // If this step needs a different module, navigate there first
+    if (step.navigate && window.switchModule) {
+      _overlay.hidden = false;      // show overlay immediately
+      if (_spotEl) _spotEl.style.display = "none";
+      if (_tooltip) _tooltip.hidden = true;
+
+      window.switchModule(step.navigate);  // THIS calls window.switchModule which may re-fire guide triggers
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          _renderStepDOM(step);
+        });
+      });
+      return;
+    }
+
+    _renderStepDOM(step);
+  }
+
+  function _renderStepDOM(step) {
+    _ensureDOM();
+    const total = _activeSteps.length;
+    const num   = _currentStep + 1;
+    const dots = Array.from({ length: total }, (_, i) =>
+      `<span class="guide-dot${i <= _currentStep ? " guide-dot-done" : ""}"></span>`
+    ).join("");
+    const isLast = _currentStep === total - 1;
+
+    _tooltip.innerHTML = `
+      <div class="guide-header">
+        <div class="guide-dots">${dots}</div>
+        <button class="guide-skip" id="guideSkipBtn" aria-label="${_t("guide.skip")}">${_t("guide.skip")}</button>
+      </div>
+      <h3 class="guide-title">${_t(step.titleKey)}</h3>
+      <p  class="guide-body">${_t(step.bodyKey)}</p>
+      <div class="guide-footer">
+        <span class="guide-step-count">${_t("guide.step_of").replace("{n}", num).replace("{total}", total)}</span>
+        <button class="guide-next primary-button" id="guideNextBtn">
+          ${isLast ? _t("guide.done") : _t("guide.next")}
+        </button>
+      </div>
+    `;
+
+    _tooltip.hidden = false;
+    _overlay.hidden = false;
+
+    if (step.target) {
+      const el = document.querySelector(step.target);
+      if (el) el.scrollIntoView({ behavior: "instant", block: "center" });
+    }
+
+    _positionSpotlight(step.target);
+    _positionTooltip(step.target, step.position);
+
+    document.getElementById("guideNextBtn")?.addEventListener("click", next);
+    document.getElementById("guideSkipBtn")?.addEventListener("click", dismiss);
+  }
+
+  function show(guideId) {
+    const steps = GUIDES[guideId];
+    if (!steps || isDone(guideId)) return;
+    _activeGuideId = guideId;
+    _activeSteps   = steps;
+    _currentStep   = 0;
+    _renderStep();
+  }
+
+  function next() {
+    if (!_activeGuideId) return;
+    _currentStep++;
+    if (_currentStep >= _activeSteps.length) {
+      _finish();
+    } else {
+      _renderStep();
+    }
+  }
+
+  function dismiss() {
+    _finish();
+  }
+
+  function reset(guideId) {
+    markNotDone(guideId);
+    show(guideId);
+  }
+
+  function _finish() {
+    const id = _activeGuideId;
+    _ensureDOM();
+    if (_overlay) _overlay.hidden = true;
+    if (_tooltip) { _tooltip.hidden = true; _tooltip.innerHTML = ""; }
+    if (_spotEl)  _spotEl.style.display = "none";
+    _activeGuideId = null;
+    _activeSteps   = [];
+    _currentStep   = 0;
+    if (id) markDone(id);  // saves to localStorage so isDone() returns true next time
+
+    // Chain: welcome -> setup-parents automatically
+    if (id === "welcome") {
+      setTimeout(() => show("setup-parents"), 400);
+    }
+  }
+
+  window.addEventListener("resize", function () {
+    if (!_activeGuideId || _activeSteps.length === 0) return;
+    const step = _activeSteps[_currentStep];
+    _positionSpotlight(step.target);
+    _positionTooltip(step.target, step.position);
+  });
+
+  function isActive(guideId) {
+    if (guideId) return _activeGuideId === guideId;
+    return _activeGuideId !== null;
+  }
+
+  window.GuideEngine = { show, next, dismiss, reset, isDone, isActive };
+
+})();
+
+
+---- index.html (only guide overlay elements) ----
+
+<!-- These three elements live near the end of <body>, after all app content -->
+<div id="guide-overlay" hidden aria-hidden="true"></div>
+<!-- note: #guide-spotlight is INSIDE the overlay -->
+<div id="guide-tooltip"  hidden role="dialog" aria-label="Guide" aria-modal="false"></div>
+
+<!-- Wait - is guide-spotlight inside guide-overlay or separate? CHECK THIS. -->
+<!-- If spotlight is inside the overlay div, clicks on it may be stopped before
+     reaching the overlay's click handler. -->
+
+
+---- styles.css (guide overlay rules) ----
+
+#guide-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 9000;
+  pointer-events: all;
+  cursor: pointer;  /* fix applied */
+}
+
+/* Transparent cutout that sits above the overlay, revealing the target */
+#guide-spotlight {
+  position: absolute;
+  z-index: 9010;
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+  display: none;
+}
+
+/* Tooltip card */
+#guide-tooltip {
+  position: fixed;
+  z-index: 9020;
+  width: 320px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 20px;
+  pointer-events: all;
+}
+
+#guide-tooltip.guide-tooltip-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#guide-tooltip.guide-tooltip-mobile {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  transform: none;
+  top: auto;
+}
+
+
+---- features.js (the two places that fire guides) ----
+
+// PLACE 1: inside window.switchModule wrapper
+window.switchModule = function(moduleName) {
+  _origSwitchModule(moduleName);
+  const hash = "#" + moduleName;
+  if (location.hash !== hash) history.pushState(null, "", hash);
+  localStorage.setItem("do-do-last-module", moduleName);
+
+  // Guard: skip if a guide is already running
+  if (window.GuideEngine && !window.GuideEngine.isActive()) {
+    const G = window.GuideEngine;
+    if (moduleName === "calendar" && !G.isDone("setup-schedule"))
+      setTimeout(() => G.show("setup-schedule"), 400);
+    if (moduleName === "shopping" && !G.isDone("shopping"))
+      setTimeout(() => G.show("shopping"), 400);
+    if (moduleName === "settings" && G.isDone("setup-children") && !G.isDone("calendar-connect"))
+      setTimeout(() => G.show("calendar-connect"), 400);
+  }
+};
+
+// PLACE 2: inside renderSettingsFeature(), called every time settings renders
+// (setup-children guide fires here instead of from switchModule)
+if (window.GuideEngine && !window.GuideEngine.isDone("setup-children") && !window.GuideEngine.isActive()) {
+  setTimeout(() => window.GuideEngine.show("setup-children"), 600);
+}
+
+
+---- app.js (auth section, current state with fixes applied) ----
+
+let currentAuthSession = null;
+let _appFirstLoad = true; // module restoration only runs on the first showApp call
+
+// ... (handleAuthCallback)
+
+async function handleAuthCallback() {
+  // ...
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if (code) {
+    const { error } = await supabaseClient.auth.exchangeCodeForSession(code);
+    window.history.replaceState({}, "", window.location.pathname);
+    if (error) { showAuthScreen(); showAuthError(error.message); return; }
+  }
+
+  const { data: { session }, error } = await supabaseClient.auth.getSession();
+  if (error) { showAuthScreen(); showAuthError(error.message); return; }
+  if (session) {
+    showApp(session);
+  } else {
+    showAuthScreen();
+  }
+
+  supabaseClient.auth.onAuthStateChange((event, nextSession) => {
+    if (nextSession) {
+      if (pendingInviteToken) {
+        finishInviteAcceptance(nextSession);
+      } else {
+        showApp(nextSession);
+      }
+    } else {
+      // FIX: only sign out on explicit SIGNED_OUT - previously fired on
+      // INITIAL_SESSION/TOKEN_REFRESHED with null session during PKCE exchange
+      // which sent Google OAuth users back to login screen
+      if (event === "SIGNED_OUT") {
+        showAuthScreen();
+      }
+    }
+  });
+}
+
+function showApp(session) {
+  if (!session && !currentAuthSession) { showAuthScreen(); return; }
+  currentAuthSession = session || currentAuthSession;
+
+  if (!_isEmailVerified(currentAuthSession)) { showVerifyEmailScreen(currentAuthSession); return; }
+
+  clearAuthError();
+  document.body.classList.remove("auth-locked");
+  initializeOnboarding();
+
+  // FIX: only restore module on first load - token refresh was interrupting navigation
+  if (_appFirstLoad) {
+    _appFirstLoad = false;
+    setTimeout(() => {
+      const validModules = ["board", "calendar", "shopping", "expenses", "settings"];
+      const fromHash = location.hash.replace("#", "").toLowerCase();
+      const fromStorage = localStorage.getItem("do-do-last-module");
+      const target = validModules.includes(fromHash) ? fromHash : fromStorage;
+      if (target && validModules.includes(target)) window.switchModule?.(target);
+    }, 0);
+  }
+
+  if (window.initSupabaseData) window.initSupabaseData(currentAuthSession).catch(() => {});
+  initNotifications();
+  if (window.initGoogleCalendar) window.initGoogleCalendar(currentAuthSession).catch(() => {});
+}
+
+
+==============================================================
+QUESTIONS FOR THE AI
+==============================================================
+
+1. The overlay click-to-dismiss fix was applied but buttons STILL don't work.
+   What is wrong with the fix? Look carefully at:
+   - _ensureDOM() has a guard: "if (_overlay && _tooltip) return" - so it only
+     runs once. But when does it first run? If _ensureDOM runs BEFORE the guide
+     fires (e.g. called from _renderStep), the listener is attached. But is there
+     a scenario where _overlay is already set from a previous guide run but the
+     listener was already attached and is now firing dismiss for a different reason?
+   - The overlay click handler calls dismiss() which calls _finish(). Does _finish()
+     reliably hide the overlay? Check: "_overlay.hidden = true" - yes it does.
+   - Could the click event on the overlay be prevented from bubbling or reaching
+     the listener by something else?
+
+2. The guide fires from a setTimeout. When the setTimeout fires, window.GuideEngine
+   might not be ready, OR isDone() might not be returning the right value.
+   Could there be a race condition where isDone("setup-children") flickers?
+
+3. Is there a simpler fix - like just removing the guide triggers from
+   window.switchModule entirely and only firing them from explicit user actions?
+   The auto-fire behavior is clearly causing more harm than good for this user.
+
+4. For the Google login bug: is there anything wrong with only calling showAuthScreen()
+   on event === "SIGNED_OUT"? Could a legitimate sign-out be missed?
+
+Please provide exact code changes that fix these issues permanently.

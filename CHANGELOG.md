@@ -2,6 +2,14 @@
 
 ---
 
+## v0.30.1 - 2026-06-26 - Bug fixes
+
+- **Settings crash now visible** - wrapped `renderSettingsFeature()` in a try-catch so any crash shows an error message instead of a blank white screen.
+- **Cards no longer disappear after save** - saving a card now clears any active board filter (Needs response, Waiting, etc.) so the saved card is always visible immediately after saving.
+- **Reminders button now shows reminders view** - the "Reminders (N)" counter in the toolbar no longer opens Settings. It now filters the board to show only cards that have an in-app reminder set.
+
+---
+
 ## v0.30.0 - 2026-06-26 - Kid Access
 
 - **Kid Access feature** - each child gets a private link + 4-digit PIN. Child opens the link in any browser, enters the PIN, and sees their upcoming cards and a note from parents.

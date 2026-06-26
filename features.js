@@ -717,7 +717,12 @@ function renderFeature(moduleName, data) {
   }
 
   if (moduleName === "settings") {
-    renderSettingsFeature();
+    try {
+      renderSettingsFeature();
+    } catch (err) {
+      console.error("Settings render error:", err);
+      featureModule.innerHTML = `<div style="padding:32px;color:var(--muted);font-size:14px;">Settings failed to load. Please refresh the page.<br><code style="font-size:11px;opacity:.6;">${err?.message || ""}</code></div>`;
+    }
     return;
   }
 

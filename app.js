@@ -1,4 +1,4 @@
-const APP_VERSION = "0.30.0";
+const APP_VERSION = "0.30.1";
 const APP_VERSION_DATE = "2026-06-26";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -479,6 +479,7 @@ const elements = {
   waitingShortcut: document.querySelector("#waitingShortcut"),
   todoShortcut: document.querySelector("#todoShortcut"),
   expensesShortcut: document.querySelector("#expensesShortcut"),
+  remindersShortcut: document.querySelector("#remindersShortcut"),
   summaryAddButton: document.querySelector("#summaryAddButton"),
   newCardButton: document.querySelector("#newCardButton"),
   mobileNewCardButton: document.querySelector("#mobileNewCardButton"),
@@ -731,6 +732,7 @@ function bindEvents() {
   elements.needsShortcut?.addEventListener("click", () => applyActionFilter("needs", "Needs response"));
   elements.waitingShortcut?.addEventListener("click", () => applyActionFilter("waiting", "Waiting"));
   elements.todoShortcut?.addEventListener("click", () => applyActionFilter("todo", "To do"));
+  elements.remindersShortcut?.addEventListener("click", () => applyActionFilter("reminder", "Reminders"));
   document.addEventListener("click", (event) => {
     const personButton = event.target.closest("[data-person-filter]");
     if (personButton) {
@@ -3939,6 +3941,15 @@ async function saveCard(event) {
   persist();
   if (!saveCard._silent) elements.cardDialog.close();
   showToast(existing ? "Do updated" : buildCreateToast(card));
+  // Clear any active filter so the saved card remains visible
+  if (state.actionFilter || state.tagFilter || state.personFilter) {
+    state.actionFilter = "";
+    state.tagFilter = "";
+    state.personFilter = "";
+    state.search = "";
+    elements.searchInput.value = "";
+    elements.topics?.forEach((item) => item.classList.toggle("active", item.dataset.topic === "All"));
+  }
   render();
   // Re-render calendar if it's the active module (so new Dos with due dates appear immediately)
   if (!featureModule.classList.contains("hidden") && typeof window.syncCalendarEventsFromCards === "function") {
@@ -4507,7 +4518,8 @@ function filteredCards() {
       || (state.actionFilter === "next" && (["Waiting", "To Do"].includes(card.status) || !card.acknowledged))
       || (state.actionFilter === "needs" && !card.acknowledged)
       || (state.actionFilter === "waiting" && card.status === "Waiting")
-      || (state.actionFilter === "todo" && card.status === "To Do");
+      || (state.actionFilter === "todo" && card.status === "To Do")
+      || (state.actionFilter === "reminder" && card.reminder);
     const personMatch = !state.personFilter || peopleForCard(card).people.some((person) => person.toLowerCase() === state.personFilter.toLowerCase());
     const searchTerm = state.tagFilter || state.actionFilter || state.personFilter ? "" : state.search;
     return topicMatch && tagMatch && actionMatch && personMatch && (!searchTerm || text.includes(searchTerm));
