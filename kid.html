@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Do-Do</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" href="assets/dodo-icon.png" type="image/png" />
+  <script>(() => { try { const p = localStorage.getItem("do-do-theme-v1") || "system"; const dark = p === "dark" || (p === "system" && window.matchMedia?.("(prefers-color-scheme: dark)").matches); document.documentElement.dataset.theme = dark ? "dark" : "light"; } catch { document.documentElement.dataset.theme = "light"; } })();</script>
+  <style>
+    :root {
+      --ink: #121212; --muted: #666666;
+      --surface-page: #f9f9f9; --surface-card: #ffffff; --surface-input: #ffffff;
+      --line: rgba(0,0,0,0.08); --accent: #171918; --accent-weak: #f3f3f3;
+      --radius-sm: 8px; --radius-md: 16px; --radius-full: 999px;
+      --font: "Manrope", system-ui, sans-serif;
+    }
+    html[data-theme="dark"] {
+      --ink: #f4f7f6; --muted: #aeb8b5;
+      --surface-page: #171d1c; --surface-card: #202927; --surface-input: #27312f;
+      --line: rgba(236,248,245,0.1); --accent: #65d6c6; --accent-weak: rgba(101,214,198,0.18);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: var(--font); background: var(--surface-page); color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+    .screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; }
+    .screen.active { display: flex; }
+
+    /* PIN */
+    .pin-wrap { width: 100%; max-width: 320px; text-align: center; }
+    .pin-logo { width: 48px; height: 48px; border-radius: 12px; margin: 0 auto 18px; }
+    .pin-heading { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+    .pin-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+    .pin-dots { display: flex; gap: 14px; justify-content: center; margin-bottom: 24px; }
+    .pin-dot { width: 15px; height: 15px; border-radius: 50%; background: var(--line); border: 2px solid var(--line); transition: background .12s; }
+    .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+    .pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .pin-key { background: var(--surface-card); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 16px 0; font-size: 22px; font-weight: 700; font-family: var(--font); color: var(--ink); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: background .08s; }
+    .pin-key:active { background: var(--accent-weak); }
+    .pin-delete { font-size: 18px; color: var(--muted); }
+    .pin-error { font-size: 13px; color: #ef4444; margin-top: 14px; min-height: 18px; }
+
+    /* Dashboard */
+    .dash { width: 100%; max-width: 480px; padding: 16px 0 100px; }
+    .dash-header { padding: 12px 16px 10px; display: flex; align-items: center; gap: 12px; }
+    .dash-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-weak); display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; color: var(--accent); flex-shrink: 0; }
+    .dash-name { font-size: 18px; font-weight: 800; }
+    .dash-date { font-size: 13px; color: var(--muted); }
+
+    .dash-note { margin: 4px 16px 12px; background: var(--accent-weak); border-radius: var(--radius-md); padding: 12px 14px; border-left: 3px solid var(--accent); }
+    .dash-note-label { font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+    .dash-note-text { font-size: 14px; line-height: 1.5; }
+
+    .dash-section { padding: 0 16px; margin-bottom: 16px; }
+    .dash-section-title { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+
+    .kid-card { background: var(--surface-card); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 11px 13px; margin-bottom: 7px; display: flex; align-items: flex-start; gap: 10px; }
+    .kid-card-icon { width: 30px; height: 30px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--accent-weak); }
+    .kid-card-icon svg { width: 15px; height: 15px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+    .kid-card-body { flex: 1; min-width: 0; }
+    .kid-card-title { font-size: 14px; font-weight: 600; }
+    .kid-card-due { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .kid-card-mine { font-size: 10px; font-weight: 700; color: #b45309; background: rgba(245,158,11,0.12); border-radius: var(--radius-full); padding: 2px 7px; margin-left: auto; flex-shrink: 0; align-self: center; }
+    .empty-note { text-align: center; padding: 20px 0; color: var(--muted); font-size: 14px; }
+
+    .fab { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: 18px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-full); padding: 13px 20px; font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.18); display: flex; align-items: center; gap: 7px; z-index: 100; -webkit-tap-highlight-color: transparent; }
+    .fab svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2.2; }
+    html[data-theme="dark"] .fab { color: #171918; }
+
+    /* New card form */
+    .form-wrap { width: 100%; max-width: 480px; }
+    .form-back-row { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+    .form-back { background: none; border: none; cursor: pointer; padding: 4px; color: var(--ink); }
+    .form-back svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .form-title { font-size: 20px; font-weight: 800; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
+    .field input, .field textarea { width: 100%; padding: 11px 13px; background: var(--surface-card); border: 1.5px solid var(--line); border-radius: var(--radius-sm); font-size: 15px; font-family: var(--font); color: var(--ink); outline: none; transition: border-color .12s; }
+    .field input:focus, .field textarea:focus { border-color: var(--accent); }
+    .field textarea { min-height: 80px; resize: vertical; }
+    .submit-btn { width: 100%; padding: 13px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-md); font-size: 16px; font-weight: 700; font-family: var(--font); cursor: pointer; margin-top: 6px; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    html[data-theme="dark"] .submit-btn { color: #171918; }
+
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: #1a1a1a; color: #fff; padding: 9px 16px; border-radius: var(--radius-full); font-size: 13px; font-weight: 600; opacity: 0; transition: transform .22s, opacity .22s; z-index: 999; pointer-events: none; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 50vh; color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<div class="screen" id="pinScreen">
+  <div class="pin-wrap">
+    <img class="pin-logo" src="assets/dodo-icon.png" alt="Do-Do" />
+    <h1 class="pin-heading">Enter your PIN</h1>
+    <p class="pin-sub">4 digits to see your board</p>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-keypad" id="pinKeypad">
+      <button class="pin-key" data-d="1">1</button>
+      <button class="pin-key" data-d="2">2</button>
+      <button class="pin-key" data-d="3">3</button>
+      <button class="pin-key" data-d="4">4</button>
+      <button class="pin-key" data-d="5">5</button>
+      <button class="pin-key" data-d="6">6</button>
+      <button class="pin-key" data-d="7">7</button>
+      <button class="pin-key" data-d="8">8</button>
+      <button class="pin-key" data-d="9">9</button>
+      <button class="pin-key" style="visibility:hidden"></button>
+      <button class="pin-key" data-d="0">0</button>
+      <button class="pin-key pin-delete" id="pinDel">&#x232B;</button>
+    </div>
+    <p class="pin-error" id="pinErr"></p>
+  </div>
+</div>
+
+<div class="screen" id="dashScreen">
+  <div class="dash" id="dashContent"><div class="loading">Loading...</div></div>
+  <button class="fab" id="newCardFab">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    I need something
+  </button>
+</div>
+
+<div class="screen" id="formScreen">
+  <div class="form-wrap">
+    <div class="form-back-row">
+      <button class="form-back" id="formBack" aria-label="Back">
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <span class="form-title">I need something</span>
+    </div>
+    <form id="newCardForm">
+      <div class="field">
+        <label for="cardTitle">What do you need?</label>
+        <input type="text" id="cardTitle" placeholder="e.g. paper, scissors and a pen" autocomplete="off" required maxlength="200" />
+      </div>
+      <div class="field">
+        <label for="cardDue">When do you need it?</label>
+        <input type="date" id="cardDue" />
+      </div>
+      <div class="field">
+        <label for="cardDetails">Extra details? (optional)</label>
+        <textarea id="cardDetails" placeholder="e.g. for the art project on Friday" maxlength="1000"></textarea>
+      </div>
+      <button type="submit" class="submit-btn" id="cardSubmit">Send to parents</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="kid.js?v=20260626"></script>
+</body>
+</html>

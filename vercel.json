@@ -15,7 +15,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-PCup+s1rOxWuVK6MzLyHC2kbgZzYxaHzyKe7fWuNhSk=' https://cdn.jsdelivr.net https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://m.stripe.network https://js.stripe.com https://www.googleapis.com https://oauth2.googleapis.com; frame-src https://js.stripe.com https://hooks.stripe.com; worker-src 'self'; base-uri 'self'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'sha256-PCup+s1rOxWuVK6MzLyHC2kbgZzYxaHzyKe7fWuNhSk=' 'sha256-+X/9KNEYml/D1Llfwr6jmt1Tj+9fLICeSMO00gUuyfg=' https://cdn.jsdelivr.net https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://m.stripe.network https://js.stripe.com https://www.googleapis.com https://oauth2.googleapis.com; frame-src https://js.stripe.com https://hooks.stripe.com; worker-src 'self'; base-uri 'self'; frame-ancestors 'none'"
         },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },

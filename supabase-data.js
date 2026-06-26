@@ -130,6 +130,9 @@ function dbRowToCard(row) {
     // SEG-11.4: schedule cascade
     schedule_id: row.schedule_id || null,
     schedule_day_offset: row.schedule_day_offset != null ? row.schedule_day_offset : null,
+    // Kid Access
+    createdByKid: !!(meta.created_by_kid),
+    kidName: meta.kid_name || null,
   };
 }
 
@@ -1573,6 +1576,78 @@ async function loadExpenseLedger(cardId) {
   return data || [];
 }
 
+// ─── Kid Access ───────────────────────────────────────────────────────────────
+
+async function saveKidAccess(childName, pin, note) {
+  if (!currentUserId || !window.supabaseClient) throw new Error("not_signed_in");
+
+  const { data: profile } = await window.supabaseClient
+    .from("profiles")
+    .select("family_id")
+    .eq("id", currentUserId)
+    .maybeSingle();
+
+  if (!profile?.family_id) throw new Error("no_family");
+
+  const { data: child } = await window.supabaseClient
+    .from("children")
+    .select("id, kid_token")
+    .eq("family_id", profile.family_id)
+    .eq("name", childName)
+    .maybeSingle();
+
+  if (!child) throw new Error("child_not_found");
+
+  const pinBuf  = new TextEncoder().encode(pin);
+  const saltBuf = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = Array.from(saltBuf).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  const keyMat = await crypto.subtle.importKey("raw", pinBuf, "PBKDF2", false, ["deriveBits"]);
+  const hashBuf = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: saltBuf, iterations: 100000, hash: "SHA-256" },
+    keyMat, 256
+  );
+  const hashHex = Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  const token = child.kid_token || crypto.randomUUID();
+
+  const { error } = await window.supabaseClient
+    .from("children")
+    .update({
+      kid_token: token,
+      kid_pin_hash: hashHex,
+      kid_pin_salt: saltHex,
+      kid_pin_attempts: 0,
+      kid_pin_locked_until: null,
+      kid_note: note || null,
+    })
+    .eq("id", child.id);
+
+  if (error) throw error;
+  return { ok: true, token };
+}
+
+async function loadKidAccess(childName) {
+  if (!currentUserId || !window.supabaseClient) return null;
+
+  const { data: profile } = await window.supabaseClient
+    .from("profiles")
+    .select("family_id")
+    .eq("id", currentUserId)
+    .maybeSingle();
+
+  if (!profile?.family_id) return null;
+
+  const { data: child } = await window.supabaseClient
+    .from("children")
+    .select("kid_token, kid_note")
+    .eq("family_id", profile.family_id)
+    .eq("name", childName)
+    .maybeSingle();
+
+  return child || null;
+}
+
 // ─── Expose globals ───────────────────────────────────────────────────────────
 
 window.initSupabaseData = initSupabaseData;
@@ -1598,6 +1673,8 @@ window.appendExpenseLedger = appendExpenseLedger;
 window.loadExpenseLedger = loadExpenseLedger;
 window.getCurrentPairId = () => currentPairId;
 window.getCurrentUserId = () => currentUserId;
+window.saveKidAccess = saveKidAccess;
+window.loadKidAccess = loadKidAccess;
 window.loadMessages = loadMessages;
 window.loadShoppingItems = loadShoppingItems;
 window.addShoppingItem = addShoppingItem;

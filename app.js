@@ -1,4 +1,4 @@
-const APP_VERSION = "0.29.2";
+const APP_VERSION = "0.30.0";
 const APP_VERSION_DATE = "2026-06-26";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -1904,6 +1904,7 @@ function renderUnifiedCard(card, options = {}) {
       <div class="card-state-row">
         <span class="card-date-tag">${dateStr}</span>
         ${card.type === "Vaccine" ? `<span class="card-type-badge card-type-vaccine">💉 ${_t("card.vaccine_badge", "Vaccine")}</span>` : ""}
+        ${card.createdByKid ? `<span class="card-type-badge card-type-kid">From ${escapeHtml(card.kidName || "child")}</span>` : ""}
         ${statusLabel ? `<span class="card-status-label${isDone ? " card-status-done" : ""}">${statusLabel}</span>` : ""}
         ${card.amount ? `<span class="card-money-tag">${escapeHtml(card.amount)}</span>` : ""}
       </div>

@@ -2,6 +2,20 @@
 
 ---
 
+## v0.30.0 - 2026-06-26 - Kid Access
+
+- **Kid Access feature** - each child gets a private link + 4-digit PIN. Child opens the link in any browser, enters the PIN, and sees their upcoming cards and a note from parents.
+- **"I need something" card** - child can submit a request card that appears on the parent board, tagged "From [child name]".
+- **PIN security** - PBKDF2 (100k iterations, SHA-256) on the server side. 5 wrong attempts locks access for 10 minutes. Session token is HMAC-signed, valid 30 days.
+- **Settings panel** - new "Kid Access" section in Settings, before Pets. Shows setup status per child, "Set up" / "Copy link" / "Reset PIN" controls.
+- **Parent board badge** - cards created by a child show a yellow "From [name]" badge.
+- **No new serverless functions** - all server logic added to the existing `api/guest-view.js` (POST routes for kid-auth and kid-card, GET route for kid data).
+- **CSP-compatible** - kid.html uses a single inline theme script (hashed in CSP). All app logic is in external `kid.js`.
+- **Requires SQL migration** - run `ALTER TABLE children ADD COLUMN IF NOT EXISTS kid_token...` in Supabase before deploying.
+- Files changed: `api/guest-view.js`, `kid.html` (new), `kid.js` (new), `supabase-data.js`, `features.js`, `app.js`, `styles.css`, `vercel.json`.
+
+---
+
 ## v0.29.2 - 2026-06-26 - Architecture fixes (no new features)
 
 - **CSP hardened** - removed `unsafe-inline` from `script-src`. VAPID key and Stripe price IDs moved from inline `<script>` blocks in `index.html` to a new `config.js` file. Remaining theme-flash-prevention script covered by SHA-256 hash in CSP.

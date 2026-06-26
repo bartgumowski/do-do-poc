@@ -6675,6 +6675,30 @@ function renderSettingsFeature() {
         </div>
       </section>
 
+      <!-- Kid Access -->
+      <section class="feature-panel" id="kidAccessPanel">
+        <div class="feature-panel-header">
+          <h3>Kid Access</h3>
+        </div>
+        <p class="feature-note" style="font-size:13px;color:var(--muted);margin:0 0 14px;">
+          Give each child a private link and 4-digit PIN so they can see their schedule and send you a card.
+        </p>
+        <div id="kidAccessList">
+          ${children.length
+            ? children.map((c, i) => {
+                const cn = c.name || c;
+                return `<article class="feature-item" style="flex-direction:column;gap:8px;align-items:stretch;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <strong style="flex:1;">${escapeHtml(cn)}</strong>
+                    <button class="secondary-button" data-kid-setup="${i}" style="font-size:12px;padding:4px 10px;min-height:28px;">Set up</button>
+                  </div>
+                  <div id="kidStatus-${i}" style="font-size:12px;color:var(--muted);">Loading...</div>
+                </article>`;
+              }).join("")
+            : `<p class="feature-empty" style="font-size:13px;color:var(--muted);">Add a child above first.</p>`}
+        </div>
+      </section>
+
       <section class="feature-panel">
         <div class="feature-panel-header">
           <h3>${_st("settings.pets")}</h3>
@@ -7151,6 +7175,113 @@ function renderSettingsFeature() {
     const i = Number(btn.dataset.deleteCaregiver);
     btn.addEventListener("click", () => confirmDeleteCaregiver(i));
   });
+
+  // ── Kid Access ──────────────────────────────────────────────────────────────
+  (async () => {
+    const setup = window.getOnboardingState?.() || {};
+    const kids  = setup.children || [];
+    for (let i = 0; i < kids.length; i++) {
+      const cn = kids[i].name || kids[i];
+      const statusEl = featureModule.querySelector(`#kidStatus-${i}`);
+      if (!statusEl) continue;
+      try {
+        const d = await window.loadKidAccess?.(cn);
+        if (d?.kid_token) {
+          const link = `${location.origin}/kid?token=${d.kid_token}`;
+          statusEl.innerHTML =
+            `<span style="color:#22c55e;font-weight:600;">&#10003; Active</span>` +
+            `&nbsp;&nbsp;<button class="ghost-button" style="font-size:12px;padding:2px 6px;min-height:22px;" data-kid-copy="${escapeHtml(link)}">Copy link</button>` +
+            `&nbsp;<button class="ghost-button" style="font-size:12px;padding:2px 6px;min-height:22px;color:#ef4444;" data-kid-reset="${i}">Reset PIN</button>`;
+          statusEl.querySelector(`[data-kid-copy]`)?.addEventListener("click", async (e) => {
+            try { await navigator.clipboard.writeText(e.currentTarget.dataset.kidCopy); showFeatureToast("Link copied!"); }
+            catch { showFeatureToast(e.currentTarget.dataset.kidCopy); }
+          });
+          statusEl.querySelector(`[data-kid-reset]`)?.addEventListener("click", () => {
+            openKidSetupDialog(i, cn, featureModule);
+          });
+        } else {
+          statusEl.textContent = "Not set up yet";
+        }
+      } catch { statusEl.textContent = "Could not load"; }
+    }
+
+    featureModule.querySelectorAll("[data-kid-setup]").forEach((btn) => {
+      const i   = Number(btn.dataset.kidSetup);
+      const cn  = (kids[i]?.name || kids[i]);
+      btn.addEventListener("click", () => openKidSetupDialog(i, cn, featureModule));
+    });
+  })();
+}
+
+function openKidSetupDialog(index, childName, featureModuleRef) {
+  const dlg = document.createElement("dialog");
+  dlg.className = "card-dialog";
+  dlg.style.cssText = "max-width:360px;width:90%;padding:0;border:none;border-radius:20px;overflow:hidden;";
+  dlg.innerHTML = `
+    <div class="dialog-header" style="padding:16px 18px 12px;border-bottom:1px solid var(--line);">
+      <h2 style="font-size:16px;font-weight:800;margin:0;">Kid Access - ${escapeHtml(childName)}</h2>
+    </div>
+    <div style="padding:18px;">
+      <p style="font-size:13px;color:var(--muted);margin:0 0 14px;">Set a 4-digit PIN ${escapeHtml(childName)} will use to log in. Share the link with their device after saving.</p>
+      <label style="display:block;margin-bottom:5px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">PIN (4 digits)</label>
+      <input id="kdPin" type="password" inputmode="numeric" maxlength="4" pattern="\\d{4}" placeholder="e.g. 1234"
+        style="width:100%;padding:11px 13px;background:var(--surface-input);border:1.5px solid var(--line);border-radius:8px;font-size:20px;font-family:inherit;color:var(--ink);outline:none;letter-spacing:8px;text-align:center;margin-bottom:14px;" autocomplete="off" />
+      <label style="display:block;margin-bottom:5px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Note for ${escapeHtml(childName)} (optional)</label>
+      <textarea id="kdNote" placeholder="e.g. Bring PE kit Tuesday" maxlength="500"
+        style="width:100%;padding:10px 12px;background:var(--surface-input);border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;color:var(--ink);outline:none;min-height:68px;resize:vertical;"></textarea>
+      <p id="kdErr" style="font-size:12px;color:#ef4444;margin:8px 0 0;display:none;"></p>
+    </div>
+    <div style="padding:0 18px 18px;display:flex;gap:10px;">
+      <button id="kdCancel" class="ghost-button" style="flex:1;">Cancel</button>
+      <button id="kdSave" class="secondary-button" style="flex:2;font-weight:700;">Save and get link</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+
+  dlg.querySelector("#kdCancel").onclick = () => { dlg.close(); dlg.remove(); };
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) { dlg.close(); dlg.remove(); } });
+
+  window.loadKidAccess?.(childName).then((d) => {
+    if (d?.kid_note) dlg.querySelector("#kdNote").value = d.kid_note;
+  }).catch(() => {});
+
+  dlg.querySelector("#kdSave").addEventListener("click", async () => {
+    const pin = dlg.querySelector("#kdPin").value.trim();
+    const errEl = dlg.querySelector("#kdErr");
+    if (!/^\d{4}$/.test(pin)) {
+      errEl.textContent = "Enter exactly 4 digits.";
+      errEl.style.display = "";
+      return;
+    }
+    errEl.style.display = "none";
+    const saveBtn = dlg.querySelector("#kdSave");
+    saveBtn.disabled = true; saveBtn.textContent = "Saving...";
+    try {
+      const note = dlg.querySelector("#kdNote").value.trim() || null;
+      const result = await window.saveKidAccess?.(childName, pin, note);
+      if (!result?.ok) throw new Error("save failed");
+      const link = `${location.origin}/kid?token=${result.token}`;
+      try { await navigator.clipboard.writeText(link); } catch {}
+      dlg.close(); dlg.remove();
+      showFeatureToast("Saved! Link copied to clipboard.");
+      const statusEl = featureModuleRef?.querySelector(`#kidStatus-${index}`);
+      if (statusEl) {
+        statusEl.innerHTML =
+          `<span style="color:#22c55e;font-weight:600;">&#10003; Active</span>` +
+          `&nbsp;&nbsp;<button class="ghost-button" style="font-size:12px;padding:2px 6px;min-height:22px;" data-kid-copy="${escapeHtml(link)}">Copy link</button>`;
+        statusEl.querySelector(`[data-kid-copy]`)?.addEventListener("click", async (e) => {
+          try { await navigator.clipboard.writeText(e.currentTarget.dataset.kidCopy); showFeatureToast("Link copied!"); }
+          catch { showFeatureToast(e.currentTarget.dataset.kidCopy); }
+        });
+      }
+    } catch {
+      errEl.textContent = "Something went wrong. Try again.";
+      errEl.style.display = "";
+      saveBtn.disabled = false; saveBtn.textContent = "Save and get link";
+    }
+  });
+
+  dlg.querySelector("#kdPin").focus();
 }
 
 function escapeHtml(str) {
