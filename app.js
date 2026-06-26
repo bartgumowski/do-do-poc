@@ -1,4 +1,4 @@
-const APP_VERSION = "0.29.1";
+const APP_VERSION = "0.29.2";
 const APP_VERSION_DATE = "2026-06-26";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -619,11 +619,11 @@ function renderDailyTip() {
   const tipCard = document.getElementById("dailyTipCard");
   if (!tipCard) return;
 
-  const enabled = localStorage.getItem("do-do-tips-enabled") !== "false";
+  const enabled = storage.getItem("do-do-tips-enabled") !== "false";
   if (!enabled) { tipCard.classList.add("hidden"); return; }
 
   const today = new Date().toISOString().slice(0, 10);
-  if (localStorage.getItem("do-do-tip-dismissed-" + today) === "1") {
+  if (storage.getItem("do-do-tip-dismissed-" + today) === "1") {
     tipCard.classList.add("hidden");
     return;
   }
@@ -641,7 +641,7 @@ function renderDailyTip() {
   const newBtn = dismissBtn.cloneNode(true);
   dismissBtn.replaceWith(newBtn);
   newBtn.addEventListener("click", () => {
-    localStorage.setItem("do-do-tip-dismissed-" + today, "1");
+    storage.setItem("do-do-tip-dismissed-" + today, "1");
     tipCard.classList.add("hidden");
   });
 }
@@ -885,7 +885,7 @@ async function handleAuthCallback() {
     const refParams = new URLSearchParams(window.location.search);
     const refCode = refParams.get("ref");
     if (refCode && /^MED-[A-Za-z0-9]+$/.test(refCode)) {
-      localStorage.setItem("dodo_mediator_ref", refCode);
+      storage.setItem("dodo_mediator_ref", refCode);
       // Clean the ref param from URL without reloading
       const cleanUrl = new URL(window.location.href);
       cleanUrl.searchParams.delete("ref");
@@ -1357,7 +1357,7 @@ function showApp(session) {
     setTimeout(() => {
       const validModules = ["board", "calendar", "shopping", "expenses", "settings"];
       const fromHash = location.hash.replace("#", "").toLowerCase();
-      const fromStorage = localStorage.getItem("do-do-last-module");
+      const fromStorage = storage.getItem("do-do-last-module");
       const target = validModules.includes(fromHash) ? fromHash : fromStorage;
       if (target && validModules.includes(target)) window.switchModule?.(target);
     }, 0);
@@ -4816,11 +4816,11 @@ const SYNC_QUEUE_KEY = "do-do-sync-queue-v1";
 
 function _queueOfflineCard(card) {
   try {
-    const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "[]");
+    const queue = JSON.parse(storage.getItem(SYNC_QUEUE_KEY) || "[]");
     // Replace existing entry for same id or add new
     const updated = queue.filter((c) => c.id !== card.id);
     updated.push(card);
-    localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(updated));
+    storage.setItem(SYNC_QUEUE_KEY, JSON.stringify(updated));
     // Register background sync if supported
     navigator.serviceWorker?.ready.then((reg) => {
       reg.sync?.register("sync-cards").catch(() => {});
@@ -4834,7 +4834,7 @@ function _queueOfflineCard(card) {
 async function _flushSyncQueue() {
   if (!window.saveCardToSupabase) return;
   try {
-    const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "[]");
+    const queue = JSON.parse(storage.getItem(SYNC_QUEUE_KEY) || "[]");
     if (!queue.length) return;
     const synced = [];
     for (const card of queue) {
@@ -4847,12 +4847,12 @@ async function _flushSyncQueue() {
     }
     if (synced.length) {
       const remaining = queue.filter((c) => !synced.includes(c.id));
-      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(remaining));
+      storage.setItem(SYNC_QUEUE_KEY, JSON.stringify(remaining));
       if (remaining.length === 0) showToast("All offline Dos synced");
     }
   } catch {
     // Queue parse error - clear it
-    localStorage.removeItem(SYNC_QUEUE_KEY);
+    storage.removeItem(SYNC_QUEUE_KEY);
   }
 }
 
@@ -5318,7 +5318,7 @@ function requestNotificationPermission() {
   // Show contextual prompt once if not yet asked and not already granted/denied
   if (typeof Notification === "undefined") return;
   if (Notification.permission !== "default") return;
-  if (localStorage.getItem("notif-asked")) return;
+  if (storage.getItem("notif-asked")) return;
 
   const prompt = document.getElementById("notif-prompt");
   if (!prompt) return;
@@ -5329,7 +5329,7 @@ function requestNotificationPermission() {
 
     document.getElementById("notif-prompt-allow")?.addEventListener("click", async () => {
       prompt.classList.add("hidden");
-      localStorage.setItem("notif-asked", "1");
+      storage.setItem("notif-asked", "1");
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
         await subscribeToPush();
@@ -5338,7 +5338,7 @@ function requestNotificationPermission() {
 
     document.getElementById("notif-prompt-dismiss")?.addEventListener("click", () => {
       prompt.classList.add("hidden");
-      localStorage.setItem("notif-asked", "dismissed");
+      storage.setItem("notif-asked", "dismissed");
     }, { once: true });
   }, 1200);
 }
@@ -5347,7 +5347,7 @@ function stopReminderChecker() { /* no-op - handled server-side via cron */ }
 
 // ─── SEG-09: Cookie consent banner ───────────────────────────────────────────
 function initCookieBanner() {
-  if (localStorage.getItem("cookie-consent-v1")) return;
+  if (storage.getItem("cookie-consent-v1")) return;
   const banner = document.getElementById("cookieBanner");
   if (!banner) return;
   // Show after a short delay so it doesn't clash with auth/onboarding screens
@@ -5355,7 +5355,7 @@ function initCookieBanner() {
     banner.hidden = false;
     document.getElementById("cookieBannerOk")?.addEventListener("click", () => {
       banner.hidden = true;
-      localStorage.setItem("cookie-consent-v1", "1");
+      storage.setItem("cookie-consent-v1", "1");
     }, { once: true });
   }, 1500);
 }

@@ -1,4 +1,6 @@
 const today = new Date();
+// Use the app's storage abstraction (in-memory fallback when localStorage is blocked)
+const _ls = window.appStorage || localStorage;
 const shoppingStorageKey = "do-do-shopping-lists-v1";
 const shoppingCustomListsKey = "do-do-shopping-custom-lists-v1";
 const shoppingListMetaKey = "do-do-shopping-list-meta-v1";
@@ -47,7 +49,7 @@ const CUSTODY_COLORS = [
 
 function getCustodySchedule() {
   try {
-    const raw = localStorage.getItem("custody-schedule-v1");
+    const raw = _ls.getItem("custody-schedule-v1");
     const defaults = {
       enabled: true,
       type: "7-7",
@@ -63,7 +65,7 @@ function getCustodySchedule() {
 }
 
 function saveCustodySchedule(schedule) {
-  localStorage.setItem("custody-schedule-v1", JSON.stringify(schedule));
+  _ls.setItem("custody-schedule-v1", JSON.stringify(schedule));
   applyCustodyColors(schedule);
 }
 
@@ -229,7 +231,7 @@ const _panelVacState = {
   rangeEnd: null,
   viewYear: new Date().getFullYear(),
   viewMonth: new Date().getMonth(),
-  weekStart: parseInt(localStorage.getItem("do-do-week-start") || "1"),
+  weekStart: parseInt(_ls.getItem("do-do-week-start") || "1"),
   _editLoaded: false,
 };
 
@@ -667,7 +669,7 @@ window.switchModule = function(moduleName) {
   _origSwitchModule(moduleName);
   const hash = "#" + moduleName;
   if (location.hash !== hash) history.pushState(null, "", hash);
-  localStorage.setItem("do-do-last-module", moduleName);
+  _ls.setItem("do-do-last-module", moduleName);
 
   // SEG-21: fire contextual guides on first visit to each module
   // Guard: skip if a guide is already running (prevents guide-internal navigation from resetting the guide)
@@ -785,10 +787,10 @@ function renderFeature(moduleName, data) {
 // ─── Divorced mode helpers ────────────────────────────────────────────────────
 
 function isDivorced() {
-  return localStorage.getItem("do-do-divorced-v1") === "true";
+  return _ls.getItem("do-do-divorced-v1") === "true";
 }
 function setDivorced(val) {
-  localStorage.setItem("do-do-divorced-v1", String(Boolean(val)));
+  _ls.setItem("do-do-divorced-v1", String(Boolean(val)));
 }
 
 // ─── Parenting schedule dialog - full month editor ────────────────────────────
@@ -835,7 +837,7 @@ function openCustodyScheduleDialog() {
 
   function buildMonthCalHTML() {
     const { viewYear, viewMonth, selectedDays } = dlgState;
-    const ws = parseInt(localStorage.getItem("do-do-week-start") || "1");
+    const ws = parseInt(_ls.getItem("do-do-week-start") || "1");
     const _loc1 = _getDateLocale();
     const headers = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(2000, 0, 2 + (i + ws) % 7);
@@ -1134,7 +1136,7 @@ function openCustodyScheduleDialog() {
 
         const action = btn.dataset.propagate;
         if (action === "this-week-all") {
-          const ws = parseInt(localStorage.getItem("do-do-week-start") || "1");
+          const ws = parseInt(_ls.getItem("do-do-week-start") || "1");
           const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(new Date(), ws), i));
           propagateWeekSchedule(weekDays, dlgState.working);
           dlgState.working = { ...dlgState.working, overrides: { ...(getCustodySchedule().overrides || {}) } };
@@ -1231,7 +1233,7 @@ function getActiveVacation(date) {
 function getVacationOwnerForDate(vac, date) {
   if (vac.owner === "mine" || vac.owner === "co") return vac.owner;
   // Alternating weeks - snap to week boundaries using the stored weekStart preference
-  const weekStartDay = parseInt(localStorage.getItem("do-do-week-start") || "1");
+  const weekStartDay = parseInt(_ls.getItem("do-do-week-start") || "1");
   const vacStart = new Date(vac.startDate + "T00:00:00");
   const weekAnchor = startOfWeek(vacStart, weekStartDay);
   const dayDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -1967,7 +1969,7 @@ function bindAutomationSettings() {
   // Daily tips toggle
   const dailyTipsToggle = featureModule.querySelector("#dailyTipsToggle");
   dailyTipsToggle?.addEventListener("change", () => {
-    localStorage.setItem("do-do-tips-enabled", dailyTipsToggle.checked ? "true" : "false");
+    _ls.setItem("do-do-tips-enabled", dailyTipsToggle.checked ? "true" : "false");
     if (typeof window.renderDailyTip === "function") window.renderDailyTip();
     showFeatureToast(window.t?.("toast.updated") ?? "Updated");
   });
@@ -3128,7 +3130,7 @@ async function openSettlementModal({ expenseCards, balance, balanceAbs, coparent
       </div>`;
   }).join("");
 
-  const storedPhone = localStorage.getItem("dodo-blik-phone") || "";
+  const storedPhone = _ls.getItem("dodo-blik-phone") || "";
 
   function buildMessage(phone) {
     const blikLine = phone
@@ -3232,7 +3234,7 @@ async function openSettlementModal({ expenseCards, balance, balanceAbs, coparent
 
   dialog.querySelector("#sdlgBlikPhone").addEventListener("input", (e) => {
     const phone = e.target.value.trim();
-    localStorage.setItem("dodo-blik-phone", phone);
+    _ls.setItem("dodo-blik-phone", phone);
     dialog.querySelector("#sdlgMessage").value = buildMessage(phone);
   });
 
@@ -3473,7 +3475,7 @@ function _renderSchedulePanelHTML() {
   }
 
   // Month calendar
-  const ws = parseInt(localStorage.getItem("do-do-week-start") || "1");
+  const ws = parseInt(_ls.getItem("do-do-week-start") || "1");
   const _loc3 = _getDateLocale();
   const headers = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(2000, 0, 2 + (i + ws) % 7);
@@ -3900,7 +3902,7 @@ function renderCalendarFeature(data) {
         </div>
         ${calendarState.rightPanel === "agenda" ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           ${(() => {
-            const _spt = localStorage.getItem("do-do-show-personal-titles") === "true";
+            const _spt = _ls.getItem("do-do-show-personal-titles") === "true";
             return `<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;" title="Show titles from your personal calendar">
               <input type="checkbox" id="showPersonalTitlesToggle" ${_spt ? "checked" : ""} style="margin:0;cursor:pointer;" />
               <span>Moje tytu&#322;y</span>
@@ -3985,7 +3987,7 @@ function renderCalendarFeature(data) {
 
   // Personal calendar title toggle
   featureModule.querySelector("#showPersonalTitlesToggle")?.addEventListener("change", (e) => {
-    localStorage.setItem("do-do-show-personal-titles", e.target.checked ? "true" : "false");
+    _ls.setItem("do-do-show-personal-titles", e.target.checked ? "true" : "false");
     renderCalendarFeature(data);
   });
 
@@ -4308,7 +4310,7 @@ function renderCalendarFeature(data) {
       saveCustodySchedule(sp.working);
       const action = btn.dataset.spPropagate;
       if (action === "this-week-all") {
-        const ws = parseInt(localStorage.getItem("do-do-week-start") || "1");
+        const ws = parseInt(_ls.getItem("do-do-week-start") || "1");
         const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(new Date(), ws), i));
         propagateWeekSchedule(weekDays, sp.working);
         sp.working = { ...sp.working, overrides: { ...(getCustodySchedule().overrides || {}) } };
@@ -4425,7 +4427,7 @@ function renderCalendarFeature(data) {
 
   featureModule.querySelector("#vpWeekStartDay")?.addEventListener("change", (e) => {
     vp.weekStart = parseInt(e.target.value);
-    localStorage.setItem("do-do-week-start", e.target.value);
+    _ls.setItem("do-do-week-start", e.target.value);
   });
 
   featureModule.querySelectorAll("[data-vp-edit]").forEach((btn) => {
@@ -5035,7 +5037,7 @@ function openVacationsDialog(editId = null) {
     rangeEnd: null,
     viewYear: new Date().getFullYear(),
     viewMonth: new Date().getMonth(),
-    weekStart: parseInt(localStorage.getItem("do-do-week-start") || "1"),
+    weekStart: parseInt(_ls.getItem("do-do-week-start") || "1"),
     _editLoaded: false,
     formMode: "vacation",  // "vacation" | "holiday"
   };
@@ -5235,7 +5237,7 @@ function openVacationsDialog(editId = null) {
 
     dialog.querySelector("#vacWeekStartDay")?.addEventListener("change", (e) => {
       vState.weekStart = parseInt(e.target.value);
-      localStorage.setItem("do-do-week-start", e.target.value);
+      _ls.setItem("do-do-week-start", e.target.value);
     });
 
     dialog.querySelectorAll("[data-vac-edit]").forEach((btn) => {
@@ -5317,7 +5319,7 @@ function _buildVacRangeCalHTML(vState, vacations) {
   const monthNames = Array.from({ length: 12 }, (_, i) =>
     new Date(2000, i, 1).toLocaleDateString(_loc, { month: "long" })
   );
-  const weekStart = parseInt(localStorage.getItem("do-do-week-start") || "1");
+  const weekStart = parseInt(_ls.getItem("do-do-week-start") || "1");
   const headerLetters = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(2000, 0, 2 + (i + weekStart) % 7); // Jan 2 2000 is Sunday
     return d.toLocaleDateString(_loc, { weekday: "narrow" });
@@ -5405,7 +5407,7 @@ function _buildCrSingleDateCalHTML(state) {
   const monthNames = Array.from({ length: 12 }, (_, i) =>
     new Date(2000, i, 1).toLocaleDateString(_loc, { month: "long" })
   );
-  const weekStart = parseInt(localStorage.getItem("do-do-week-start") || "1");
+  const weekStart = parseInt(_ls.getItem("do-do-week-start") || "1");
   const headerLetters = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(2000, 0, 2 + (i + weekStart) % 7);
     return d.toLocaleDateString(_loc, { weekday: "narrow" });
@@ -5705,7 +5707,7 @@ function buildCalendarEvents(baseDate) {
   // Merge Google Calendar events (own + co-parent + Apple CalDAV)
   // Work calendars are ALWAYS shown as busy - titles never imported.
   // Personal calendar: default busy; user can toggle "Show my titles" in the calendar view.
-  const _showPersonalTitles = localStorage.getItem("do-do-show-personal-titles") === "true";
+  const _showPersonalTitles = _ls.getItem("do-do-show-personal-titles") === "true";
   const gcalEvents = (window.getGoogleCalendarEvents?.() || []).map((item) => {
     const date = new Date(item.start);
     // Work + co-parent work + Apple work = always busy, no exceptions
@@ -5912,12 +5914,12 @@ function addDays(date, days) {
 }
 
 function startOfWeek(date, weekStartDay) {
-  const wsd = weekStartDay ?? parseInt(localStorage.getItem("do-do-week-start") || "1");
+  const wsd = weekStartDay ?? parseInt(_ls.getItem("do-do-week-start") || "1");
   return addDays(date, -((date.getDay() - wsd + 7) % 7));
 }
 
 function _getDateLocale() {
-  const lang = window.getCurrentLang?.() || localStorage.getItem("do-do-lang") || (navigator.language || "en").split("-")[0];
+  const lang = window.getCurrentLang?.() || _ls.getItem("do-do-lang") || (navigator.language || "en").split("-")[0];
   return lang === "pl" ? "pl-PL" : lang === "de" ? "de-DE" : "en-US";
 }
 
@@ -6094,7 +6096,7 @@ function renderSpecialPanel(moduleName, part = "all") {
               <strong>${window.t?.("tip.settings.label") ?? "Daily parenting tips"}</strong>
               <em>${window.t?.("tip.settings.desc") ?? "A small daily reminder on the board"}</em>
             </span>
-            <input type="checkbox" id="dailyTipsToggle" ${localStorage.getItem("do-do-tips-enabled") !== "false" ? "checked" : ""} />
+            <input type="checkbox" id="dailyTipsToggle" ${_ls.getItem("do-do-tips-enabled") !== "false" ? "checked" : ""} />
           </label>
         </div>
       </section>

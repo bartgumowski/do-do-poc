@@ -4,6 +4,23 @@
 
 const { requireUser } = require("./_auth");
 
+// In-memory rate limit: 20 AI calls per user per hour within a hot function instance.
+// Resets on cold start but blocks burst abuse effectively.
+const _rateLimitMap = new Map();
+function _checkRateLimit(userId) {
+  const now = Date.now();
+  const HOUR = 60 * 60 * 1000;
+  const LIMIT = 20;
+  const entry = _rateLimitMap.get(userId);
+  if (!entry || now - entry.windowStart > HOUR) {
+    _rateLimitMap.set(userId, { count: 1, windowStart: now });
+    return true;
+  }
+  if (entry.count >= LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -12,6 +29,10 @@ module.exports = async function handler(req, res) {
 
   const user = await requireUser(req, res);
   if (!user) return;
+
+  if (!_checkRateLimit(user.id)) {
+    return res.status(429).json({ error: "Too many requests. Try again later." });
+  }
 
   const { action, ...params } = req.body || {};
 

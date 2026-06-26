@@ -2,6 +2,17 @@
 
 ---
 
+## v0.29.2 - 2026-06-26 - Architecture fixes (no new features)
+
+- **CSP hardened** - removed `unsafe-inline` from `script-src`. VAPID key and Stripe price IDs moved from inline `<script>` blocks in `index.html` to a new `config.js` file. Remaining theme-flash-prevention script covered by SHA-256 hash in CSP.
+- **AI rate limiting** - `/api/ai.js` now enforces a max of 20 calls per user per hour (in-memory, resets on cold start). Returns HTTP 429 when exceeded.
+- **ESM/CJS fix in remind.js** - `export default` changed to `module.exports =`, matching all other API functions. Previous mismatch could cause silent handler failures.
+- **localStorage abstraction** - all direct `localStorage.` calls in `app.js` (sync queue, tips, notifications, cookie banner) now go through the `storage` abstraction that falls back to an in-memory Map if localStorage is blocked (iOS private mode, enterprise security). Same fix in `features.js` via `_ls` helper (25 call sites).
+- **Cache busters unified** - `styles.css` and all JS files now use `?v=20260626-fixes`.
+- **Supabase bundle documented** - `supabase.js` now has a version comment explaining it is manually vendored and how to update it.
+
+---
+
 ## v0.29.1 - 2026-06-26 - Fix crash: DAILY_TIPS Temporal Dead Zone
 
 - **Root cause of v0.29.0 crash fixed** - `render()` is called synchronously at line 649 during script init. `DAILY_TIPS` was declared with `const` at line 1599, after that call, causing a JavaScript Temporal Dead Zone ReferenceError that crashed the entire app (cards, settings, calendar all broken). Fix: moved `DAILY_TIPS` and `renderDailyTip()` to before the first `render()` call.

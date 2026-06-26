@@ -28,7 +28,8 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="assets/dodo-icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="assets/dodo-icon.png" />
-    <link rel="stylesheet" href="styles.css?v=20260615-1646" />
+    <link rel="stylesheet" href="styles.css?v=20260626-fixes" />
+    <script src="config.js?v=20260626"></script>
     <script src="./supabase.js"></script>
   </head>
   <body class="auth-locked">
@@ -856,30 +857,11 @@
       </div>
     </div>
 
-    <script>
-      // VAPID public key - set matching VAPID_PUBLIC_KEY env var in Vercel
-      window.VAPID_PUBLIC_KEY = "BL9FXxBgvISw1EY0bPxQrvFAFn4qvIstvvgXi297IdM8rMw9sMb6oun0o8c1SPlWryK05_AHv6g0MPPQsUx4oVI";
-    </script>
-    <script>
-      // Stripe price IDs (not secret keys - safe to expose client-side)
-      // Create products in Stripe dashboard, then paste the price_xxx IDs here.
-      // Detection: de-CH/fr-CH/it-CH -> CHF | pl -> PLN | de/de-DE/de-AT -> EUR
-      //
-      // Switzerland (CHF 9.90/mo, CHF 89/yr)
-      window.STRIPE_MONTHLY_PRICE_ID     = ""; // price_xxx  CHF 9.90/mo
-      window.STRIPE_ANNUAL_PRICE_ID      = ""; // price_xxx  CHF 89/yr
-      // Poland (PLN 19/mo, PLN 169/yr)
-      window.STRIPE_MONTHLY_PRICE_ID_PLN = ""; // price_xxx  PLN 19/mo
-      window.STRIPE_ANNUAL_PRICE_ID_PLN  = ""; // price_xxx  PLN 169/yr
-      // Germany / Austria / EU (EUR 7.90/mo, EUR 69/yr)
-      window.STRIPE_MONTHLY_PRICE_ID_EUR = ""; // price_xxx  EUR 7.90/mo
-      window.STRIPE_ANNUAL_PRICE_ID_EUR  = ""; // price_xxx  EUR 69/yr
-    </script>
-    <script src="i18n.js?v=20260623-tips"></script>
-    <script src="guide.js?v=20260623-tips"></script>
-    <script src="supabase-data.js?v=20260623-tips"></script>
-    <script src="app.js?v=20260623-tips"></script>
-    <script src="features.js?v=20260623-tips"></script>
+    <script src="i18n.js?v=20260626-fixes"></script>
+    <script src="guide.js?v=20260626-fixes"></script>
+    <script src="supabase-data.js?v=20260626-fixes"></script>
+    <script src="app.js?v=20260626-fixes"></script>
+    <script src="features.js?v=20260626-fixes"></script>
 
     <!-- Guide overlay elements (managed by guide.js) -->
     <div id="guide-overlay" hidden aria-hidden="true"></div>
