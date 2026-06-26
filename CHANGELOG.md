@@ -2,6 +2,13 @@
 
 ---
 
+## v0.29.1 - 2026-06-26 - Fix crash: DAILY_TIPS Temporal Dead Zone
+
+- **Root cause of v0.29.0 crash fixed** - `render()` is called synchronously at line 649 during script init. `DAILY_TIPS` was declared with `const` at line 1599, after that call, causing a JavaScript Temporal Dead Zone ReferenceError that crashed the entire app (cards, settings, calendar all broken). Fix: moved `DAILY_TIPS` and `renderDailyTip()` to before the first `render()` call.
+- **Cache busters updated** - all JS files now load with `?v=20260623-tips` to force browsers to discard any cached old files.
+
+---
+
 ## v0.29.0 - 2026-06-23 - Daily Parenting Tip
 
 - **Daily tip card** - small strip shown between the Daily Summary and the board. One tip per day, same tip for both parents (deterministic by day-of-year, no sync needed).
