@@ -649,6 +649,9 @@ function switchModule(moduleName) {
     topbarTitle.textContent = "";
     if (topbar) topbar.style.display = "none"; // no title needed on board
     topbarActions?.classList.remove("hidden");
+    // Always reset to 1-day view when returning to board
+    if (window._boardCal) { window._boardCal.mode = "1day"; window._boardCal.weekStart = (window._boardCalToday ? window._boardCalToday() : (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })()); }
+    window.renderBoardCalendar?.();
     return;
   }
 
@@ -934,7 +937,7 @@ function openCustodyScheduleDialog() {
         <div class="sched-day-chips">
           <button class="custody-chip${sharedOwner === "mine" ? " active" : ""}" type="button" data-set-owner="mine">${myName}</button>
           <button class="custody-chip${sharedOwner === "co" ? " active" : ""}" type="button" data-set-owner="co">${coparentName}</button>
-          <button class="custody-chip${sharedOwner === "split" ? " active" : ""}" type="button" data-set-owner="split">Split &#8596;</button>
+          <button class="custody-chip${sharedOwner === "split" ? " active" : ""}" type="button" data-set-owner="split">${window.t?.("cal.split") ?? "Split"} &#8596;</button>
           <button class="custody-chip custody-chip-secondary" type="button" data-set-owner="auto">Auto</button>
         </div>
         ${showSplit ? `
@@ -3602,7 +3605,7 @@ function _renderSchedulePanelHTML() {
         <div class="sched-day-chips">
           <button class="custody-chip${sharedOwner === "mine" ? " active" : ""}" type="button" data-sp-owner="mine">${myName}</button>
           <button class="custody-chip${sharedOwner === "co" ? " active" : ""}" type="button" data-sp-owner="co">${coparentName}</button>
-          <button class="custody-chip${sharedOwner === "split" ? " active" : ""}" type="button" data-sp-owner="split">Split &#8596;</button>
+          <button class="custody-chip${sharedOwner === "split" ? " active" : ""}" type="button" data-sp-owner="split">${window.t?.("cal.split") ?? "Split"} &#8596;</button>
           <button class="custody-chip custody-chip-secondary" type="button" data-sp-owner="auto">Auto</button>
         </div>
         ${showSplit ? `
@@ -3876,7 +3879,7 @@ function renderCalendarFeature(data) {
         <div class="custody-day-actions">
           <button class="custody-chip ${selectedOwner === "mine" ? "active" : ""}" type="button" data-custody-override="mine">${window.t?.("cal.mine") ?? "Mine"}</button>
           <button class="custody-chip ${selectedOwner === "co" ? "active" : ""}" type="button" data-custody-override="co">${coparentName}</button>
-          <button class="custody-chip" type="button" data-custody-override="split">Split</button>
+          <button class="custody-chip" type="button" data-custody-override="split">${window.t?.("cal.split") ?? "Split"}</button>
           ${hasOverride ? `<button class="custody-chip custody-chip-reset" type="button" data-custody-override="auto">Reset</button>` : ""}
           <button class="custody-chip custody-chip-secondary" type="button" id="requestChangeBtn" title="Request a custody day change">↔ Change</button>
         </div>
@@ -4019,9 +4022,9 @@ function renderCalendarFeature(data) {
         <div class="board-cal-nav-center">
           <span class="board-cal-nav-title" id="calPageBcalTitle"></span>
           <div class="bcal-toggle">
-            <button class="bcal-toggle-btn active" type="button" id="calPageBcalToggle1Day" data-i18n="cal.view.day">Day</button>
-            <button class="bcal-toggle-btn" type="button" id="calPageBcalToggleWeek" data-i18n="cal.view.week">Week</button>
-            <button class="bcal-toggle-btn" type="button" id="calPageBcalToggle3Day" data-i18n="cal.view.3day">3 Days</button>
+            <button class="bcal-toggle-btn active" type="button" id="calPageBcalToggle1Day">${window.t?.("cal.view.day") ?? "Day"}</button>
+            <button class="bcal-toggle-btn" type="button" id="calPageBcalToggleWeek">${window.t?.("cal.view.week") ?? "Week"}</button>
+            <button class="bcal-toggle-btn" type="button" id="calPageBcalToggle3Day">${window.t?.("cal.view.3day") ?? "3 Days"}</button>
           </div>
         </div>
         <button class="round-nav bcal-edge-btn" type="button" id="calPageBcalNext" aria-label="Next">&#8250;</button>

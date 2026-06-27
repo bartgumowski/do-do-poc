@@ -2,6 +2,14 @@
 
 ---
 
+## v0.30.7 - 2026-06-27 - Board calendar always 1 day + Split buttons + i18n toggle fix
+
+- **Board calendar always resets to 1-day on return** - every time you navigate back to the board, the calendar resets to today in single-day mode. Mode changes (Week / 3 Days) are for the current visit only.
+- **Split buttons translated** - all 3 "Split ↔" and "Split" custody buttons now show in the app language (PL: Przekazane, DE: Übergabe).
+- **Calendar toggle labels in Polish** - Day / Week / 3 Days now correctly show as Dzień / Tydzień / 3 Dni on the calendar page (was hardcoded English because these buttons are dynamically rendered, not part of the static DOM that i18n scans on load).
+
+---
+
 ## v0.30.6 - 2026-06-27 - Calendar i18n: tabs + split day labels
 
 - **Calendar panel tabs translated** - Agenda / Schedule / Changes / Vacations now shown in app language (PL: Agenda / Plan / Zamiany / Wakacje, DE: Agenda / Zeitplan / Änderungen / Urlaub).

@@ -1,4 +1,4 @@
-const APP_VERSION = "0.30.6";
+const APP_VERSION = "0.30.7";
 const APP_VERSION_DATE = "2026-06-27";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -300,6 +300,8 @@ window.addEventListener("subscriptionLoaded", (e) => {
 // mode: "1day" = 1 col (default), "3day" = 3 cols, "2day" = 2 cols, "week" = 7 cols
 const _boardCalToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
 const _boardCal = { weekStart: _boardCalToday(), mode: "1day" };
+window._boardCal = _boardCal;
+window._boardCalToday = _boardCalToday;
 
 // ─── Calendar time-grid settings ─────────────────────────────────────────────
 const _calSettingsKey = "do-do-cal-settings-v1";
