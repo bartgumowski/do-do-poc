@@ -7,7 +7,7 @@
 - **Cards no longer flash and disappear on load** - app now always lands on board (or last non-calendar module) instead of auto-restoring to the calendar page.
 - **Page no longer reloads to calendar** - calendar is a supplementary view, not a landing page. Board is always the home screen on reload.
 - **Shopping list realtime fix** - realtime updates from co-parent no longer overwrite the current page if the user has navigated away from shopping.
-- **Reminders view: calendar hidden** - the board calendar strip is now hidden when viewing a filtered list (reminders, needs, waiting, to-do). It shows again on the normal board.
+- **Reminders is now a proper page** - clicking Reminders opens a dedicated feature page (no board calendar). Shows all cards with reminders set, sorted by date. Click any card to open it.
 - **Board calendar: 1-day default** - calendar on the board now shows today only (1 column) by default. New "Day" / "Week" / "3 Days" toggle. Navigation moves day-by-day in day mode.
 
 ---

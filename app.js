@@ -727,7 +727,7 @@ function bindEvents() {
   elements.needsShortcut?.addEventListener("click", () => applyActionFilter("needs", "Needs response"));
   elements.waitingShortcut?.addEventListener("click", () => applyActionFilter("waiting", "Waiting"));
   elements.todoShortcut?.addEventListener("click", () => applyActionFilter("todo", "To do"));
-  elements.remindersShortcut?.addEventListener("click", () => applyActionFilter("reminder", "Reminders"));
+  elements.remindersShortcut?.addEventListener("click", () => window.switchModule?.("reminders"));
   document.addEventListener("click", (event) => {
     const personButton = event.target.closest("[data-person-filter]");
     if (personButton) {

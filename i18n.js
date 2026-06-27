@@ -15,13 +15,14 @@
     // ── English ────────────────────────────────────────────────────────────────
     en: {
       // Navigation
-      "nav.board":    "Board",
-      "nav.calendar": "Calendar",
-      "nav.messages": "Messages",
-      "nav.shopping": "Shopping",
-      "nav.expenses": "Expenses",
-      "nav.handover": "Handover",
-      "nav.settings": "Settings",
+      "nav.board":      "Board",
+      "nav.calendar":   "Calendar",
+      "nav.messages":   "Messages",
+      "nav.reminders":  "Reminders",
+      "nav.shopping":   "Shopping",
+      "nav.expenses":   "Expenses",
+      "nav.handover":   "Handover",
+      "nav.settings":   "Settings",
 
       // Board
       "board.col.today":   "Today",
@@ -325,11 +326,13 @@
       "toast.added":          "Added",
 
       // Module topbar titles
-      "module.title.expenses":  "Shared expenses",
-      "module.title.settings":  "Automation",
-      "module.title.calendar":  "Shared schedule",
-      "module.title.messages":  "Messages",
-      "module.title.shopping":  "Shopping list",
+      "module.title.expenses":   "Shared expenses",
+      "module.title.settings":   "Automation",
+      "module.title.calendar":   "Shared schedule",
+      "module.title.messages":   "Messages",
+      "module.title.reminders":  "Reminders",
+      "module.title.shopping":   "Shopping list",
+      "reminders.empty":         "No cards with reminders set.",
 
       // Automation settings panel
       "auto.remind_toggle":            "Automate all reminders",
@@ -667,13 +670,14 @@
 
     // ── Deutsch ────────────────────────────────────────────────────────────────
     de: {
-      "nav.board":    "Board",
-      "nav.calendar": "Kalender",
-      "nav.messages": "Nachrichten",
-      "nav.shopping": "Einkauf",
-      "nav.expenses": "Ausgaben",
-      "nav.handover": "Übergabe",
-      "nav.settings": "Einstellungen",
+      "nav.board":      "Board",
+      "nav.calendar":   "Kalender",
+      "nav.messages":   "Nachrichten",
+      "nav.reminders":  "Erinnerungen",
+      "nav.shopping":   "Einkauf",
+      "nav.expenses":   "Ausgaben",
+      "nav.handover":   "Übergabe",
+      "nav.settings":   "Einstellungen",
 
       "board.col.today":   "Heute",
       "board.col.decide":  "Zu entscheiden",
@@ -949,11 +953,13 @@
       "toast.added":         "Hinzugefügt",
 
       // Module topbar titles
-      "module.title.expenses":  "Gemeinsame Ausgaben",
-      "module.title.settings":  "Automatisierung",
-      "module.title.calendar":  "Gemeinsamer Kalender",
-      "module.title.messages":  "Nachrichten",
-      "module.title.shopping":  "Einkaufsliste",
+      "module.title.expenses":   "Gemeinsame Ausgaben",
+      "module.title.settings":   "Automatisierung",
+      "module.title.calendar":   "Gemeinsamer Kalender",
+      "module.title.messages":   "Nachrichten",
+      "module.title.reminders":  "Erinnerungen",
+      "module.title.shopping":   "Einkaufsliste",
+      "reminders.empty":         "Keine Karten mit Erinnerungen.",
 
       // Automation settings panel
       "auto.remind_toggle":            "Alle Erinnerungen automatisieren",
@@ -1290,13 +1296,14 @@
 
     // ── Polski ─────────────────────────────────────────────────────────────────
     pl: {
-      "nav.board":    "Tablica",
-      "nav.calendar": "Kalendarz",
-      "nav.messages": "Wiadomości",
-      "nav.shopping": "Zakupy",
-      "nav.expenses": "Koszty",
-      "nav.handover": "Przekazanie",
-      "nav.settings": "Ustawienia",
+      "nav.board":      "Tablica",
+      "nav.calendar":   "Kalendarz",
+      "nav.messages":   "Wiadomości",
+      "nav.reminders":  "Przypomnienia",
+      "nav.shopping":   "Zakupy",
+      "nav.expenses":   "Koszty",
+      "nav.handover":   "Przekazanie",
+      "nav.settings":   "Ustawienia",
 
       "board.col.today":   "Dziś",
       "board.col.decide":  "Do decyzji",
@@ -1586,11 +1593,13 @@
       "toast.added":         "Dodano",
 
       // Module topbar titles
-      "module.title.expenses":  "Wspólne koszty",
-      "module.title.settings":  "Automatyzacja",
-      "module.title.calendar":  "Wspólny kalendarz",
-      "module.title.messages":  "Wiadomości",
-      "module.title.shopping":  "Lista zakupów",
+      "module.title.expenses":   "Wspólne koszty",
+      "module.title.settings":   "Automatyzacja",
+      "module.title.calendar":   "Wspólny kalendarz",
+      "module.title.messages":   "Wiadomości",
+      "module.title.reminders":  "Przypomnienia",
+      "module.title.shopping":   "Lista zakupów",
+      "reminders.empty":         "Brak kart z przypomnieniami.",
 
       // Automation settings panel
       "auto.remind_toggle":            "Automatyczne przypomnienia",

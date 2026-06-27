@@ -613,6 +613,10 @@ const featureData = {
       },
     ],
   },
+  reminders: {
+    eyebrow: "Reminders",
+    title: "Cards with reminders",
+  },
 };
 
 const moduleLinks = document.querySelectorAll("[data-module]");
@@ -662,7 +666,7 @@ function switchModule(moduleName) {
 window.switchModule = switchModule;
 
 // --- Hash-based routing ---
-const VALID_MODULES = ["board", "calendar", "shopping", "expenses", "przekazanie", "settings"];
+const VALID_MODULES = ["board", "calendar", "shopping", "expenses", "przekazanie", "settings", "reminders"];
 
 const _origSwitchModule = switchModule;
 window.switchModule = function(moduleName) {
@@ -703,6 +707,11 @@ function renderFeature(moduleName, data) {
 
   if (moduleName === "messages") {
     renderMessagesFeature();
+    return;
+  }
+
+  if (moduleName === "reminders") {
+    renderRemindersFeature();
     return;
   }
 
@@ -3368,6 +3377,53 @@ function renderMessagesFeature() {
 
   featureModule.querySelectorAll("[data-open-card]").forEach((el) => {
     const open = () => window.openCardDialog?.(el.dataset.openCard, "messages");
+    el.addEventListener("click", open);
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") open(); });
+  });
+}
+
+function renderRemindersFeature() {
+  const allCards = (typeof state !== "undefined" ? state.cards : []);
+  const now = new Date();
+  const cardsWithReminders = allCards
+    .filter((c) => c.reminder)
+    .sort((a, b) => new Date(a.reminder) - new Date(b.reminder));
+
+  const esc = (s) => window.escapeHtml?.(s) || s || "";
+
+  const formatReminder = (isoStr) => {
+    try {
+      const d = new Date(isoStr);
+      if (Number.isNaN(d.getTime())) return isoStr;
+      const isPast = d < now;
+      const dateStr = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      return `<span style="color:${isPast ? "var(--danger,#e53)" : "var(--text-secondary)"}">${dateStr} ${timeStr}</span>`;
+    } catch { return isoStr; }
+  };
+
+  featureModule.innerHTML = `
+    <div class="messages-feed">
+      ${cardsWithReminders.length === 0 ? `
+        <div class="messages-empty">
+          <p>${window.t?.("reminders.empty") ?? "No cards with reminders set."}</p>
+        </div>
+      ` : cardsWithReminders.map((card) => `
+        <article class="messages-feed-card" data-open-card="${card.id}" role="button" tabindex="0">
+          <div class="messages-feed-card-header">
+            <strong class="messages-feed-title">${esc(card.title)}</strong>
+            ${card.topic ? `<div class="messages-feed-tags"><span class="meta-chip card-tag">${esc(card.topic)}</span></div>` : ""}
+          </div>
+          <div class="messages-feed-meta">
+            ${formatReminder(card.reminder)}
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+
+  featureModule.querySelectorAll("[data-open-card]").forEach((el) => {
+    const open = () => window.openCardDialog?.(el.dataset.openCard);
     el.addEventListener("click", open);
     el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") open(); });
   });
