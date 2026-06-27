@@ -1,4 +1,4 @@
-const APP_VERSION = "0.30.3";
+const APP_VERSION = "0.30.5";
 const APP_VERSION_DATE = "2026-06-27";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -633,13 +633,17 @@ function renderDailyTip() {
   tipCard.querySelector(".daily-tip-text").textContent = text;
   tipCard.classList.remove("hidden");
 
+  // Tap the card to dismiss for the day
+  const dismiss = () => { storage.setItem("do-do-tip-dismissed-" + today, "1"); tipCard.classList.add("hidden"); };
   const dismissBtn = tipCard.querySelector(".daily-tip-dismiss");
-  const newBtn = dismissBtn.cloneNode(true);
-  dismissBtn.replaceWith(newBtn);
-  newBtn.addEventListener("click", () => {
-    storage.setItem("do-do-tip-dismissed-" + today, "1");
-    tipCard.classList.add("hidden");
-  });
+  if (dismissBtn) {
+    const newBtn = dismissBtn.cloneNode(true);
+    dismissBtn.replaceWith(newBtn);
+    newBtn.addEventListener("click", dismiss);
+  }
+  // Make the whole card clickable to dismiss (button may be hidden)
+  tipCard.style.cursor = "pointer";
+  tipCard.onclick = dismiss;
 }
 
 render();
@@ -1354,7 +1358,7 @@ function showApp(session) {
     setTimeout(() => {
       // "calendar" is not restored on reload - board is always the landing page.
       // The calendar module is a supplementary view, not a home screen.
-      const restoreModules = ["board", "shopping", "expenses", "settings"];
+      const restoreModules = ["board", "shopping", "expenses", "settings", "messages", "reminders", "przekazanie"];
       const fromHash = location.hash.replace("#", "").toLowerCase();
       const fromStorage = storage.getItem("do-do-last-module");
       const target = restoreModules.includes(fromHash) ? fromHash : fromStorage;
@@ -1776,10 +1780,10 @@ function renderBoard(cards) {
     const name = setup?.parents?.primary || "there";
     elements.boardView.innerHTML = `
       <div style="grid-column:1/-1;display:grid;place-items:center;padding:48px 24px;text-align:center;">
-        <p style="margin:0 0 6px;color:var(--muted);font-size:13px;font-weight:800;">WELCOME, ${name.toUpperCase()}</p>
-        <p style="margin:0 0 20px;color:var(--ink);font-size:18px;font-weight:900;max-width:22ch;line-height:1.3;">Your board is ready. Add your first Do to get started.</p>
+        <p style="margin:0 0 6px;color:var(--muted);font-size:13px;font-weight:800;">${(window.t?.("board.welcome") ?? "WELCOME") + ", " + name.toUpperCase()}</p>
+        <p style="margin:0 0 20px;color:var(--ink);font-size:18px;font-weight:900;max-width:22ch;line-height:1.3;">${window.t?.("board.empty_subtitle") ?? "Your board is ready. Add your first Do to get started."}</p>
         <button class="primary-button" type="button" id="emptyStateNewCard" style="min-height:48px;padding:0 28px;border-radius:999px;font-size:15px;">
-          + New Do
+          + ${window.t?.("board.new_do") ?? "New Do"}
         </button>
       </div>
     `;
@@ -1857,7 +1861,7 @@ function renderInlineCardCapture() {
           <path d="M5 3l.6 1.4L7 5l-1.4.6L5 7l-.6-1.4L3 5l1.4-.6L5 3Z" fill="currentColor"/>
         </svg>
       </span>
-      <textarea class="inline-capture-input" data-inline-card-input rows="1" maxlength="420" placeholder="${window.t?.("board.capture_ph") ?? "Write or say anything"}"></textarea>
+      <textarea class="inline-capture-input" data-inline-card-input rows="1" maxlength="420" placeholder=""></textarea>
       <button class="inline-mic-button" type="button" data-inline-card-mic aria-label="Dictate" title="Dictate">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="2"/>
@@ -5580,15 +5584,14 @@ function renderBoardCalendar(cards) {
   });
 
   // Title
-  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const dowNames   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const _calLocale = (() => { const l = window.getCurrentLang?.(); return l === "pl" ? "pl-PL" : l === "de" ? "de-DE" : "en-US"; })();
   const firstDay = days[0];
   const lastDay  = days[days.length - 1];
   const titleText = colCount === 1
-    ? `${dowNames[firstDay.getDay()]} ${firstDay.getDate()} ${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()}`
+    ? firstDay.toLocaleDateString(_calLocale, { weekday: "short", day: "numeric", month: "long", year: "numeric" })
     : firstDay.getMonth() === lastDay.getMonth()
-    ? `${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()}`
-    : `${monthNames[firstDay.getMonth()]} - ${monthNames[lastDay.getMonth()]} ${lastDay.getFullYear()}`;
+    ? firstDay.toLocaleDateString(_calLocale, { month: "long", year: "numeric" })
+    : `${firstDay.toLocaleDateString(_calLocale, { month: "long" })} - ${lastDay.toLocaleDateString(_calLocale, { month: "long", year: "numeric" })}`;
 
   const todayKey = _boardCalDayKey(new Date());
 

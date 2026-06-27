@@ -666,7 +666,7 @@ function switchModule(moduleName) {
 window.switchModule = switchModule;
 
 // --- Hash-based routing ---
-const VALID_MODULES = ["board", "calendar", "shopping", "expenses", "przekazanie", "settings", "reminders"];
+const VALID_MODULES = ["board", "calendar", "shopping", "expenses", "przekazanie", "settings", "reminders", "messages"];
 
 const _origSwitchModule = switchModule;
 window.switchModule = function(moduleName) {
@@ -2593,7 +2593,7 @@ function renderExpensesFeature() {
         <div>
           <span>${_t("expense.total")}</span>
           <strong>${_sym} ${formatExpenseCurrency(monthlyTotal)}</strong>
-          <p style="font-size:12px;color:var(--muted)">Est. monthly commitment</p>
+          <p style="font-size:12px;color:var(--muted)">${_t("expense.monthly_commitment") || "Est. monthly commitment"}</p>
         </div>
         <div class="expense-hero-actions">
           <button class="primary-button" type="button" id="addExpenseButton">${_t("expense.add")}</button>
@@ -2601,8 +2601,8 @@ function renderExpensesFeature() {
       </section>
 
       <div class="expense-tab-bar">
-        <button class="cal-panel-tab" data-expense-tab="monthly">Monthly</button>
-        <button class="cal-panel-tab active" data-expense-tab="recurring">&#x21BB; Recurring</button>
+        <button class="cal-panel-tab" data-expense-tab="monthly">${_t("expense.tab.monthly") || "Monthly"}</button>
+        <button class="cal-panel-tab active" data-expense-tab="recurring">&#x21BB; ${_t("expense.tab.recurring") || "Recurring"}</button>
       </div>
 
       <section class="upcoming-expenses">
@@ -2645,7 +2645,7 @@ function renderExpensesFeature() {
   const months = [];
   for (let i = 0; i < 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: d.toLocaleString("default", { month: "long", year: "numeric" }) });
+    months.push({ value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: d.toLocaleString(_getDateLocale(), { month: "long", year: "numeric" }) });
   }
   const selectedMonth = featureModule.dataset.expenseMonth || months[0].value;
   const [selYear, selMon] = selectedMonth.split("-").map(Number);
@@ -2719,8 +2719,8 @@ function renderExpensesFeature() {
     ${settlementSection}
 
     <div class="expense-tab-bar">
-      <button class="cal-panel-tab active" data-expense-tab="monthly">Monthly</button>
-      <button class="cal-panel-tab" data-expense-tab="recurring">&#x21BB; Recurring</button>
+      <button class="cal-panel-tab active" data-expense-tab="monthly">${_t("expense.tab.monthly") || "Monthly"}</button>
+      <button class="cal-panel-tab" data-expense-tab="recurring">&#x21BB; ${_t("expense.tab.recurring") || "Recurring"}</button>
     </div>
 
     <div class="expense-month-filter">
@@ -6877,14 +6877,14 @@ function renderSettingsFeature() {
       <!-- SEG-11.4: Schedule cascade -->
       <section class="feature-panel" id="scheduleCascadePanel">
         <div class="feature-panel-header">
-          <h3>${_at("tmpl.heading", "Custody week templates")}</h3>
-          <button class="secondary-button" id="addScheduleTemplateBtn">+ ${_at("tmpl.add", "New template")}</button>
+          <h3>${_st("tmpl.heading", "Custody week templates")}</h3>
+          <button class="secondary-button" id="addScheduleTemplateBtn">+ ${_st("tmpl.add", "New template")}</button>
         </div>
         <p class="feature-note" style="font-size:13px;color:var(--muted);margin:6px 0 12px;">
-          ${_at("tmpl.desc", "Named recurring custody weeks. Moving one template updates all linked cards and calendar events in one action.")}
+          ${_st("tmpl.desc", "Named recurring custody weeks. Moving one template updates all linked cards and calendar events in one action.")}
         </p>
         <div id="scheduleTemplatesList">
-          <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_at("tmpl.empty", "Loading templates...")}</p>
+          <p class="feature-empty" style="font-size:13px;color:var(--muted);">${_st("tmpl.empty", "Loading templates...")}</p>
         </div>
       </section>
 

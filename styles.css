@@ -1454,13 +1454,8 @@ svg {
 .daily-tip-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   margin: 0 20px 14px;
-  border-radius: 28px;
-  background: var(--paper);
-  box-shadow: 0 30px 76px rgba(31, 41, 35, 0.075);
-  padding: 12px 12px 12px 16px;
+  padding: 4px 0;
 }
 .daily-tip-card.hidden { display: none; }
 .daily-tip-main {

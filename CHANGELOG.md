@@ -2,6 +2,25 @@
 
 ---
 
+## v0.30.5 - 2026-06-27 - Settings crash fix + i18n + reload fix
+
+- **Settings crash fixed** - "\_at is not defined" error caused by `_at` used outside its scope in the schedule templates section. Replaced with `_st` which is defined at the right level.
+- **Reload now stays on the same page** - messages, reminders, and przekazanie are now included in the module restore list. Reloading from any page returns to that page.
+- **Board calendar title in correct language** - "Sat 27 June 2026" now shows in the app language (PL: sobota 27 czerwca 2026, DE: Samstag, 27. Juni 2026).
+- **Welcome screen translated** - "WELCOME, BART" / "Your board is ready..." / "+ New Do" now shown in English, Polish, or German based on app language setting.
+
+---
+
+## v0.30.4 - 2026-06-27 - Wydatki Polish + tip card style
+
+- **Wydatki: Polish month names** - month dropdown now uses the app's selected language (Polish: styczen, luty... / German: Januar, Februar...).
+- **Wydatki: tab labels translated** - "Monthly" / "Recurring" now show in Polish ("Miesięczne" / "Powtarzalne") and German ("Monatlich" / "Wiederkehrend").
+- **Wydatki: "Est. monthly commitment" translated** - shown in all 3 languages.
+- **Daily tip card** - no border, no background, no "Got it / Rozumiem" button. Tap the card to dismiss.
+- **Inline capture** - placeholder removed (field is empty).
+
+---
+
 ## v0.30.3 - 2026-06-27 - FE stability fixes
 
 - **Cards no longer flash and disappear on load** - app now always lands on board (or last non-calendar module) instead of auto-restoring to the calendar page.
