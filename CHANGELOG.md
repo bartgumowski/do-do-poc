@@ -2,6 +2,13 @@
 
 ---
 
+## v0.30.6 - 2026-06-27 - Calendar i18n: tabs + split day labels
+
+- **Calendar panel tabs translated** - Agenda / Schedule / Changes / Vacations now shown in app language (PL: Agenda / Plan / Zamiany / Wakacje, DE: Agenda / Zeitplan / Änderungen / Urlaub).
+- **Split day labels translated** - "Split day" and "Split" throughout the calendar and schedule views now use app language (PL: Przekazanie / Przekazane, DE: Übergabe).
+
+---
+
 ## v0.30.5 - 2026-06-27 - Settings crash fix + i18n + reload fix
 
 - **Settings crash fixed** - "\_at is not defined" error caused by `_at` used outside its scope in the schedule templates section. Replaced with `_st` which is defined at the right level.

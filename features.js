@@ -964,7 +964,7 @@ function openCustodyScheduleDialog() {
     const entries = Object.entries(dlgState.changedDays);
     if (!entries.length) return "";
     const items = entries.map(([dateStr, ch]) => {
-      const label = ch.owner === "mine" ? myName : ch.owner === "co" ? coparentName : ch.owner === "split" ? "Split day" : "Auto";
+      const label = ch.owner === "mine" ? myName : ch.owner === "co" ? coparentName : ch.owner === "split" ? (window.t?.("cal.split_day") ?? "Split day") : "Auto";
       return `<li>${dateStr}: <strong>${label}</strong></li>`;
     }).join("");
     return `
@@ -3635,7 +3635,7 @@ function _renderSchedulePanelHTML() {
     <div class="sched-pending-section">
       <strong>Proposed changes (${pendingEntries.length})</strong>
       <ul class="sched-pending-list">${pendingEntries.map(([ds, ch]) => {
-        const lbl = ch.owner === "mine" ? myName : ch.owner === "co" ? coparentName : ch.owner === "split" ? "Split" : "Auto";
+        const lbl = ch.owner === "mine" ? myName : ch.owner === "co" ? coparentName : ch.owner === "split" ? (window.t?.("cal.split") ?? "Split") : "Auto";
         return `<li>${ds}: <strong>${lbl}</strong></li>`;
       }).join("")}</ul>
       <button class="custody-chip custody-chip-reset" type="button" id="spClearPendingBtn" style="margin-top:6px;font-size:11px;">Clear all</button>
@@ -3860,7 +3860,7 @@ function renderCalendarFeature(data) {
     const isSplit = ov && ov.type === "split";
     const ownerLabel = selectedOwner === "mine" ? "Your day"
       : selectedOwner === "co" ? `${coparentName}'s day`
-      : selectedOwner === "split" ? "Split day"
+      : selectedOwner === "split" ? (window.t?.("cal.split_day") ?? "Split day")
       : "";
     const dotColor = selectedOwner === "mine" ? custody.myColor
       : selectedOwner === "co" ? custody.coColor : "#76808a";
@@ -3983,13 +3983,13 @@ function renderCalendarFeature(data) {
         const vacCount = loadVacations().length;
         const rp = calendarState.rightPanel;
         return `<div class="cal-panel-tabs">
-          <button class="cal-panel-tab${rp === "agenda" ? " active" : ""}" type="button" data-cal-panel="agenda">Agenda</button>
-          <button class="cal-panel-tab${rp === "schedule" ? " active" : ""}" type="button" data-cal-panel="schedule">Schedule</button>
+          <button class="cal-panel-tab${rp === "agenda" ? " active" : ""}" type="button" data-cal-panel="agenda">${window.t?.("cal.tab.agenda") ?? "Agenda"}</button>
+          <button class="cal-panel-tab${rp === "schedule" ? " active" : ""}" type="button" data-cal-panel="schedule">${window.t?.("cal.tab.schedule") ?? "Schedule"}</button>
           <button class="cal-panel-tab${rp === "changes" ? " active" : ""}" type="button" data-cal-panel="changes">
-            Changes${allCRCount ? `<span class="tab-badge">${allCRCount}</span>` : ""}
+            ${window.t?.("cal.tab.changes") ?? "Changes"}${allCRCount ? `<span class="tab-badge">${allCRCount}</span>` : ""}
           </button>
           <button class="cal-panel-tab${rp === "vacations" ? " active" : ""}" type="button" data-cal-panel="vacations">
-            Vacations${vacCount ? `<span class="tab-badge">${vacCount}</span>` : ""}
+            ${window.t?.("cal.tab.vacations") ?? "Vacations"}${vacCount ? `<span class="tab-badge">${vacCount}</span>` : ""}
           </button>
         </div>`;
       })()}
@@ -4926,7 +4926,7 @@ function renderChangeRequestAgendaItem(cr) {
     const isSplit = ov && ov.type === "split";
     const ownerLabel = cr.requestedOwner === "mine" ? myName
       : cr.requestedOwner === "co" ? coparentName
-      : (cr.requestedOwner === "split" || isSplit) ? "Split day"
+      : (cr.requestedOwner === "split" || isSplit) ? (window.t?.("cal.split_day") ?? "Split day")
       : "Auto";
     bodyHtml = `
       <strong>Propose: ${escapeHtml(ownerLabel)}</strong>
