@@ -3880,8 +3880,8 @@ function renderCalendarFeature(data) {
           <button class="custody-chip ${selectedOwner === "mine" ? "active" : ""}" type="button" data-custody-override="mine">${window.t?.("cal.mine") ?? "Mine"}</button>
           <button class="custody-chip ${selectedOwner === "co" ? "active" : ""}" type="button" data-custody-override="co">${coparentName}</button>
           <button class="custody-chip" type="button" data-custody-override="split">${window.t?.("cal.split") ?? "Split"}</button>
-          ${hasOverride ? `<button class="custody-chip custody-chip-reset" type="button" data-custody-override="auto">Reset</button>` : ""}
-          <button class="custody-chip custody-chip-secondary" type="button" id="requestChangeBtn" title="Request a custody day change">↔ Change</button>
+          ${hasOverride ? `<button class="custody-chip custody-chip-reset" type="button" data-custody-override="auto">${window.t?.("cal.reset") ?? "Reset"}</button>` : ""}
+          <button class="custody-chip custody-chip-secondary" type="button" id="requestChangeBtn" title="Request a custody day change">↔ ${window.t?.("cal.change") ?? "Change"}</button>
         </div>
         ${getActiveVacation(selectedDate) ? `<div class="custody-vacation-banner"><span>✈ Vacation period</span><button class="ghost-button" type="button" id="openVacationsBtn" style="font-size:12px;padding:2px 8px;">Manage</button></div>` : ""}
       </div>`;
@@ -3909,7 +3909,7 @@ function renderCalendarFeature(data) {
       </div>
       <div class="custody-propagate-row">
         <button class="ghost-button" type="button" id="propagateWeekBtn" style="font-size:12px;color:var(--muted);padding:4px 10px;">
-          Apply this week's schedule to all weeks
+          ${window.t?.("sched.this_week_all") ?? "Apply this week's schedule to all weeks"}
         </button>
       </div>`;
   })() : "";

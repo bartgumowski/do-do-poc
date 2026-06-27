@@ -1,4 +1,4 @@
-const APP_VERSION = "0.30.7";
+const APP_VERSION = "0.30.9";
 const APP_VERSION_DATE = "2026-06-27";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -5773,22 +5773,22 @@ function renderBoardCalendar(cards) {
     if (el) el.textContent = titleText;
   });
 
-  // Update toggle active states
-  ["boardCalToggle1Day","calPageBcalToggle1Day"].forEach((id) => {
+  // Update toggle active states (calendar page only - board has no toggles)
+  ["calPageBcalToggle1Day"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle("active", _boardCal.mode === "1day");
   });
-  ["boardCalToggleWeek","calPageBcalToggleWeek"].forEach((id) => {
+  ["calPageBcalToggleWeek"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle("active", _boardCal.mode === "week");
   });
-  ["boardCalToggle3Day","calPageBcalToggle3Day"].forEach((id) => {
+  ["calPageBcalToggle3Day"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle("active", _boardCal.mode === "3day");
   });
 
-  // Bind nav + toggle buttons
-  _bindBoardCalNav("boardCalPrev", "boardCalNext", "boardCalToggle1Day", "boardCalToggleWeek", "boardCalToggle3Day");
+  // Bind nav buttons (board has no toggles - always 1-day)
+  _bindBoardCalNav("boardCalPrev", "boardCalNext", null, null, null);
   _bindBoardCalNav("calPageBcalPrev", "calPageBcalNext", "calPageBcalToggle1Day", "calPageBcalToggleWeek", "calPageBcalToggle3Day");
 }
 

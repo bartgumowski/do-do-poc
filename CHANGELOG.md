@@ -2,6 +2,22 @@
 
 ---
 
+## v0.30.9 - 2026-06-27 - Polish string fixes
+
+- **Empty board subtitle** - "Tablica jest gotowa. Dodaj swoje pierwsze Do." (removed "żeby zacząć").
+- **Reset** - now shows "Wyczyść" in Polish, "Zurücksetzen" in German.
+- **↔ Change** - now shows "↔ Zmiana" in Polish, "↔ Ändern" in German.
+- **Apply this week's schedule** - now shows "Zastosuj zmianę planu dla wszystkich tygodni" in Polish.
+
+---
+
+## v0.30.8 - 2026-06-27 - Board calendar: 1-day only, no toggles
+
+- **Board (Tablica) calendar** - Day/Week/3 Days toggle removed entirely. Board always shows today, single day. No mode switching.
+- **Calendar (Kalendarz) page** - keeps the full Day/Week/3 Days toggle as before.
+
+---
+
 ## v0.30.7 - 2026-06-27 - Board calendar always 1 day + Split buttons + i18n toggle fix
 
 - **Board calendar always resets to 1-day on return** - every time you navigate back to the board, the calendar resets to today in single-day mode. Mode changes (Week / 3 Days) are for the current visit only.
