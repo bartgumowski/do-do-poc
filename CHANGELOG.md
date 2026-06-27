@@ -2,6 +2,18 @@
 
 ---
 
+## v0.30.11 - 2026-06-27 - Login consent text fix (Polish)
+
+- **Login page** - "I agree to the Terms & Privacy Policy" consent label no longer shows doubled text in Polish. Removed inline links from the i18n span; translation now displays cleanly in all languages.
+
+---
+
+## v0.30.10 - 2026-06-27 - Calendar: compact event chips
+
+- **Calendar time grid** - Do cards replaced with compact chips (22px tall). Each chip shows the time and title. Click to open the full card preview/dialog. Dragging still works for rescheduling. Done cards shown at reduced opacity with strikethrough.
+
+---
+
 ## v0.30.9 - 2026-06-27 - Polish string fixes
 
 - **Empty board subtitle** - "Tablica jest gotowa. Dodaj swoje pierwsze Do." (removed "żeby zacząć").

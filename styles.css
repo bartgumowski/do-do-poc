@@ -10182,24 +10182,51 @@ td.vac-range-in-cell {
 .bcal-drag-handle:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--ink); }
 .bcal-card-wrap:active .bcal-drag-handle { cursor: grabbing; }
 
-/* Do cards inside the time grid - scaled down */
-.bcal-do-card {
-  margin-bottom: 0;
-  font-size: 65%;
-  pointer-events: auto;
+/* Compact event chip inside the time grid */
+.bcal-chip {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px 0 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-raised));
+  border-left: 3px solid var(--accent);
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  z-index: 2;
+  user-select: none;
+  transition: background 0.12s, transform 0.1s;
 }
-.bcal-do-card * { font-size: inherit; }
-.bcal-do-card .card-title { font-size: 1.15em; }
-.bcal-do-card .quick-actions { flex-wrap: wrap; gap: 3px; }
-.bcal-do-card .quick-actions button,
-.bcal-do-card .card-footer-btn { padding: 3px 6px; font-size: 0.95em; }
-
-/* Hide action buttons when day column is too narrow (e.g. 7-day view on small screens) */
-@container (max-width: 240px) {
-  .bcal-do-card .quick-actions,
-  .bcal-do-card .card-footer-actions {
-    display: none;
-  }
+.bcal-chip:hover, .bcal-chip:focus-visible {
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface-raised));
+  outline: none;
+  transform: scaleY(1.06);
+}
+.bcal-chip.bcal-chip-done {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.bcal-chip-time {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+}
+.bcal-chip-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 /* Split-day handover band - highlights the handover hour */

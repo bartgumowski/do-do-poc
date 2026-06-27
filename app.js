@@ -1,4 +1,4 @@
-const APP_VERSION = "0.30.9";
+const APP_VERSION = "0.30.11";
 const APP_VERSION_DATE = "2026-06-27";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
@@ -5688,24 +5688,24 @@ function renderBoardCalendar(cards) {
       <div class="bcal-half-line" style="top:${i * BCAL_SLOT_H + BCAL_SLOT_H / 2}px"></div>
     `).join("");
 
-    // Cards positioned absolutely at their time
+    // Cards positioned absolutely at their time - compact marker chip
     const cardEls = daycards.map((card) => {
-      const topPx   = _bcalCardTopPx(card);
-      // For recurring instances, always point data-bcal-card to the source card so
-      // clicking and dragging edit the original (not a virtual copy).
-      const editId  = card._recSourceId || card.id;
-      // renderUnifiedCard uses card.id for data-card-id internally; pass the source card
-      // for instances so the rendered chip shows the right content and opens correctly.
+      const topPx  = _bcalCardTopPx(card);
+      const editId = card._recSourceId || card.id;
       const srcCard = card._recInstance
         ? (state.cards.find((c) => c.id === card._recSourceId) || card)
         : card;
-      const inner = renderUnifiedCard(srcCard, { showActions: true, className: "bcal-do-card" });
-      const recBadge = card._recInstance
-        ? `<span class="bcal-rec-badge" title="Recurring">↻</span>`
+      const dueDate = card.due ? new Date(card.due) : null;
+      const timeStr = dueDate
+        ? dueDate.toLocaleTimeString(_calLocale, { hour: "2-digit", minute: "2-digit", hour12: false })
         : "";
-      return `<div class="bcal-card-wrap${card._recInstance ? " bcal-rec-instance" : ""}" draggable="true" data-bcal-card="${editId}" style="top:${topPx}px">
-        <div class="bcal-drag-handle" title="Drag to reschedule">⠿</div>
-        ${recBadge}${inner}
+      const recIcon = card._recInstance ? "↻ " : "";
+      const isDone  = srcCard.status === "Done";
+      return `<div class="bcal-chip${isDone ? " bcal-chip-done" : ""}" draggable="true"
+          data-bcal-card="${editId}" data-open-card="${editId}" role="button" tabindex="0"
+          style="top:${topPx}px" title="${escapeHtml(srcCard.title || "")}">
+        <span class="bcal-chip-time">${timeStr}</span>
+        <span class="bcal-chip-title">${recIcon}${escapeHtml(srcCard.title || "")}</span>
       </div>`;
     }).join("");
 
@@ -5746,7 +5746,12 @@ function renderBoardCalendar(cards) {
   containers.forEach((grid) => {
     grid.innerHTML = gridHTML;
     _bindBoardCalDragDrop(grid);
-    window.bindUnifiedCardInteractions?.(grid);
+    // Chip click -> open card dialog
+    grid.querySelectorAll(".bcal-chip[data-open-card]").forEach((chip) => {
+      const open = () => openCardDialog(chip.dataset.openCard);
+      chip.addEventListener("click", open);
+      chip.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+    });
     // Handover card click -> open Przekazanie dialog (skip if clicking a footer button)
     grid.querySelectorAll("[data-open-przekazanie]").forEach((el) => {
       el.addEventListener("click", (e) => {
