@@ -2,6 +2,26 @@
 
 ---
 
+## v0.30.3 - 2026-06-27 - FE stability fixes
+
+- **Cards no longer flash and disappear on load** - app now always lands on board (or last non-calendar module) instead of auto-restoring to the calendar page.
+- **Page no longer reloads to calendar** - calendar is a supplementary view, not a landing page. Board is always the home screen on reload.
+- **Shopping list realtime fix** - realtime updates from co-parent no longer overwrite the current page if the user has navigated away from shopping.
+- **Reminders view: calendar hidden** - the board calendar strip is now hidden when viewing a filtered list (reminders, needs, waiting, to-do). It shows again on the normal board.
+- **Board calendar: 1-day default** - calendar on the board now shows today only (1 column) by default. New "Day" / "Week" / "3 Days" toggle. Navigation moves day-by-day in day mode.
+
+---
+
+## v0.30.2 - 2026-06-27 - UI polish
+
+- **Shopping list width stable** - delete button (X) now always visible at low opacity so all rows have the same width. No more jumping when hovering or checking an item. Also shows properly on touch/mobile (no hover required).
+- **Search field** - placeholder text removed; field is empty until the user starts typing.
+- **Messages page** - empty state text now shown in the correct language (EN/PL/DE).
+- **Inline capture placeholder** - "Write or say anything" now translated (EN/PL/DE).
+- **No matching Dos** - empty search state now translated (EN/PL/DE).
+
+---
+
 ## v0.30.1 - 2026-06-26 - Bug fixes
 
 - **Settings crash now visible** - wrapped `renderSettingsFeature()` in a try-catch so any crash shows an error message instead of a blank white screen.

@@ -1,5 +1,5 @@
-const APP_VERSION = "0.30.1";
-const APP_VERSION_DATE = "2026-06-26";
+const APP_VERSION = "0.30.3";
+const APP_VERSION_DATE = "2026-06-27";
 
 // ─── Locale / currency config ─────────────────────────────────────────────────
 // To add a new market: add an entry to LOCALE_CONFIGS and add the corresponding
@@ -297,8 +297,9 @@ window.addEventListener("subscriptionLoaded", (e) => {
 });
 
 // Board week-calendar state (must be declared before render() is called)
-// mode: "week" = 7 cols, "3day" = 3 cols, "2day" = 2 cols (mobile default)
-const _boardCal = { weekStart: _boardCalGetWeekStart(new Date()), mode: "week" };
+// mode: "1day" = 1 col (default), "3day" = 3 cols, "2day" = 2 cols, "week" = 7 cols
+const _boardCalToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const _boardCal = { weekStart: _boardCalToday(), mode: "1day" };
 
 // ─── Calendar time-grid settings ─────────────────────────────────────────────
 const _calSettingsKey = "do-do-cal-settings-v1";
@@ -578,13 +579,7 @@ window.applyCardTagFilter = (tag) => {
   window.switchModule?.("board");
   applyTagFilter(tag, topics.includes(tag) ? tag : "All");
 };
-// Mobile: default to 2-day view (today + tomorrow)
-if (window.innerWidth < 640) {
-  _boardCal.mode = "2day";
-  const _mobileToday = new Date();
-  _mobileToday.setHours(0, 0, 0, 0);
-  _boardCal.weekStart = _mobileToday;
-}
+// 1-day is the default on all screen sizes
 
 // ─── Daily Parenting Tips ─────────────────────────────────────────────────────
 // Defined here (before the first render() call at the next line) to avoid
@@ -1357,11 +1352,15 @@ function showApp(session) {
   if (_appFirstLoad) {
     _appFirstLoad = false;
     setTimeout(() => {
-      const validModules = ["board", "calendar", "shopping", "expenses", "settings"];
+      // "calendar" is not restored on reload - board is always the landing page.
+      // The calendar module is a supplementary view, not a home screen.
+      const restoreModules = ["board", "shopping", "expenses", "settings"];
       const fromHash = location.hash.replace("#", "").toLowerCase();
       const fromStorage = storage.getItem("do-do-last-module");
-      const target = validModules.includes(fromHash) ? fromHash : fromStorage;
-      if (target && validModules.includes(target)) window.switchModule?.(target);
+      const target = restoreModules.includes(fromHash) ? fromHash : fromStorage;
+      // Always call switchModule so any stale CSS state (e.g. cards-content-hidden
+      // left by the DOMContentLoaded hash route) is cleared. Falls back to "board".
+      window.switchModule?.(restoreModules.includes(target) ? target : "board");
     }, 0);
   }
   // Load real data from Supabase in the background
@@ -1636,6 +1635,9 @@ function render() {
   renderBoardCalendar();
   // Allow kanban cards to be dragged into the calendar time grid
   requestAnimationFrame(() => _bindKanbanToBoardCal());
+  // Hide the board calendar when a filter is active (reminders, needs, etc.)
+  const _bcs = document.getElementById("boardCalSection");
+  if (_bcs) _bcs.hidden = !!state.actionFilter;
 
   elements.boardView.classList.toggle("hidden", state.view !== "board");
   elements.listView.classList.toggle("hidden", state.view !== "list");
@@ -1855,7 +1857,7 @@ function renderInlineCardCapture() {
           <path d="M5 3l.6 1.4L7 5l-1.4.6L5 7l-.6-1.4L3 5l1.4-.6L5 3Z" fill="currentColor"/>
         </svg>
       </span>
-      <textarea class="inline-capture-input" data-inline-card-input rows="1" maxlength="420" placeholder="Write or say anything"></textarea>
+      <textarea class="inline-capture-input" data-inline-card-input rows="1" maxlength="420" placeholder="${window.t?.("board.capture_ph") ?? "Write or say anything"}"></textarea>
       <button class="inline-mic-button" type="button" data-inline-card-mic aria-label="Dictate" title="Dictate">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M12 14a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="2"/>
@@ -1959,7 +1961,7 @@ window.bindUnifiedCardInteractions = bindCardInteractions;
 
 function renderList(cards) {
   elements.listView.innerHTML = cards.map((card) => renderUnifiedCard(card, { className: "list-card" })).join("")
-    || `<div class="card unified-card list-card"><strong>No matching Dos</strong></div>`;
+    || `<div class="card unified-card list-card"><strong>${window.t?.("board.no_match") ?? "No matching Dos"}</strong></div>`;
 
   bindCardInteractions(elements.listView);
 }
@@ -5568,7 +5570,7 @@ function renderBoardCalendar(cards) {
   ].filter(Boolean);
   if (!containers.length) return;
 
-  const colCount = _boardCal.mode === "3day" ? 3 : _boardCal.mode === "2day" ? 2 : 7;
+  const colCount = _boardCal.mode === "1day" ? 1 : _boardCal.mode === "3day" ? 3 : _boardCal.mode === "2day" ? 2 : 7;
   const ws = _boardCal.weekStart;
 
   const days = Array.from({ length: colCount }, (_, i) => {
@@ -5579,9 +5581,12 @@ function renderBoardCalendar(cards) {
 
   // Title
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const dowNames   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const firstDay = days[0];
   const lastDay  = days[days.length - 1];
-  const titleText = firstDay.getMonth() === lastDay.getMonth()
+  const titleText = colCount === 1
+    ? `${dowNames[firstDay.getDay()]} ${firstDay.getDate()} ${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()}`
+    : firstDay.getMonth() === lastDay.getMonth()
     ? `${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()}`
     : `${monthNames[firstDay.getMonth()]} - ${monthNames[lastDay.getMonth()]} ${lastDay.getFullYear()}`;
 
@@ -5764,6 +5769,10 @@ function renderBoardCalendar(cards) {
   });
 
   // Update toggle active states
+  ["boardCalToggle1Day","calPageBcalToggle1Day"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("active", _boardCal.mode === "1day");
+  });
   ["boardCalToggleWeek","calPageBcalToggleWeek"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle("active", _boardCal.mode === "week");
@@ -5774,17 +5783,18 @@ function renderBoardCalendar(cards) {
   });
 
   // Bind nav + toggle buttons
-  _bindBoardCalNav("boardCalPrev", "boardCalNext", "boardCalToggleWeek", "boardCalToggle3Day");
-  _bindBoardCalNav("calPageBcalPrev", "calPageBcalNext", "calPageBcalToggleWeek", "calPageBcalToggle3Day");
+  _bindBoardCalNav("boardCalPrev", "boardCalNext", "boardCalToggle1Day", "boardCalToggleWeek", "boardCalToggle3Day");
+  _bindBoardCalNav("calPageBcalPrev", "calPageBcalNext", "calPageBcalToggle1Day", "calPageBcalToggleWeek", "calPageBcalToggle3Day");
 }
 
-function _bindBoardCalNav(prevId, nextId, toggleWeekId, toggle3DayId) {
+function _bindBoardCalNav(prevId, nextId, toggle1DayId, toggleWeekId, toggle3DayId) {
   const prev  = document.getElementById(prevId);
   const next  = document.getElementById(nextId);
+  const t1Day = document.getElementById(toggle1DayId);
   const tWeek = document.getElementById(toggleWeekId);
   const t3Day = document.getElementById(toggle3DayId);
 
-  const _shift = () => _boardCal.mode === "3day" ? 3 : _boardCal.mode === "2day" ? 2 : 7;
+  const _shift = () => _boardCal.mode === "1day" ? 1 : _boardCal.mode === "3day" ? 3 : _boardCal.mode === "2day" ? 2 : 7;
 
   if (prev) {
     prev.onclick = () => {
@@ -5800,6 +5810,13 @@ function _bindBoardCalNav(prevId, nextId, toggleWeekId, toggle3DayId) {
       renderBoardCalendar();
     };
   }
+  if (t1Day) {
+    t1Day.onclick = () => {
+      _boardCal.mode = "1day";
+      _boardCal.weekStart = _boardCalToday();
+      renderBoardCalendar();
+    };
+  }
   if (tWeek) {
     tWeek.onclick = () => {
       _boardCal.mode = "week";
@@ -5811,9 +5828,7 @@ function _bindBoardCalNav(prevId, nextId, toggleWeekId, toggle3DayId) {
     t3Day.onclick = () => {
       if (_boardCal.mode !== "3day") {
         _boardCal.mode = "3day";
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        _boardCal.weekStart = today;
+        _boardCal.weekStart = _boardCalToday();
       }
       renderBoardCalendar();
     };

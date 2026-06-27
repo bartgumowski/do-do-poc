@@ -2539,11 +2539,12 @@ html[data-theme="dark"] .card-cal-import {
   color: var(--muted);
   border-radius: 6px;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.25;
   transition: opacity 0.12s, background 0.12s, color 0.12s;
 }
 
-.shopping-row-wrap:hover .shopping-delete-btn {
+.shopping-row-wrap:hover .shopping-delete-btn,
+.shopping-row-wrap:focus-within .shopping-delete-btn {
   opacity: 1;
 }
 

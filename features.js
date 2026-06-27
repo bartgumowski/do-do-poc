@@ -2071,6 +2071,7 @@ async function renderShoppingFeature() {
   // Subscribe to real-time changes so co-parent updates appear instantly
   window.unsubscribeShopping?.();
   window.subscribeToShopping?.(async () => {
+    if (!featureModule.querySelector("#shoppingBoard")) return; // user navigated away
     const refreshed = await window.loadShoppingItems?.();
     if (refreshed) _renderShoppingBoard(refreshed);
   });
@@ -3337,7 +3338,7 @@ function renderMessagesFeature() {
     <div class="messages-feed">
       ${cardsWithMessages.length === 0 ? `
         <div class="messages-empty">
-          <p>No card messages yet. Open a card and type a message to start a thread.</p>
+          <p>${window.t?.("msg.empty") ?? "No card messages yet. Open a card and type a message to start a thread."}</p>
         </div>
       ` : cardsWithMessages.map(({ card, realComments }) => {
         const last = realComments[realComments.length - 1];
@@ -3962,8 +3963,9 @@ function renderCalendarFeature(data) {
         <div class="board-cal-nav-center">
           <span class="board-cal-nav-title" id="calPageBcalTitle"></span>
           <div class="bcal-toggle">
-            <button class="bcal-toggle-btn active" type="button" id="calPageBcalToggleWeek">Week</button>
-            <button class="bcal-toggle-btn" type="button" id="calPageBcalToggle3Day">3 Days</button>
+            <button class="bcal-toggle-btn active" type="button" id="calPageBcalToggle1Day" data-i18n="cal.view.day">Day</button>
+            <button class="bcal-toggle-btn" type="button" id="calPageBcalToggleWeek" data-i18n="cal.view.week">Week</button>
+            <button class="bcal-toggle-btn" type="button" id="calPageBcalToggle3Day" data-i18n="cal.view.3day">3 Days</button>
           </div>
         </div>
         <button class="round-nav bcal-edge-btn" type="button" id="calPageBcalNext" aria-label="Next">&#8250;</button>

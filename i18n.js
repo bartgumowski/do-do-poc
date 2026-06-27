@@ -34,6 +34,8 @@
       "board.empty_title":"Nothing on the board yet",
       "board.empty_cta":  "New Do",
       "board.new_do":     "New Do",
+      "board.capture_ph": "Write or say anything",
+      "board.no_match":   "No matching Dos",
 
       // Card status labels (used for board column assignment and display)
       "status.todo":     "To Do",
@@ -210,6 +212,7 @@
       "msg.loading":         "Loading messages...",
       "msg.send":            "Send",
       "msg.placeholder":     "Message #{{topic}}",
+      "msg.empty":           "No card messages yet. Open a card and type a message to start a thread.",
 
       // Settings
       "settings.your_profile":    "Your profile",
@@ -461,6 +464,7 @@
       // Calendar
       "cal.view.month":       "Month",
       "cal.view.week":        "Week",
+      "cal.view.3day":        "3 Days",
       "cal.view.day":         "Day",
       "cal.parenting_schedule": "Parenting schedule",
       "cal.set_up_schedule":  "Set up parenting schedule",
@@ -681,6 +685,8 @@
       "board.empty_title":"Noch nichts auf dem Board",
       "board.empty_cta":  "Neue Aufgabe",
       "board.new_do":     "Neue Aufgabe",
+      "board.capture_ph": "Schreib oder sag etwas",
+      "board.no_match":   "Keine passenden Dos",
 
       "status.todo":      "Zu tun",
       "status.waiting":   "Wartend",
@@ -833,6 +839,7 @@
       "msg.loading":         "Nachrichten werden geladen…",
       "msg.send":            "Senden",
       "msg.placeholder":     "Nachricht #{{topic}}",
+      "msg.empty":           "Noch keine Nachrichten. Öffne eine Karte und schreibe eine Nachricht, um einen Thread zu starten.",
 
       "settings.your_profile":    "Dein Profil",
       "settings.display_name":    "Anzeigename",
@@ -1081,6 +1088,7 @@
       // Kalender
       "cal.view.month":       "Monat",
       "cal.view.week":        "Woche",
+      "cal.view.3day":        "3 Tage",
       "cal.view.day":         "Tag",
       "cal.parenting_schedule": "Betreuungsplan",
       "cal.set_up_schedule":  "Betreuungsplan einrichten",
@@ -1300,6 +1308,8 @@
       "board.empty_title":"Brak zadań na tablicy",
       "board.empty_cta":  "Dodaj Do",
       "board.new_do":     "Dodaj Do",
+      "board.capture_ph": "Napisz lub powiedz cokolwiek",
+      "board.no_match":   "Brak pasujących Do",
 
       "status.todo":      "Do zrobienia",
       "status.waiting":   "Oczekuje",
@@ -1466,6 +1476,7 @@
       "msg.loading":         "Ładowanie wiadomości…",
       "msg.send":            "Wyślij",
       "msg.placeholder":     "Wiadomość #{{topic}}",
+      "msg.empty":           "Brak wiadomości. Otwórz kartę i napisz wiadomość, aby rozpocząć wątek.",
 
       "settings.your_profile":    "Twój profil",
       "settings.display_name":    "Twoja nazwa",
@@ -1714,6 +1725,7 @@
       // Kalendarz
       "cal.view.month":       "Miesiąc",
       "cal.view.week":        "Tydzień",
+      "cal.view.3day":        "3 Dni",
       "cal.view.day":         "Dzień",
       "cal.parenting_schedule": "Harmonogram opieki",
       "cal.set_up_schedule":  "Ustaw harmonogram opieki",
